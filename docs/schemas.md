@@ -52,9 +52,14 @@ and always sum to 1.
   "prob_path": "data/run/<alert_id>/skymap.fits",
   "components": ["superk_pointing", "timing:SuperK-SNO+", "timing:SuperK-IceCube"],
   "credible_90_deg2": 0.0,
-  "peak": { "ra_deg": 0.0, "dec_deg": 0.0 }
+  "peak": { "ra_deg": 0.0, "dec_deg": 0.0 },
+  "simulated": false
 }
 ```
+
+Pydantic model: `backend.schemas.SkyMap`. `fuse.fuse(alerts)` also writes
+`data/run/<alert_id>/skymap.png` (healpy Mollweide) as the 2D fallback view.
+`simulated` is copied from the input Alert (Scenario A simulated bursts stay labeled).
 
 ## CandidateScore
 
