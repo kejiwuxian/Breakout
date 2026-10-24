@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "SkyPeak": {
+      "description": "Peak of a fused HEALPix sky map (ICRS degrees).",
+      "properties": {
+        "dec_deg": {
+          "title": "Dec Deg",
+          "type": "number"
+        },
+        "ra_deg": {
+          "title": "Ra Deg",
+          "type": "number"
+        }
+      },
+      "required": [
+        "ra_deg",
+        "dec_deg"
+      ],
+      "title": "SkyPeak",
+      "type": "object"
+    }
+  },
+  "$id": "https://breakout.local/schemas/SkyMap.schema.json",
+  "description": "Output of localize/fuse.py (healpy NESTED map, sums to 1).",
+  "properties": {
+    "alert_id": {
+      "title": "Alert Id",
+      "type": "string"
+    },
+    "components": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Components",
+      "type": "array"
+    },
+    "credible_90_deg2": {
+      "title": "Credible 90 Deg2",
+      "type": "number"
+    },
+    "frame": {
+      "const": "ICRS",
+      "default": "ICRS",
+      "title": "Frame",
+      "type": "string"
+    },
+    "nside": {
+      "default": 64,
+      "title": "Nside",
+      "type": "integer"
+    },
+    "ordering": {
+      "const": "NESTED",
+      "default": "NESTED",
+      "title": "Ordering",
+      "type": "string"
+    },
+    "peak": {
+      "$ref": "#/$defs/SkyPeak"
+    },
+    "prob_path": {
+      "title": "Prob Path",
+      "type": "string"
+    },
+    "simulated": {
+      "default": false,
+      "title": "Simulated",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "alert_id",
+    "prob_path",
+    "components",
+    "credible_90_deg2",
+    "peak"
+  ],
+  "title": "BREAKOUT SkyMap (v1)",
+  "type": "object"
+}

@@ -1,0 +1,154 @@
+{
+  "$defs": {
+    "DetectorHit": {
+      "description": "One detector's contribution to an Alert (WGS84 position + arrival).",
+      "properties": {
+        "height_m": {
+          "title": "Height M",
+          "type": "number"
+        },
+        "lat_deg": {
+          "title": "Lat Deg",
+          "type": "number"
+        },
+        "lon_deg": {
+          "title": "Lon Deg",
+          "type": "number"
+        },
+        "n_events": {
+          "title": "N Events",
+          "type": "integer"
+        },
+        "name": {
+          "enum": [
+            "Super-K",
+            "SNO+",
+            "IceCube",
+            "KamLAND",
+            "JUNO"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "pointing": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Pointing"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "t_arrival_utc": {
+          "title": "T Arrival Utc",
+          "type": "string"
+        },
+        "t_err_ms": {
+          "title": "T Err Ms",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "lat_deg",
+        "lon_deg",
+        "height_m",
+        "t_arrival_utc",
+        "t_err_ms",
+        "n_events"
+      ],
+      "title": "DetectorHit",
+      "type": "object"
+    },
+    "Pointing": {
+      "description": "Directional estimate in ICRS degrees.",
+      "properties": {
+        "dec_deg": {
+          "title": "Dec Deg",
+          "type": "number"
+        },
+        "err_deg": {
+          "title": "Err Deg",
+          "type": "number"
+        },
+        "ra_deg": {
+          "title": "Ra Deg",
+          "type": "number"
+        }
+      },
+      "required": [
+        "ra_deg",
+        "dec_deg",
+        "err_deg"
+      ],
+      "title": "Pointing",
+      "type": "object"
+    }
+  },
+  "$id": "https://breakout.local/schemas/Alert.schema.json",
+  "description": "Emitted by every ingest source; consumed by localize/.",
+  "properties": {
+    "alert_id": {
+      "title": "Alert Id",
+      "type": "string"
+    },
+    "detectors": {
+      "items": {
+        "$ref": "#/$defs/DetectorHit"
+      },
+      "title": "Detectors",
+      "type": "array"
+    },
+    "kind": {
+      "enum": [
+        "PRESN",
+        "SN_BURST",
+        "HE_NEUTRINO"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "raw": {
+      "additionalProperties": true,
+      "title": "Raw",
+      "type": "object"
+    },
+    "significance": {
+      "title": "Significance",
+      "type": "number"
+    },
+    "simulated": {
+      "description": "True when any value is from a simulation; UI must label it.",
+      "title": "Simulated",
+      "type": "boolean"
+    },
+    "source": {
+      "enum": [
+        "presn",
+        "snews2",
+        "gcn_kafka",
+        "snewpy_sim",
+        "cache"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "t0_utc": {
+      "title": "T0 Utc",
+      "type": "string"
+    }
+  },
+  "required": [
+    "alert_id",
+    "kind",
+    "source",
+    "simulated",
+    "t0_utc",
+    "detectors",
+    "significance"
+  ],
+  "title": "BREAKOUT Alert (v1)",
+  "type": "object"
+}

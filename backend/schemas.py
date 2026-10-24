@@ -1,7 +1,10 @@
 """Pydantic models for Alert, SkyMap, and CandidateScore v1.
 
-Every module reads and writes these shapes; see docs/schemas.md.
-Any value from a simulation carries simulated=true.
+Contract freeze between Light's pipeline and Tony's ranking code.
+Any later field change needs a version bump and a note in docs/schemas.md.
+
+Every module reads and writes these shapes. Any value from a simulation
+carries simulated=true (UI shows a Simulated badge).
 """
 
 from __future__ import annotations
@@ -10,6 +13,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+# Bump this and document the change in docs/schemas.md when fields change.
+CONTRACT_VERSION = "v1"
 
 AlertKind = Literal["PRESN", "SN_BURST", "HE_NEUTRINO"]
 AlertSource = Literal["presn", "snews2", "gcn_kafka", "snewpy_sim", "cache"]
@@ -76,32 +81,32 @@ class SkyMap(BaseModel):
     simulated: bool = False
 
 
-class LiteratureEvidence(BaseModel):
+class Evidence(BaseModel):
     """One literature claim; bibcode is required (no bibcode, no claim)."""
 
-    bibcode: str
-    claim: str
+    bibcode: str = Field(..., min_length=1, description="ADS bibcode")
+    claim: str = Field(..., min_length=1)
 
 
-class LiteratureScores(BaseModel):
-    """Precomputed offline literature scores (0..1 each) plus evidence."""
+class Literature(BaseModel):
+    """Precomputed offline literature scores (each 0..1) plus evidence."""
 
-    mass_loss: float
-    variability: float
-    evolved_stage: float
-    confidence: float
-    evidence: list[LiteratureEvidence] = Field(default_factory=list)
+    mass_loss: float = Field(..., ge=0.0, le=1.0)
+    variability: float = Field(..., ge=0.0, le=1.0)
+    evolved_stage: float = Field(..., ge=0.0, le=1.0)
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    evidence: list[Evidence] = Field(default_factory=list)
 
 
-class BreakoutInfo(BaseModel):
-    """Per-class breakout countdown window (estimate)."""
+class Breakout(BaseModel):
+    """Per-class breakout countdown window (estimate; label as such in UI)."""
 
     class_window: BreakoutClassWindow
-    countdown_from: str
+    countdown_from: str = Field(..., description="ISO-8601 UTC")
 
 
 class CandidateScore(BaseModel):
-    """One row per star; output of literature/rerank.py."""
+    """One row per star; output of literature/rerank.py (CandidateScore v1)."""
 
     star_id: str
     ra_deg: float
@@ -111,14 +116,32 @@ class CandidateScore(BaseModel):
     distance_kpc: float | None = None
     extinction_av_mag: float | None = None
     p_sky: float
-    lit: LiteratureScores
+    lit: Literature
     presn_watch: bool = False
     posterior: float
-    breakout: BreakoutInfo
+    breakout: Breakout
     ir_followup: bool = False
-    simulated: bool = False
+    simulated: bool = Field(
+        default=False,
+        description="True when scores/values are simulated; UI must label it.",
+    )
 
     model_config = {"populate_by_name": True}
+
+
+# Backward-compatible aliases (prefer Evidence / Literature / Breakout).
+LiteratureEvidence = Evidence
+LiteratureScores = Literature
+BreakoutInfo = Breakout
+
+
+def export_json_schemas() -> dict[str, dict[str, Any]]:
+    """Return JSON Schema drafts for the frozen contract models."""
+    return {
+        "Alert": Alert.model_json_schema(),
+        "SkyMap": SkyMap.model_json_schema(),
+        "CandidateScore": CandidateScore.model_json_schema(),
+    }
 
 
 class WsHelloEvent(BaseModel):

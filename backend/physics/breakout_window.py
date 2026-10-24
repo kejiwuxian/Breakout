@@ -7,7 +7,7 @@ red supergiant ~ about 1 day.
 
 from __future__ import annotations
 
-from backend.schemas import BreakoutClassWindow, BreakoutInfo, StarClass
+from backend.schemas import Breakout, BreakoutClassWindow, StarClass
 
 
 def class_window(star_class: StarClass) -> BreakoutClassWindow:
@@ -19,6 +19,6 @@ def breakout_countdown(
     star_class: StarClass,
     *,
     t0_utc: str,
-) -> BreakoutInfo:
-    """Build BreakoutInfo countdown_from the burst time (labeled estimate in UI)."""
+) -> Breakout:
+    """Build Breakout countdown_from the burst time (labeled estimate in UI)."""
     raise NotImplementedError("breakout_countdown is filled in a later prompt.")
