@@ -1,0 +1,16 @@
+{
+  "_fixture": "synthetic",
+  "simulated": true,
+  "source_note": "SYNTHETIC fixture shaped after arXiv:2404.09920 combined pre-SN alert text-file fields (false alarm rate, timestamp, search code). Not a live GCN/Kafka notice.",
+  "reference": "https://arxiv.org/abs/2404.09920",
+  "timestamp_utc": "2026-10-24T12:00:00Z",
+  "false_alarm_rate_per_century": 0.5,
+  "search_code": "combined",
+  "detectors": [
+    "KamLAND",
+    "Super-K"
+  ],
+  "n_events_kamland": 0,
+  "n_events_sk": 0,
+  "alert_id": "synthetic-presn-combined-2026-10-24T12:00:00Z"
+}
