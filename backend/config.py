@@ -99,6 +99,9 @@ DEFAULT_T_ERR_MS: dict[str, float] = {
     "JUNO": 1.0,
 }
 
+# HEALPix resolution for localization maps (NESTED ordering).
+HEALPIX_NSIDE: int = 64
+
 
 class Settings(BaseModel):
     """Application settings read once at process start."""
@@ -137,6 +140,10 @@ class Settings(BaseModel):
     detector_table: dict[str, dict[str, float]] = Field(
         default_factory=lambda: {k: dict(v) for k, v in DETECTOR_TABLE.items()}
     )
+    healpix_nside: int = Field(
+        default=HEALPIX_NSIDE,
+        description="HEALPix Nside for NESTED localization maps.",
+    )
     class_windows: dict[str, str] = Field(
         default_factory=lambda: {
             "WR": "minutes",
@@ -157,6 +164,12 @@ def load_settings() -> Settings:
     else:
         voice_mode = "live"
 
+    nside_raw = _env_str("HEALPIX_NSIDE", str(HEALPIX_NSIDE))
+    try:
+        healpix_nside = int(nside_raw) if nside_raw else HEALPIX_NSIDE
+    except ValueError:
+        healpix_nside = HEALPIX_NSIDE
+
     return Settings(
         use_cached_stream=_env_bool("USE_CACHED_STREAM", True),
         scenario=_env_str("SCENARIO", "scenario_a_galactic_ccsn"),
@@ -170,6 +183,7 @@ def load_settings() -> Settings:
         gcn_client_secret=_env_str("GCN_CLIENT_SECRET", ""),
         lcogt_api_token=_env_str("LCOGT_API_TOKEN", ""),
         lcogt_proposal=_env_str("LCOGT_PROPOSAL", ""),
+        healpix_nside=healpix_nside,
     )
 
 
