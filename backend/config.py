@@ -47,6 +47,57 @@ def _env_str(name: str, default: str = "") -> str:
 
 
 VoiceMode = Literal["live", "cached", "off"]
+DetectorName = Literal["Super-K", "SNO+", "IceCube", "KamLAND", "JUNO"]
+
+
+# WGS84 lab positions for light-travel triangulation (astropy EarthLocation).
+# Underground depth shifts arrival times by only ~µs and is neglected where noted.
+# Do not invent coordinates: each entry cites a public source.
+DETECTOR_TABLE: dict[str, dict[str, float]] = {
+    # Super-Kamiokande, Kamioka Observatory, Japan.
+    # Source: Super-Kamiokande site coordinates (36°25′35.3″N 137°18′37.1″E)
+    # https://en.wikipedia.org/wiki/Super-Kamiokande (accessed for Cal Hacks build)
+    "Super-K": {"lat_deg": 36.426472, "lon_deg": 137.310306, "height_m": 370.0},
+    # SNOLAB / SNO+, Creighton Mine, Sudbury, Ontario.
+    # Source: SNOLAB location 46°28′30″N 81°11′12″W; lab ~2070 m underground
+    # from ~309 m surface elevation → geodetic height ≈ −1761 m.
+    # https://www.snolab.ca/ (facility location)
+    "SNO+": {"lat_deg": 46.475000, "lon_deg": -81.186667, "height_m": -1761.0},
+    # IceCube Neutrino Observatory, geographic South Pole.
+    # Source: Amundsen–Scott South Pole Station / IceCube lab elevation ~2835 m.
+    # https://icecube.wisc.edu/
+    "IceCube": {"lat_deg": -90.0, "lon_deg": 0.0, "height_m": 2835.0},
+    # KamLAND, Kamioka Observatory (same complex as Super-K).
+    # Source: KamLAND Collaboration coordinates ~36°25′N 137°19′E.
+    # https://www.awa.tohoku.ac.jp/kamland/
+    "KamLAND": {"lat_deg": 36.422500, "lon_deg": 137.313500, "height_m": 358.0},
+    # Jiangmen Underground Neutrino Observatory (JUNO), China.
+    # Source: JUNO CDR site 22°07′05.3″N 112°31′07.2″E.
+    # https://juno.ihep.ac.cn/
+    "JUNO": {"lat_deg": 22.118139, "lon_deg": 112.518667, "height_m": 100.0},
+}
+
+# SNOwGLoBES detector configs used by snewpy for expected event counts.
+# Mass scales map a SNOwGLoBES config onto our named detector (SIMULATED).
+# Super-K ~32.5 kt water vs wc100kt30prct (100 kt); SNO+ ~0.78 kt vs scint20kt;
+# KamLAND ~1 kt; JUNO ~20 kt ≈ scint20kt. IceCube maps 1:1.
+SNOWGLOBES_DETECTOR_MAP: dict[str, dict[str, float | str]] = {
+    "Super-K": {"snowglobes": "wc100kt30prct", "mass_scale": 32.5 / 100.0},
+    "SNO+": {"snowglobes": "scint20kt", "mass_scale": 0.78 / 20.0},
+    "IceCube": {"snowglobes": "icecube", "mass_scale": 1.0},
+    "KamLAND": {"snowglobes": "scint20kt", "mass_scale": 1.0 / 20.0},
+    "JUNO": {"snowglobes": "scint20kt", "mass_scale": 1.0},
+}
+
+# Timing uncertainty used in simulated Alerts (ms). Not real measured
+# resolutions for every channel; labeled via Alert.simulated=true.
+DEFAULT_T_ERR_MS: dict[str, float] = {
+    "Super-K": 1.0,
+    "SNO+": 1.0,
+    "IceCube": 5.0,
+    "KamLAND": 1.5,
+    "JUNO": 1.0,
+}
 
 
 class Settings(BaseModel):
@@ -83,9 +134,9 @@ class Settings(BaseModel):
     lcogt_api_token: str = ""
     lcogt_proposal: str = ""
 
-    # Detector table, class windows, and ranking weights are filled in later
-    # prompts; placeholders keep the settings object complete for stubs.
-    detector_table: dict[str, dict[str, float]] = Field(default_factory=dict)
+    detector_table: dict[str, dict[str, float]] = Field(
+        default_factory=lambda: {k: dict(v) for k, v in DETECTOR_TABLE.items()}
+    )
     class_windows: dict[str, str] = Field(
         default_factory=lambda: {
             "WR": "minutes",

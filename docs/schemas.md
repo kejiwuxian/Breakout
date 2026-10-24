@@ -7,6 +7,10 @@ carries `"simulated": true` and the UI labels it with a Simulated badge.
 ## Alert
 
 Emitted by every ingest source; consumed by `localize/`.
+Pydantic model: `backend.schemas.Alert` (with `DetectorHit`, `Pointing`).
+
+`snewpy_sim.simulate_burst` always sets `"simulated": true` and `"source": "snewpy_sim"`.
+Cached replays preserve the stored `simulated` flag (Scenario A simulated; Scenario B real).
 
 ```json
 {
@@ -29,6 +33,10 @@ Emitted by every ingest source; consumed by `localize/`.
   "raw": {}
 }
 ```
+
+`pointing` may be `null` when a detector has no directional reconstruction.
+Detector WGS84 coordinates live in `backend.config.DETECTOR_TABLE` with source comments.
+Arrival times from `snewpy_sim` use geometric light-travel delay −r·û/c (Earth baseline ≲ 42 ms).
 
 ## SkyMap
 
