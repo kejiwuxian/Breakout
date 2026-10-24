@@ -10,6 +10,7 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~4:30 PM PT | Light + Cursor agent | Implement `ingest/presn.py`, `snews.py`, `gcn_kafka.py` with gcn-kafka; public/synthetic fixtures; no network when USE_CACHED_STREAM=True; one commit per module | pytest green |
 | Sat 24 Oct 2026, ~4:34 PM PT | Light + Cursor agent | Implement `localize/triangulate.py`, `pointing.py`, `fuse.py` (healpy NESTED nside=64, FITS+Mollweide PNG); tests for sum=1, true pos in 90%, pointing shrinks area; one commit per module | pytest green |
 | Sat 24 Oct 2026, ~4:38 PM PT | Light + Cursor agent | Freeze CandidateScore v1 contract: Evidence/Literature/Breakout models, export JSON Schema to docs/schemas/, fixture wrappers with simulated=true, test_contract.py | commit `contract: freeze CandidateScore v1` |
+| Sat 24 Oct 2026, ~4:43 PM PT | Light + Cursor agent | Wire e2e core loop in app.py (cache replay → fuse → filter → rerank → WS events); POST /scenario/start; test_e2e with network blocked | commit `e2e: core loop` |
 
 Notes:
 
