@@ -41,3 +41,4 @@ npm-debug.log*
 *.fits
 !data/fixtures/**
 .python-version
+data/stars/star_table.parquet
