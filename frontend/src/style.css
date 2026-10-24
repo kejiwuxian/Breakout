@@ -1,0 +1,67 @@
+:root {
+  --bg0: #0b1220;
+  --bg1: #142033;
+  --fg: #e8eef7;
+  --muted: #9aadc4;
+  --accent: #3dd6c6;
+  --sim: #f0b429;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: var(--fg);
+  background: radial-gradient(1200px 600px at 20% 0%, var(--bg1), var(--bg0));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.shell {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+}
+
+.brand {
+  margin: 0 0 0.5rem;
+  font-size: 2.5rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.tagline {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.sky {
+  width: 100%;
+  height: 220px;
+  margin: 0 0 1.5rem;
+  border: 1px solid rgba(61, 214, 198, 0.25);
+  background: rgba(8, 14, 24, 0.55);
+}
+
+.status {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.badge.simulated {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--sim);
+  color: var(--sim);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge.simulated[hidden] {
+  display: none;
+}

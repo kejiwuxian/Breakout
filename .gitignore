@@ -1,0 +1,43 @@
+# Secrets and local env
+.env
+.env.local
+.env.*.local
+
+# Runtime outputs
+data/run/*
+!data/run/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.coverage
+htmlcov/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Misc
+*.fits
+!data/fixtures/**
+.python-version

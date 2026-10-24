@@ -1,0 +1,6 @@
+{
+  "presn_watchlist": "Pre-supernova alert received. Nearby massive stars moved to the watchlist. Values are {simulated_label}.",
+  "burst_localized": "Burst detected. Localization fused. Peak at right ascension {ra_deg} degrees, declination {dec_deg} degrees. {simulated_label}.",
+  "top_candidate": "Top candidate {star_id}. Citations: {bibcodes}. {simulated_label}.",
+  "breakout_countdown": "Breakout window for class {class}: {class_window}. Countdown from {countdown_from}. {simulated_label}."
+}

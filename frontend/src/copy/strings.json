@@ -1,0 +1,8 @@
+{
+  "brand": "BREAKOUT",
+  "tagline": "Neutrino-first supernova interceptor. Dashboard panels arrive in later prompts.",
+  "connecting": "Connecting to /ws/events…",
+  "connected": "Connected. Waiting for pipeline events.",
+  "disconnected": "WebSocket disconnected.",
+  "simulatedBadge": "Simulated"
+}

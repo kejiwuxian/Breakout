@@ -1,0 +1,11 @@
+{
+  "alert_id": "example-skymap",
+  "nside": 64,
+  "ordering": "NESTED",
+  "frame": "ICRS",
+  "prob_path": "data/run/example-skymap/skymap.fits",
+  "components": ["superk_pointing", "timing:SuperK-SNO+"],
+  "credible_90_deg2": 0.0,
+  "peak": { "ra_deg": 0.0, "dec_deg": 0.0 },
+  "simulated": true
+}
