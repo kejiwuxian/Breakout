@@ -59,3 +59,4 @@ data/stars/star_table.parquet
 # Derived filter table (regenerated from blazars.json on HE_NEUTRINO path)
 data/cache/**/blazar_table.json
 frontend/tsconfig.tsbuildinfo
+.venv
