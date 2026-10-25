@@ -18,6 +18,7 @@ import re
 import threading
 from pathlib import Path
 from typing import Any, Callable, Awaitable
+from urllib.parse import quote
 
 import httpx
 
@@ -215,6 +216,11 @@ def _run_voice_dir(alert_id: str, run_root: Path) -> Path:
     return path
 
 
+def _voice_audio_url(alert_id: str, seq: int) -> str:
+    """Dashboard URL for a run clip; encode ``*`` etc. in alert_id."""
+    return f"/api/voice/{quote(alert_id, safe='')}/{seq}.mp3"
+
+
 def _cache_voice_path(scenario: str, seq: int) -> Path:
     return ROOT / "data" / "cache" / scenario / "voice" / f"{seq}.mp3"
 
@@ -303,7 +309,7 @@ def speak(
             if not dest.is_file():
                 dest.write_bytes(cached.read_bytes())
             audio_path = dest
-            audio_url = f"/api/voice/{alert_id}/{spoken_seq}.mp3"
+            audio_url = _voice_audio_url(alert_id, spoken_seq)
         else:
             logger.warning(
                 "voice cached clip missing scenario=%s seq=%s", scen, spoken_seq
@@ -332,7 +338,7 @@ def speak(
         dest = _run_voice_dir(alert_id, out_root) / f"{spoken_seq}.mp3"
         dest.write_bytes(mp3)
         audio_path = dest
-        audio_url = f"/api/voice/{alert_id}/{spoken_seq}.mp3"
+        audio_url = _voice_audio_url(alert_id, spoken_seq)
     except Exception:
         logger.exception(
             "voice live TTS failed; falling back to cached alert_id=%s seq=%s",
@@ -345,7 +351,7 @@ def speak(
             dest = _run_voice_dir(alert_id, out_root) / f"{spoken_seq}.mp3"
             dest.write_bytes(cached.read_bytes())
             audio_path = dest
-            audio_url = f"/api/voice/{alert_id}/{spoken_seq}.mp3"
+            audio_url = _voice_audio_url(alert_id, spoken_seq)
 
     return {
         "type": "voice",

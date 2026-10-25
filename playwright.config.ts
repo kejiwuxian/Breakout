@@ -21,15 +21,15 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "USE_CACHED_STREAM=True SCENARIO=scenario_a_galactic_ccsn BREAKOUT_DISABLE_AUTOSTART=1 python3 -m uvicorn backend.app:app --host 127.0.0.1 --port 8000",
+        "USE_CACHED_STREAM=True VOICE_MODE=cached LCOGT_DRY_RUN=True SCENARIO=scenario_a_galactic_ccsn BREAKOUT_DISABLE_AUTOSTART=1 .venv/bin/python -m uvicorn backend.app:app --host 127.0.0.1 --port 8000",
       url: "http://127.0.0.1:8000/health",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {
-      command: "npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173",
+      command: "npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173 --strictPort",
       url: "http://127.0.0.1:5173",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
   ],

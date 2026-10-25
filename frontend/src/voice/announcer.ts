@@ -19,7 +19,7 @@ type VoiceEvent = {
 };
 
 let captionEl: HTMLElement | null = null;
-let audioEl: HTMLAudioElement | null = None;
+let audioEl: HTMLAudioElement | null = null;
 let queue: VoicePayload[] = [];
 let playing = false;
 

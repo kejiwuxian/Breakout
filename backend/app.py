@@ -125,19 +125,6 @@ async def _emit_pipeline_events(alert: Any) -> None:
             actions_event = await asyncio.to_thread(
                 _build_actions_event, alert, event["payload"]
             )
-            _note_run_state(
-                {
-                    "type": "candidates",
-                    "payload": {
-                        "alert_id": alert.alert_id,
-                        "candidates": [
-                            s.model_dump(mode="json", by_alias=True)
-                            for s in event["payload"]["scores"]
-                        ],
-                    },
-                    "simulated": bool(alert.simulated),
-                }
-            )
             await hub.broadcast(actions_event)
             continue
         _note_run_state(event)
@@ -272,10 +259,13 @@ async def start_scenario(name: str, speed: float = 0.0) -> dict[str, Any]:
 
 
 def _safe_alert_dir(alert_id: str) -> Path:
-    """Resolve data/run/<alert_id> without path traversal."""
+    """Resolve data/run/<alert_id> without path traversal.
+
+    Alert ids may include ``*`` (e.g. sim-presn-*_alf_Ori from Scenario A).
+    """
     import re
 
-    if not re.fullmatch(r"[A-Za-z0-9._\-+:]+", alert_id):
+    if not re.fullmatch(r"[A-Za-z0-9._\-+:*]+", alert_id):
         raise HTTPException(status_code=400, detail="Invalid alert_id")
     path = (_out_root / alert_id).resolve()
     root = _out_root.resolve()
