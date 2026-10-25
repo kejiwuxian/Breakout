@@ -304,30 +304,52 @@ export function mountSky(host: HTMLElement): () => void {
     candidates: CandidateRow[],
   ) => {
     if (!Aref) Aref = await loadAladin();
-    mode = "aladin";
-    fallback.hidden = true;
     empty.hidden = true;
-    aladinHost.hidden = false;
+    // Keep Aladin hidden until a canvas appears so failures never cover the focus map.
+    aladinHost.hidden = true;
     if (!aladin) {
       aladinHost.innerHTML = "";
-      aladin = Aref.aladin(aladinHost, {
-        survey: reg.survey_hint || "P/DSS2/color",
-        fov: reg.fov_deg,
-        target: `${reg.peak.ra_deg} ${reg.peak.dec_deg}`,
-        cooFrame: "ICRSd",
-        showReticle: false,
-        showCooGrid: true,
-        showCooGridControl: false,
-        showProjectionControl: false,
-        showFullscreenControl: false,
-        showLayersControl: false,
-        showGotoControl: false,
-        showShareControl: false,
-        showFrame: true,
-        showSimbadPointerControl: false,
-      });
+      try {
+        aladin = Aref.aladin(aladinHost, {
+          survey: reg.survey_hint || "P/DSS2/color",
+          fov: reg.fov_deg,
+          target: `${reg.peak.ra_deg} ${reg.peak.dec_deg}`,
+          cooFrame: "ICRSd",
+          showReticle: false,
+          showCooGrid: true,
+          showCooGridControl: false,
+          showProjectionControl: false,
+          showFullscreenControl: false,
+          showLayersControl: false,
+          showGotoControl: false,
+          showShareControl: false,
+          showFrame: true,
+          showSimbadPointerControl: false,
+        });
+      } catch (err) {
+        aladin = null;
+        aladinHost.hidden = true;
+        aladinHost.innerHTML = "";
+        throw err;
+      }
+    }
+    await new Promise((r) => window.setTimeout(r, 700));
+    if (!aladinHost.querySelector("canvas")) {
+      try {
+        aladin?.destroy?.();
+      } catch {
+        /* ignore */
+      }
+      aladin = null;
+      aladinHoverBound = false;
+      aladinHost.hidden = true;
+      aladinHost.innerHTML = "";
+      throw new Error("Aladin produced no canvas");
     }
     syncAladin(reg, candidates);
+    mode = "aladin";
+    fallback.hidden = true;
+    aladinHost.hidden = false;
     setMeta(skymap, reg);
   };
 
@@ -361,19 +383,12 @@ export function mountSky(host: HTMLElement): () => void {
       return;
     }
 
-    // Always paint the offline focus map first (zoom + red outline + hover).
-    // Then try Aladin DSS/HiPS as a progressive upgrade when the CDN/tiles work.
+    // Always paint the focus map first (zoom + red outline + hover).
+    // Upgrade to Aladin DSS/HiPS only when it actually produces a canvas.
     await useFallback(skymap, region, candidates);
     if (seq !== renderSeq) return;
     try {
       await useAladin(skymap, region, candidates);
-      // If Aladin mounted but produced no canvas (blocked tiles/CORS), keep fallback.
-      await new Promise((r) => window.setTimeout(r, 600));
-      if (seq !== renderSeq) return;
-      const canvas = aladinHost.querySelector("canvas");
-      if (!canvas) {
-        await useFallback(skymap, region, candidates);
-      }
     } catch {
       if (seq !== renderSeq) return;
       await useFallback(skymap, region, candidates);
