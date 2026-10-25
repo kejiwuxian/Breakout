@@ -21,21 +21,39 @@
             "type": "array",
             "title": "Aliases",
             "description": "Human names used in ATel/arXiv queries (e.g. 'Betelgeuse').",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         },
-        "required": ["star_id"]
+        "required": [
+          "star_id"
+        ]
       }
     },
     "sources": {
       "title": "Sources",
       "type": "array",
       "description": "Which public sources to query: atel and/or arxiv.",
-      "editor": "json",
-      "default": ["atel", "arxiv"],
+      "editor": "select",
+      "default": [
+        "atel",
+        "arxiv"
+      ],
+      "prefill": [
+        "atel",
+        "arxiv"
+      ],
       "items": {
         "type": "string",
-        "enum": ["atel", "arxiv"]
+        "enum": [
+          "atel",
+          "arxiv"
+        ],
+        "enumTitles": [
+          "Astronomer's Telegram",
+          "arXiv"
+        ]
       }
     },
     "max_items_per_star": {
@@ -47,5 +65,7 @@
       "maximum": 100
     }
   },
-  "required": ["stars"]
+  "required": [
+    "stars"
+  ]
 }

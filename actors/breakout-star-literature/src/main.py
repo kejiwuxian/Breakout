@@ -17,8 +17,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from apify import Actor
-
 from .fetchers import collect_for_star
 
 logger = logging.getLogger("breakout.apify.actor")
@@ -67,6 +65,9 @@ def run_collect(
 
 
 async def main() -> None:
+    # Import Apify SDK only on the Actor entry path (keeps unit tests light).
+    from apify import Actor
+
     async with Actor:
         raw = await Actor.get_input() or {}
         cfg = _normalize_input(raw)
