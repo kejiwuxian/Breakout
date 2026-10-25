@@ -49,7 +49,10 @@ function normalizeCandidates(rows: CommunityCandidate[] | undefined): CandidateR
 }
 
 /** Load the latest community alert so the sky panel has a default Mollweide. */
-async function hydrateFromLatest(): Promise<void> {
+async function hydrateFromLatest(opts?: {
+  /** Default true for page load; false after Scenario Run so AOI zoom plays. */
+  suppressZoom?: boolean;
+}): Promise<void> {
   try {
     const res = await fetch("/alerts/latest", { cache: "no-store" });
     if (!res.ok) return;
@@ -88,6 +91,7 @@ async function hydrateFromLatest(): Promise<void> {
       skymap,
       candidates: normalizeCandidates(pkg.candidates),
       simulated: Boolean(pkg.simulated ?? sky.simulated),
+      suppressZoom: opts?.suppressZoom,
     });
   } catch {
     // Offline / empty feed — sky stays on empty state until a scenario runs.
@@ -156,9 +160,10 @@ mountScenarios(document.querySelector("#panel-scenarios")!, {
   },
   onStarted: async () => {
     // Brief settle so community notify package is written, then refresh UI
-    // even when the websocket is offline.
+    // even when the websocket is offline — without suppressing AOI zoom.
     await new Promise((r) => setTimeout(r, 400));
-    await hydrateFromLatest();
+    await hydrateFromLatest({ suppressZoom: false });
+    // scenarios.ts also calls requestSkyZoomReplay after onStarted.
   },
 });
 mountCandidates(document.querySelector("#panel-candidates")!);

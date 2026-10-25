@@ -58,7 +58,6 @@ export function mountScenarios(
     btn.dataset.scenario = scen.id;
     btn.addEventListener("click", async () => {
       hooks.onScenario?.(scen.id);
-      requestSkyZoomReplay();
       btn.disabled = true;
       btn.textContent = strings.scenarioStarting;
       status.textContent = "";
@@ -72,7 +71,9 @@ export function mountScenarios(
           throw new Error(body || String(res.status));
         }
         status.textContent = `${strings.scenarioStarted}: ${scen.id}`;
+        // Hydrate first (via onStarted), then replay AOI zoom on the new package.
         await hooks.onStarted?.(scen.id);
+        requestSkyZoomReplay();
       } catch (err) {
         status.textContent = `${strings.scenarioFailed}: ${String(err)}`;
       } finally {

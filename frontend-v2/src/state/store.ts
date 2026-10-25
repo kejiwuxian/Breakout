@@ -121,9 +121,14 @@ export function hydrateMission(opts: {
   skymap: SkymapPayload;
   candidates?: CandidateRow[];
   simulated?: boolean;
+  /**
+   * When true (default), next sky render stays full-sky (page-load hydrate).
+   * Pass false after Scenario Run so AOI zoom can play on the fresh package.
+   */
+  suppressZoom?: boolean;
 }): void {
   state.skymap = opts.skymap;
-  state.suppressSkyZoomOnce = true;
+  state.suppressSkyZoomOnce = opts.suppressZoom !== false;
   if (opts.candidates) {
     state.candidates = [...opts.candidates].sort(
       (a, b) => b.posterior - a.posterior,
