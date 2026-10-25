@@ -32,7 +32,8 @@ USE_CACHED_STREAM=True VOICE_MODE=off uvicorn backend.app:app --host 127.0.0.1 -
 
 ## Public URL + Cloudflare tunnel
 
-Production public origin: **`https://supernova.lylinks.com`**.
+Production public origin: **`https://supernova.lylinks.com`**.  
+SpaceX-track UI (webcast chrome): **`https://supernova.lylinks.com/spacex/`** — source in `frontend-spacex/` (`npm --prefix frontend-spacex run dev` on `:5175`).
 
 | Mode | How | `public_base_url` |
 | --- | --- | --- |
