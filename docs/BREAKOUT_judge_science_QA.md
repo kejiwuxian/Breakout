@@ -1,4 +1,6 @@
-# BREAKOUT — Science Judge Q&A (Phase 1)
+# Project Supernova — Science Judge Q&A (Phase 1)
+
+Public name: **Project Supernova** (repo / schemas may still say BREAKOUT).
 
 **Source-status note:** The linked Cursor Canvas “Science basis” section returned an access error, so this is a provisional judge sheet based on opened scientific literature and official documentation, *not* a verified summary of the inaccessible page. Each answer has 2–3 sentences and links to opened sources. Project implementation, rankings, integrations, and instrument access remain **unverified** unless explicitly indicated.
 

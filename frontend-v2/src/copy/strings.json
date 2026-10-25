@@ -1,5 +1,5 @@
 {
-  "brand": "BREAKOUT",
+  "brand": "Project Supernova",
   "tagline": "Neutrinos first. Optical breakout next.",
   "heroSupport": "Fuse the alert, rank progenitors, draft the follow-up \u2014 before the light.",
   "connecting": "Connecting to live stream\u2026",
@@ -72,7 +72,7 @@
   "voiceMicError": "Microphone unavailable",
   "legacyNote": "Classic UI still at :5173",
   "subscribeTitle": "Subscribe to events",
-  "subscribeHint": "Get ranked ICRS targets the moment BREAKOUT localizes a burst \u2014 over a live WebSocket.",
+  "subscribeHint": "Get ranked ICRS targets the moment Project Supernova localizes a burst \u2014 over a live WebSocket.",
   "subscribeHonesty": "Not official GCN. Packages set simulated=true when applicable; ADS bibcodes only if already on the candidate.",
   "subscribeLabel": "Label (optional)",
   "subscribeWorking": "Issuing tokens\u2026",

@@ -143,7 +143,7 @@ async function callTool(
 }
 
 const JUDGE_INSTRUCTIONS =
-  "You are mission control for BREAKOUT. Answer only from tool results. " +
+  "You are mission control for Project Supernova. Answer only from tool results. " +
   "Name the ADS bibcode for every literature claim. " +
   "When a value or candidate is simulated, say the word simulated. " +
   "Do not invent numbers, citations, or sky positions. No web search.";
