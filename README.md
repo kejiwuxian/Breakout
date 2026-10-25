@@ -69,10 +69,13 @@ bash scripts/mvp_gate.sh
 
 ## Apify: star literature actor
 
-Phase 2.3 (Vincent). Actor source: `actors/breakout-star-literature/`.
+Phase 2.3 (Vincent). Actor: `actors/breakout-star-literature/` (from
+`apify create … --template python-start`, Cal Hacks 13.0).
 
-- Offline only: set `APIFY_ENABLED=True` (and optionally `APIFY_TOKEN` + `APIFY_ACTOR_ID`) then run
-  `python -m backend.integrations.apify_literature --curated-only --local`.
-- Writes public ATel/arXiv discovery rows to `data/index/apify/<star>.json` with `simulated=false`.
-- Does **not** invent citations; ranked claims still require ADS bibcodes in the MVP index builder.
-- With `APIFY_ENABLED=False` (default) the MVP never imports or calls Apify.
+- **Offline only.** Set `APIFY_ENABLED=True`, `APIFY_TOKEN`, and `APIFY_ACTOR_ID`, then either
+  `python -m backend.integrations.apify_literature` or a live
+  `python -m backend.literature.build_index` run (Apify runs before Grok scoring).
+- Saves `data/index/apify/<star_id>.json`. `build_index.py` adds those items to
+  what Grok reads, resolves each through the ADS API, and **drops any without a bibcode**.
+- Local Actor check: `cd actors/breakout-star-literature && apify run` (3-star `INPUT.json`).
+- With `APIFY_ENABLED=False` (default) the MVP never imports `apify_client` and the core loop is unchanged.
