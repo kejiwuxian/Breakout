@@ -758,22 +758,6 @@ export function mountSky(host: HTMLElement): () => void {
     showHover(null);
   };
 
-  const onPointerDown = (ev: PointerEvent) => {
-    if (ev.button !== 0) return;
-    pointerDragging = true;
-    pointerMoved = false;
-    skipStarClick = false;
-    pointerId = ev.pointerId;
-    lastPtrX = ev.clientX;
-    lastPtrY = ev.clientY;
-    svg.classList.add("is-panning");
-    try {
-      svg.setPointerCapture(ev.pointerId);
-    } catch {
-      /* ignore */
-    }
-  };
-
   const onPointerMove = (ev: PointerEvent) => {
     if (!pointerDragging || pointerId !== ev.pointerId) return;
     const rect = svg.getBoundingClientRect();
@@ -795,21 +779,34 @@ export function mountSky(host: HTMLElement): () => void {
   };
 
   const onPointerUp = (ev: PointerEvent) => {
-    if (pointerId !== ev.pointerId) return;
+    if (pointerId !== null && pointerId !== ev.pointerId) return;
     pointerDragging = false;
     pointerId = null;
     svg.classList.remove("is-panning");
-    try {
-      svg.releasePointerCapture(ev.pointerId);
-    } catch {
-      /* ignore */
-    }
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("pointercancel", onPointerUp);
     if (skipStarClick) {
       window.setTimeout(() => {
         skipStarClick = false;
         pointerMoved = false;
       }, 0);
     }
+  };
+
+  const onPointerDown = (ev: PointerEvent) => {
+    if (ev.button !== 0) return;
+    pointerDragging = true;
+    pointerMoved = false;
+    skipStarClick = false;
+    pointerId = ev.pointerId;
+    lastPtrX = ev.clientX;
+    lastPtrY = ev.clientY;
+    svg.classList.add("is-panning");
+    // Window-level move/up so pan keeps working if the cursor leaves the SVG.
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
   };
 
   const onDblClick = (ev: MouseEvent) => {
@@ -819,13 +816,12 @@ export function mountSky(host: HTMLElement): () => void {
 
   svg.addEventListener("wheel", onWheel, { passive: false });
   svg.addEventListener("pointerdown", onPointerDown);
-  svg.addEventListener("pointermove", onPointerMove);
-  svg.addEventListener("pointerup", onPointerUp);
-  svg.addEventListener("pointercancel", onPointerUp);
   svg.addEventListener("dblclick", onDblClick);
   resetBtn.addEventListener("click", () => resetToFull(true));
 
   const render = async () => {
+    // Avoid tearing down SVG nodes mid-pan (loses the gesture).
+    if (pointerDragging) return;
     const seq = ++renderSeq;
     const { skymap, candidates, suppressSkyZoomOnce, skyZoomNonce } =
       getState();
@@ -898,11 +894,11 @@ export function mountSky(host: HTMLElement): () => void {
   return () => {
     unsub();
     window.removeEventListener("resize", onResize);
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("pointercancel", onPointerUp);
     svg.removeEventListener("wheel", onWheel);
     svg.removeEventListener("pointerdown", onPointerDown);
-    svg.removeEventListener("pointermove", onPointerMove);
-    svg.removeEventListener("pointerup", onPointerUp);
-    svg.removeEventListener("pointercancel", onPointerUp);
     svg.removeEventListener("dblclick", onDblClick);
     cancelCamAnim();
   };
