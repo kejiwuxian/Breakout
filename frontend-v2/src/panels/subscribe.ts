@@ -18,6 +18,7 @@ export function mountSubscribe(host: HTMLElement): () => void {
       <h2 class="rail-title">${strings.subscribeTitle}</h2>
       <p class="rail-hint">${strings.subscribeHint}</p>
       <p class="rail-hint subscribe-honesty">${strings.subscribeHonesty}</p>
+      <p class="rail-hint subscribe-dry" data-role="dry" hidden></p>
       <form class="subscribe-form" data-role="form">
         <label class="subscribe-field">
           <span>${strings.subscribeWebhook}</span>
@@ -44,6 +45,7 @@ export function mountSubscribe(host: HTMLElement): () => void {
 
   const form = host.querySelector<HTMLFormElement>("[data-role=form]")!;
   const status = host.querySelector<HTMLElement>("[data-role=status]")!;
+  const dryNote = host.querySelector<HTMLElement>("[data-role=dry]")!;
   const list = host.querySelector<HTMLUListElement>("[data-role=list]")!;
 
   async function refresh(): Promise<void> {
@@ -69,11 +71,13 @@ export function mountSubscribe(host: HTMLElement): () => void {
           })
           .join("");
       }
+      // Keep dry-run on its own line so submit success/error status is not overwritten.
       if (data.notify_dry_run) {
-        status.hidden = false;
-        status.classList.remove("is-error", "is-ok");
-        status.classList.add("is-info");
-        status.textContent = strings.subscribeDryRun;
+        dryNote.hidden = false;
+        dryNote.textContent = strings.subscribeDryRun;
+      } else {
+        dryNote.hidden = true;
+        dryNote.textContent = "";
       }
     } catch {
       /* offline panel — ignore */
