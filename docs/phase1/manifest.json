@@ -1,0 +1,55 @@
+{
+  "project": "BREAKOUT",
+  "phase": "Phase 1",
+  "excludes": [
+    "Phase 2 sponsor integrations"
+  ],
+  "simulated": false,
+  "files": [
+    {
+      "path": "data/stars/curated_stars.json",
+      "bytes": 70063,
+      "sha256": "9ccaa7f797b38d20731a98cec4e71d1819010adda6391b428300c5eab7ec9ea5"
+    },
+    {
+      "path": "data/stars/citation_audit.json",
+      "bytes": 24111,
+      "sha256": "e352156ee79adabe253c6658c45656343e6401e1aaffd7782f4ec1d866015243"
+    },
+    {
+      "path": "data/stars/citation_audit.md",
+      "bytes": 8869,
+      "sha256": "4b34fadbf1b974f1ec50a29400125ab7d5f95c50b6c9ba49c2c4fbea6404e8bc"
+    },
+    {
+      "path": "tests/test_curated_stars.py",
+      "bytes": 6870,
+      "sha256": "5f480df53268d1accfdaa02a5a87fe293d630ada8883045881a4dd8636511594"
+    },
+    {
+      "path": "tests/pytest_curated_stars_results.txt",
+      "bytes": 3054,
+      "sha256": "4dac79e752151a3465746b34e6c45491b2f24d03b15e638310fbc23c91ce6df2"
+    },
+    {
+      "path": "docs/BREAKOUT_judge_science_QA.md",
+      "bytes": 11692,
+      "sha256": "e77610cfcbd5843997d644513f834f5ebb282ba616e8aee3520da812a343c885"
+    },
+    {
+      "path": "scripts/build_breakout.py",
+      "bytes": 14193,
+      "sha256": "b0bf3771ce6d472e610fa00b6f1952351ec97c049c278c215cc388a4965e628f"
+    },
+    {
+      "path": "scripts/generate_citation_audit.py",
+      "bytes": 4202,
+      "sha256": "8f3ab835445c784131ae721c04775d8d7f83abaf4897836d0470af5f3fa37834"
+    },
+    {
+      "path": "archive/breakout_curated_stars_validation.zip",
+      "bytes": 7403,
+      "sha256": "cc828977030de82c80ce10a7259b2493de719fb05cbd2624aa343ef8a2856766"
+    }
+  ]
+}
