@@ -183,11 +183,15 @@ def export_json_schemas() -> dict[str, dict[str, Any]]:
 
 
 class WsHelloEvent(BaseModel):
-    """First event sent on /ws/events."""
+    """First event sent on /ws/events.
+
+    ``scenario`` is ``live_waiting`` until a scenario is manually started
+    (or a live alert arrives). Cached stream mode does not auto-play.
+    """
 
     type: Literal["hello"] = "hello"
     service: str = "breakout"
     version: str = "0.1.0"
     use_cached_stream: bool
-    scenario: str
+    scenario: str = "live_waiting"
     simulated: bool = False

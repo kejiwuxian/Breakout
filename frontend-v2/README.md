@@ -21,6 +21,8 @@ Backend (same as classic):
 USE_CACHED_STREAM=True VOICE_MODE=off python3 -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
 ```
 
+Cold start is **idle / listening** (no auto Scenario A). The stream shows live + waiting for neutrino alerts; empty ranked list and public-catalog full sky until a live alert arrives or you click **Run** on Replay. Cached mode is offline capability, not auto-play. Optional: open with `?hydrate=1` to seed from a prior `/alerts/latest` package.
+
 This UI (port **5174**):
 
 ```bash

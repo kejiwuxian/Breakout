@@ -134,9 +134,21 @@ async def _emit_pipeline_events(alert: Any) -> None:
         await hub.broadcast(event)
 
 
+# Idle WS/hello posture until POST /scenario/{name}/start (or a live alert).
+IDLE_SCENARIO = "live_waiting"
+_active_scenario: str | None = None
+
+
+def _hello_scenario() -> str:
+    """Active scenario name, or live_waiting when idle / listening."""
+    return _active_scenario or IDLE_SCENARIO
+
+
 async def run_scenario(name: str, *, speed: float = 0.0) -> None:
     """Replay a cached scenario through the core loop (no live network)."""
+    global _active_scenario
     logger.info("scenario_start name=%s speed=%s", name, speed)
+    _active_scenario = name
     reset_watchlist()
     reset_run_state()
     voice_announcer.reset_sequence(name)
@@ -203,6 +215,18 @@ async def _start_live_listeners() -> None:
         )
     )
 
+
+def _should_autostart_scenario() -> bool:
+    """Opt-in only: default cold start never replays scenarios.
+
+    Set ``BREAKOUT_AUTOSTART=1`` to auto-replay ``SCENARIO`` on startup.
+    ``BREAKOUT_DISABLE_AUTOSTART=1`` always wins (tests / explicit off).
+    """
+    if os.environ.get("BREAKOUT_DISABLE_AUTOSTART") == "1":
+        return False
+    return os.environ.get("BREAKOUT_AUTOSTART") == "1"
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # Grok Voice: live TTS pushes via this callback (background); never blocks pipeline.
@@ -215,18 +239,25 @@ async def lifespan(_app: FastAPI):
     logger.info("voice announcer attached mode=%s", settings.voice_mode)
 
     if settings.use_cached_stream:
-        logger.info("startup USE_CACHED_STREAM=True scenario=%s", settings.scenario)
+        logger.info(
+            "startup USE_CACHED_STREAM=True idle=%s configured_scenario=%s",
+            IDLE_SCENARIO,
+            settings.scenario,
+        )
+        if _should_autostart_scenario():
+            async def _autostart() -> None:
+                await asyncio.sleep(0.05)
+                await _start_scenario_task(settings.scenario, speed=0.0)
 
-        async def _autostart() -> None:
-            # Tests set BREAKOUT_DISABLE_AUTOSTART=1 and use POST /scenario/.../start.
-            if os.environ.get("BREAKOUT_DISABLE_AUTOSTART") == "1":
-                return
-            await asyncio.sleep(0.05)
-            await _start_scenario_task(settings.scenario, speed=0.0)
-
-        asyncio.create_task(_autostart())
+            logger.info("BREAKOUT_AUTOSTART=1 — replaying %s", settings.scenario)
+            asyncio.create_task(_autostart())
+        else:
+            logger.info(
+                "cached stream ready — waiting for POST /scenario/{name}/start "
+                "(no auto-replay)"
+            )
     else:
-        logger.info("startup live listeners")
+        logger.info("startup live listeners (subscribed / waiting for alerts)")
         await _start_live_listeners()
     yield
     global _run_task
@@ -250,7 +281,8 @@ def health() -> dict[str, Any]:
         "status": "ok",
         "service": "breakout",
         "use_cached_stream": settings.use_cached_stream,
-        "scenario": settings.scenario,
+        "scenario": _hello_scenario(),
+        "configured_scenario": settings.scenario,
         "voice_mode": settings.voice_mode,
         "lcogt_dry_run": settings.lcogt_dry_run,
         "notify_dry_run": settings.notify_dry_run,
@@ -528,7 +560,7 @@ async def ws_events(websocket: WebSocket) -> None:
     await hub.connect(websocket)
     hello = WsHelloEvent(
         use_cached_stream=settings.use_cached_stream,
-        scenario=settings.scenario,
+        scenario=_hello_scenario(),
         simulated=False,
     )
     await websocket.send_text(hello.model_dump_json())

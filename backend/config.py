@@ -161,11 +161,15 @@ class Settings(BaseModel):
 
     use_cached_stream: bool = Field(
         default=True,
-        description="Replay data/cache/; no network on the trigger path.",
+        description=(
+            "Offline capability: use data/cache/ fixtures with no network on the "
+            "trigger path. Does not auto-play; start scenarios manually "
+            "(or set BREAKOUT_AUTOSTART=1)."
+        ),
     )
     scenario: str = Field(
         default="scenario_a_galactic_ccsn",
-        description="Cache scenario directory name under data/cache/.",
+        description="Cache scenario directory name under data/cache/ (manual Replay).",
     )
     lcogt_dry_run: bool = Field(
         default=True,
