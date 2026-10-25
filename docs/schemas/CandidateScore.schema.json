@@ -149,7 +149,8 @@
         "YSG",
         "WR",
         "LBV",
-        "AGN"
+        "AGN",
+        "UNK"
       ],
       "title": "Class",
       "type": "string"
@@ -273,6 +274,19 @@
     "star_id": {
       "title": "Star Id",
       "type": "string"
+    },
+    "vmag": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional V magnitude for skymap sizing (e.g. Yale BSC5).",
+      "title": "Vmag"
     }
   },
   "required": [

@@ -272,13 +272,6 @@ body::before {
   stroke-width: 0.7;
 }
 
-.sky-galactic {
-  fill: none;
-  stroke: rgba(255, 196, 120, 0.45);
-  stroke-width: 1.1;
-  stroke-dasharray: 4 3;
-}
-
 .sky-field {
   pointer-events: auto;
 }
@@ -323,11 +316,16 @@ body::before {
   pointer-events: auto;
 }
 
+/* Same magnitude sizing as field stars; stroke marks ranked AOI hits. */
 .sky-star circle {
   fill: var(--signal);
   stroke: #071018;
-  stroke-width: 1.5;
-  opacity: 0.95;
+  stroke-width: 1.1;
+}
+
+.sky-star-top circle {
+  stroke: #e23b3b;
+  stroke-width: 1.4;
 }
 
 .sky-star:hover circle {

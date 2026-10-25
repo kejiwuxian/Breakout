@@ -10,7 +10,14 @@ from typing import Any
 import healpy as hp
 import numpy as np
 
-from backend.candidates.catalog import CURATED_PATH, STAR_TABLE_PATH, build_star_table, load_curated_stars
+from backend.candidates.catalog import (
+    CURATED_PATH,
+    STAR_TABLE_PATH,
+    build_star_table,
+    cap_aoi_candidates,
+    load_aoi_evaluation_catalog,
+    load_curated_stars,
+)
 from backend.candidates.filter import candidates_in_region
 from backend.config import ROOT
 from backend.localize.fuse import fuse
@@ -67,15 +74,19 @@ def process_sn_burst(
     prob = np.asarray(hp.read_map(str(fits), nest=True))
 
     t0 = time.perf_counter()
-    # Trigger path: never hit SIMBAD/VizieR. Prefer existing parquet; otherwise
-    # build from curated only (use_network=False).
-    if STAR_TABLE_PATH.is_file():
-        table: Path = STAR_TABLE_PATH
+    # Trigger path: never hit SIMBAD/VizieR. Evaluate curated progenitors ∪
+    # Yale BSC5 field stars inside the AOI (committed offline catalogs only).
+    catalog = load_aoi_evaluation_catalog()
+    if not catalog:
+        if STAR_TABLE_PATH.is_file():
+            catalog_path: Path | list = STAR_TABLE_PATH
+        else:
+            built = build_star_table(use_network=False)
+            catalog_path = Path(built) if Path(built).is_file() else CURATED_PATH
+        rows = candidates_in_region(skymap, catalog_path, level=0.9, prob=prob)
     else:
-        table = build_star_table(use_network=False)
-        if not Path(table).is_file():
-            table = CURATED_PATH
-    rows = candidates_in_region(skymap, Path(table), level=0.9, prob=prob)
+        rows = candidates_in_region(skymap, catalog, level=0.9, prob=prob)
+        rows = cap_aoi_candidates(rows)
     latencies["filter_ms"] = _stage("filter", t0)
 
     t0 = time.perf_counter()

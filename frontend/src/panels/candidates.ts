@@ -241,8 +241,10 @@ export function mountCandidatesPanel(host: HTMLElement): () => void {
     }
 
     const selected =
-      candidates.find((c) => c.star_id === selectedStarId) ?? candidates[0]!;
-    void renderDetail(selected);
+      selectedStarId
+        ? candidates.find((c) => c.star_id === selectedStarId)
+        : undefined;
+    if (selected) void renderDetail(selected);
   };
 
   const unsub = subscribe(() => renderTable({ tickOnly: false }));

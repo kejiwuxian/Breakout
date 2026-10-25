@@ -1,5 +1,5 @@
 /**
- * Pure-SVG Mollweide skymap. Public catalog stars + galactic plane + HEALPix
+ * Pure-SVG Mollweide skymap. Public catalog stars + HEALPix
  * localization cells + smooth 90% oval. Zoom/pan is SVG viewBox camera —
  * no raster PNG swap, no CSS scale.
  */
@@ -17,9 +17,22 @@ import {
   createSvgEl,
   drawEquatorialGrid,
   mollweideLimbPath,
-  projectPolyline,
   projectRing,
 } from "../sky/svgMap";
+
+
+/** Shared magnitude → radius/opacity for field stars and ranked AOI stars. */
+export function starStyleFromVmag(vmag: number | null | undefined): {
+  r: number;
+  opacity: number;
+} {
+  const v =
+    vmag != null && !Number.isNaN(Number(vmag)) ? Number(vmag) : 5.5;
+  return {
+    r: Math.max(0.55, Math.min(2.8, 2.35 - 0.28 * v)),
+    opacity: Math.max(0.22, Math.min(0.9, 0.82 - 0.09 * v)),
+  };
+}
 
 export type EllipsePayload = {
   ra_deg: number;
@@ -585,16 +598,6 @@ export function mountSky(host: HTMLElement): () => void {
 
     drawEquatorialGrid(root, w, h);
 
-    const plane = reg?.galactic_plane?.length
-      ? reg.galactic_plane
-      : skyBase.galactic_plane;
-    if (plane.length >= 2) {
-      const gp = createSvgEl("path");
-      gp.setAttribute("d", projectPolyline(plane, w, h));
-      gp.setAttribute("class", "sky-galactic");
-      root.appendChild(gp);
-    }
-
     // Always prefer the dense /api/sky/base catalog. Region payloads omit the
     // full ~8k-star list so region.json stays small; ranked progenitors are
     // drawn separately below as .sky-star overlays.
@@ -613,9 +616,7 @@ export function mountSky(host: HTMLElement): () => void {
         star.vmag != null && !Number.isNaN(Number(star.vmag))
           ? Number(star.vmag)
           : 5.5;
-      // Brighter → larger / more opaque (V~-1.5 … 6.5).
-      const r = Math.max(0.55, Math.min(2.8, 2.35 - 0.28 * v));
-      const opacity = Math.max(0.22, Math.min(0.9, 0.82 - 0.09 * v));
+      const { r, opacity } = starStyleFromVmag(v);
       c.setAttribute("r", String(r));
       c.setAttribute("fill-opacity", String(opacity));
       c.setAttribute("class", "sky-field-star");
@@ -686,15 +687,41 @@ export function mountSky(host: HTMLElement): () => void {
       }
     }
 
+    const fieldById = new Map(
+      field.map((s) => [s.star_id, s] as const),
+    );
     candidates.forEach((row, idx) => {
       const p = raDecToMollweide(row.ra_deg, row.dec_deg, w, h);
       if (!p) return;
       const g = createSvgEl("g");
-      g.setAttribute("class", "sky-star");
+      g.setAttribute("class", idx === 0 ? "sky-star sky-star-top" : "sky-star");
       const c = createSvgEl("circle");
       c.setAttribute("cx", String(p.x));
       c.setAttribute("cy", String(p.y));
-      c.setAttribute("r", idx === 0 ? "6.5" : "5");
+      const fromField = fieldById.get(row.star_id);
+      let vmag =
+        (row as CandidateRow & { vmag?: number | null }).vmag ??
+        fromField?.vmag ??
+        null;
+      if (vmag == null) {
+        // Nearest field star within ~0.05° for magnitude when ids differ.
+        let best: { d: number; v: number } | null = null;
+        for (const s of field) {
+          if (s.vmag == null) continue;
+          const dra =
+            (s.ra_deg - row.ra_deg) *
+            Math.cos(((s.dec_deg + row.dec_deg) * Math.PI) / 360);
+          const ddec = s.dec_deg - row.dec_deg;
+          const d = Math.hypot(dra, ddec);
+          if (d < 0.05 && (!best || d < best.d)) {
+            best = { d, v: Number(s.vmag) };
+          }
+        }
+        vmag = best?.v ?? null;
+      }
+      const { r, opacity } = starStyleFromVmag(vmag);
+      c.setAttribute("r", String(r));
+      c.setAttribute("fill-opacity", String(opacity));
       g.appendChild(c);
       wireStar(g, row, idx + 1);
       root.appendChild(g);

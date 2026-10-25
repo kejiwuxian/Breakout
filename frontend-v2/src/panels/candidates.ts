@@ -277,9 +277,19 @@ export function mountCandidates(host: HTMLElement): () => void {
       });
     }
 
-    const selected =
-      candidates.find((c) => c.star_id === selectedStarId) ?? candidates[0]!;
-    void renderDetail(selected);
+    const selected = selectedStarId
+      ? candidates.find((c) => c.star_id === selectedStarId)
+      : undefined;
+    if (selected) {
+      detail.hidden = false;
+      void renderDetail(selected);
+    } else {
+      detail.hidden = false;
+      detailStarId = null;
+      detailStar.textContent = strings.pickStarHint ?? "Hover or click a star to inspect.";
+      reasoningEl.textContent = "";
+      evidenceEl.innerHTML = "";
+    }
   };
 
   const unsub = subscribe(() => renderTable({ tickOnly: false }));

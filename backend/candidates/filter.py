@@ -20,7 +20,11 @@ from backend.localize.fuse import credible_region_pixels, position_in_credible_r
 from backend.schemas import SkyMap
 
 
-def _load_star_rows(star_table_path: Path) -> list[dict[str, Any]]:
+def _load_star_rows(
+    star_table_path: Path | str | list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if isinstance(star_table_path, list):
+        return [r for r in star_table_path if isinstance(r, dict)]
     path = Path(star_table_path)
     if not path.is_absolute():
         candidate = ROOT / path
@@ -61,7 +65,7 @@ def _p_sky_at(prob: np.ndarray, ra_deg: float, dec_deg: float) -> float:
 
 def candidates_in_region(
     skymap: SkyMap,
-    star_table: Path | str,
+    star_table: Path | str | list[dict[str, Any]],
     level: float = 0.9,
     *,
     prob: np.ndarray | None = None,
@@ -74,7 +78,7 @@ def candidates_in_region(
     """
     return filter_candidates(
         skymap,
-        Path(star_table),
+        star_table,
         credible_level=level,
         prob=prob,
     )
@@ -82,7 +86,7 @@ def candidates_in_region(
 
 def filter_candidates(
     skymap: SkyMap,
-    star_table_path: Path,
+    star_table_path: Path | str | list[dict[str, Any]],
     *,
     credible_level: float = 0.9,
     prob: np.ndarray | None = None,
@@ -99,7 +103,7 @@ def filter_candidates(
     in_region = set(credible_region_pixels(prob_map, level=credible_level).tolist())
     nside = hp.npix2nside(len(prob_map))
 
-    rows = _load_star_rows(Path(star_table_path))
+    rows = _load_star_rows(star_table_path)
     out: list[dict[str, Any]] = []
     for row in rows:
         if row.get("ra_deg") is None or row.get("dec_deg") is None:

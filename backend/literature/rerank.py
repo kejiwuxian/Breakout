@@ -228,9 +228,10 @@ def rerank(
         star_id = str(row["star_id"])
         ra = float(row["ra_deg"])
         dec = float(row["dec_deg"])
-        star_class = str(row.get("class", "RSG"))
+        star_class = str(row.get("class") or "UNK")
         if star_class not in class_w:
-            star_class = "RSG"
+            # Unknown / field catalog star — do not silently promote to RSG.
+            star_class = "UNK" if "UNK" in class_w else "RSG"
 
         lit = _lit_from_row(row, index_rows)
         p_sky = _resolve_p_sky(row, skymap=skymap, prob=prob)
@@ -246,6 +247,12 @@ def rerank(
                 av = float(av)
             except (TypeError, ValueError):
                 av = None
+
+        vmag = row.get("vmag")
+        try:
+            vmag_f = float(vmag) if vmag is not None else None
+        except (TypeError, ValueError):
+            vmag_f = None
 
         score = CandidateScore(
             star_id=star_id,
@@ -265,6 +272,7 @@ def rerank(
                 (skymap.simulated if skymap is not None else False)
                 or row.get("simulated", False)
             ),
+            vmag=vmag_f,
         )
         decision = extinction_decision(
             ra_deg=ra, dec_deg=dec, extinction_av_mag=score.extinction_av_mag

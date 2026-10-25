@@ -104,7 +104,7 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
   "star_id": "string",
   "ra_deg": 0.0,
   "dec_deg": 0.0,
-  "class": "RSG | BSG | YSG | WR | LBV",
+  "class": "RSG | BSG | YSG | WR | LBV | AGN | UNK",
   "spectral_type": "string",
   "distance_kpc": null,
   "extinction_av_mag": null,

@@ -20,7 +20,8 @@ AlertKind = Literal["PRESN", "SN_BURST", "HE_NEUTRINO"]
 AlertSource = Literal["presn", "snews2", "gcn_kafka", "snewpy_sim", "cache"]
 DetectorName = Literal["Super-K", "SNO+", "IceCube", "KamLAND", "JUNO"]
 # AGN added for Scenario B (IceCube-170922A / TXS 0506+056); additive enum.
-StarClass = Literal["RSG", "BSG", "YSG", "WR", "LBV", "AGN"]
+# UNK = field/catalog star without a progenitor class (e.g. Yale BSC5 AOI hit).
+StarClass = Literal["RSG", "BSG", "YSG", "WR", "LBV", "AGN", "UNK"]
 BreakoutClassWindow = Literal["minutes", "hours", "about 1 day"]
 
 
@@ -161,6 +162,10 @@ class CandidateScore(BaseModel):
     composition: str | None = Field(
         default=None,
         description="Catalog spectral/class composition summary.",
+    )
+    vmag: float | None = Field(
+        default=None,
+        description="Optional V magnitude for skymap sizing (e.g. Yale BSC5).",
     )
 
     model_config = {"populate_by_name": True}

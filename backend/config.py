@@ -125,6 +125,8 @@ CLASS_WINDOWS: dict[str, str] = {
     "LBV": "hours",
     # AGN/blazar: no CCSN optical breakout; use hours as a follow-up estimate label.
     "AGN": "hours",
+    # Field/catalog star without progenitor class — follow-up estimate only.
+    "UNK": "about 1 day",
 }
 
 # IR follow-up when catalog A_V is high enough that optical discovery is likely
@@ -150,6 +152,8 @@ RANKING_CLASS_WEIGHT: dict[str, float] = {
     "WR": 0.8,
     "LBV": 0.75,
     "AGN": 0.7,
+    # Bright field stars in the AOI without a progenitor label (BSC5 etc.).
+    "UNK": 0.2,
 }
 RANKING_WATCH_BOOST: float = 2.0  # w_watch for presn_watch / watchlist stars
 RANKING_W_LIT_FLOOR: float = 0.25

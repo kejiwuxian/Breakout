@@ -71,6 +71,120 @@ def load_curated_stars(path: Path | None = None) -> list[dict[str, Any]]:
     return data
 
 
+SKY_BACKGROUND_PATH = STARS_DIR / "sky_background.json"
+# Keep AOI ranking bounded when a large credible region covers many BSC5 stars.
+AOI_MAX_FIELD_STARS = 60
+
+
+def _angsep_deg(ra1: float, dec1: float, ra2: float, dec2: float) -> float:
+    """Approximate great-circle separation in degrees (small-angle OK for 2\" match)."""
+    dra = (ra1 - ra2) * math.cos(math.radians(0.5 * (dec1 + dec2)))
+    ddec = dec1 - dec2
+    return math.hypot(dra, ddec)
+
+
+def load_sky_background_stars(path: Path | None = None) -> list[dict[str, Any]]:
+    """Load committed Yale BSC5 background rows (ra/dec/vmag)."""
+    target = Path(path) if path is not None else SKY_BACKGROUND_PATH
+    if not target.is_file():
+        return []
+    payload = json.loads(target.read_text(encoding="utf-8"))
+    rows = payload.get("stars") if isinstance(payload, dict) else payload
+    if not isinstance(rows, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        try:
+            ra = float(row["ra_deg"])
+            dec = float(row["dec_deg"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        item: dict[str, Any] = {
+            "star_id": str(row.get("star_id") or ""),
+            "common_name": row.get("common_name"),
+            "ra_deg": ra,
+            "dec_deg": dec,
+            "class": "UNK",
+            "spectral_type": "",
+            "source": "yale_bsc5_v50",
+        }
+        if row.get("vmag") is not None:
+            try:
+                item["vmag"] = float(row["vmag"])
+            except (TypeError, ValueError):
+                pass
+        if item["star_id"]:
+            out.append(item)
+    return out
+
+
+def load_aoi_evaluation_catalog() -> list[dict[str, Any]]:
+    """Curated progenitors ∪ Yale BSC5 for runtime AOI filter/rank (deduped).
+
+    Prefer curated class/lit fields when a BSC5 star matches a curated position
+    (``~2\"``). Attach ``vmag`` from BSC5 onto curated matches when available.
+    """
+    curated = [dict(s) for s in load_curated_stars()]
+    bg = load_sky_background_stars()
+    if not bg:
+        return curated
+
+    match_deg = _MATCH_DEG
+    out: list[dict[str, Any]] = []
+    curated_used = [False] * len(curated)
+
+    for c in curated:
+        out.append(c)
+
+    for star in bg:
+        ra = float(star["ra_deg"])
+        dec = float(star["dec_deg"])
+        matched_idx: int | None = None
+        for i, c in enumerate(curated):
+            try:
+                cra = float(c["ra_deg"])
+                cdec = float(c["dec_deg"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if _angsep_deg(ra, dec, cra, cdec) <= match_deg:
+                matched_idx = i
+                break
+        if matched_idx is not None:
+            if star.get("vmag") is not None and out[matched_idx].get("vmag") is None:
+                out[matched_idx]["vmag"] = star["vmag"]
+            curated_used[matched_idx] = True
+            continue
+        out.append(star)
+
+    logger.info(
+        "aoi_catalog curated=%d background=%d merged=%d",
+        len(curated),
+        len(bg),
+        len(out),
+    )
+    return out
+
+
+def cap_aoi_candidates(
+    rows: list[dict[str, Any]],
+    *,
+    max_field: int = AOI_MAX_FIELD_STARS,
+) -> list[dict[str, Any]]:
+    """Keep every classified progenitor hit; cap UNK/field stars by ``p_sky``."""
+    progenitors: list[dict[str, Any]] = []
+    field: list[dict[str, Any]] = []
+    for row in rows:
+        cls = str(row.get("class") or "UNK")
+        if cls in {"RSG", "BSG", "YSG", "WR", "LBV", "AGN"}:
+            progenitors.append(row)
+        else:
+            field.append(row)
+    field.sort(key=lambda r: float(r.get("p_sky") or 0.0), reverse=True)
+    return progenitors + field[: max(0, int(max_field))]
+
+
 def _is_missing(value: Any) -> bool:
     if value is None:
         return True
