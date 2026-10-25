@@ -33,13 +33,16 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sun 25 Oct 2026, ~3:10 AM PT | Light + Cursor agent | Stop evidence panel flashing “no offline reasoning”; materialize raw JSON from ADS/arXiv fixtures or index.parquet | `ensure_raw_for_star`, candidates cache + tick-only countdown |
 | Sun 25 Oct 2026, ~3:25 AM PT | Light + Cursor agent | Pure SVG Mollweide skymap (public catalog + galactic plane + HEALPix cells); zoom without raster swap | `render=svg_v1`, `/api/sky/base`, frontend-v2 svgMap |
 | Sun 25 Oct 2026, ~3:40 AM PT | Light + Cursor agent | Grok progenitor inventory + publication monitor; AOI filter + offline/live rank with confidence; sorted list + sky hover details | `backend/progenitors/`, CandidateScore v1.1, frontend-v2 candidates/sky |
-
-| Sun 25 Oct 2026, ~4:00 AM PT | Vincent + Cursor agent | Phase 2 after MVP gate PASS: P2.0 flags + `test_flags_off`; P2.3 Apify actor `actors/breakout-star-literature/` + `backend/integrations/apify_literature.py` (flag default False, offline only) | gate PASS; Apify behind `APIFY_ENABLED` |
+| Sun 25 Oct 2026, ~3:55 AM PT | Light + Cursor agent | SVG mouse wheel zoom / drag pan + AOI zoom on event | `frontend-v2` sky viewBox camera |
+| Sun 25 Oct 2026, ~4:00 AM PT | Vincent + Cursor agent | Phase 2 after MVP gate PASS: P2.0 flags + `test_flags_off`; P2.3 Apify actor (flag default False, offline only) | `actors/breakout-star-literature/`, `APIFY_ENABLED` |
+| Sun 25 Oct 2026, ~4:05 AM PT | Light + Cursor agent | Community push UI + two-token email subscribe (no webhook) | `backend/notify/`, frontend-v2 subscribe rail |
+| Sun 25 Oct 2026, ~4:15 AM PT | Light + Cursor agent | Idle live-waiting default; manual scenario only | `BREAKOUT_AUTOSTART`, `scenario=live_waiting` |
+| Sun 25 Oct 2026, ~4:30 AM PT | Light + Cursor agent | Review/merge post-MVP PR stack onto main; refresh docs | `docs/post-mvp.md`, README |
 
 Notes:
 
 - Plan Page: https://breakout-revised-hackathon-plan-and-7czo.pages.grok.bot/
 - Phase 2 Page: https://breakout-phase-2-sponsor-integrations-omyo.pages.grok.bot/
-- Phase 2 sponsor integrations ignored until `scripts/mvp_gate.sh` prints PASS. Community subscribe is Phase 1.
-
+- Phase 2 sponsor integrations behind flags (default off). Community subscribe is Phase 1.
+- Post-MVP feature index: `docs/post-mvp.md`.
 - Never invent numbers or citations; simulated values use `simulated=true`.
