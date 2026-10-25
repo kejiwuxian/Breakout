@@ -33,9 +33,9 @@ npm --prefix frontend-v2 run dev
 
 Open http://127.0.0.1:5174 — classic UI remains on http://127.0.0.1:5173.
 
-## Community push
+## Subscribe to events
 
-The rail **Community push** block uses the two-token email flow
+The rail **Subscribe to events** block uses the two-token email flow
 (`POST /subscribe` → access + refresh → `/ws/subscribe`).
 Access tokens expire; refresh and send the new access token on the live wire to extend. Default `NOTIFY_DRY_RUN=True` logs optional
 tokens in the API response for local demos (no invented SMTP). Packages carry

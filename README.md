@@ -15,7 +15,7 @@ When the next galactic supernova goes off, neutrinos reach Earth first. BREAKOUT
 
 MVP gate: `bash scripts/mvp_gate.sh` must print PASS. Phase 2 sponsor integrations sit behind flags that default to **False** (`DROID_ENABLED`, `CONVEX_ENABLED`, `APIFY_ENABLED`, `TIGER_ENABLED`). With every flag off the core loop is unchanged (`tests/test_flags_off.py`).
 
-**Community alerts are in Phase 1.** Anyone with a telescope can subscribe today for ranked progenitor coordinates when BREAKOUT localizes a neutrino burst — so small instruments can chase a potential optical counterpart before large facilities respond. Packages are honest: `simulated=true` when applicable, ADS bibcodes only when already on the candidate, and they are not official GCN notices.
+**Subscribe to events is in Phase 1.** Anyone with a telescope can subscribe today for ranked progenitor coordinates when BREAKOUT localizes a neutrino burst — so small instruments can chase a potential optical counterpart before large facilities respond. Packages are honest: `simulated=true` when applicable, ADS bibcodes only when already on the candidate, and they are not official GCN notices.
 
 ## After MVP gate
 
@@ -39,7 +39,7 @@ Offline capability (`USE_CACHED_STREAM=True`): fixtures under `data/cache/` are 
 
 ## Community alerts (Phase 1) — catch potential SNe today
 
-**UI:** frontend-v2 (`:5174`) rail **Community push**, or the classic dashboard (`:5173`) **Community alerts** panel — **access + refresh** tokens over WebSocket, honesty note, link to `/alerts/latest`.
+**UI:** frontend-v2 (`:5174`) rail **Subscribe to events**, or the classic dashboard (`:5173`) **Subscribe to events** panel — open **access + refresh** tokens over WebSocket (no prior credentials), honesty note, link to `/alerts/latest`.
 
 Issue tokens, connect `/ws/subscribe`, and receive ranked ICRS targets on the next SN_BURST / HE_NEUTRINO candidate set:
 

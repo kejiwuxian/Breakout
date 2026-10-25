@@ -602,6 +602,78 @@ body::before {
 }
 
 /* —— Community subscribe —— */
+.subscribe-open {
+  color: var(--signal, #3ecf8e);
+}
+
+.subscribe-docs {
+  margin: 0.75rem 0 1rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid rgba(158, 179, 196, 0.22);
+  background: rgba(7, 16, 24, 0.45);
+}
+
+.subscribe-docs-title {
+  margin: 0 0 0.45rem;
+  font-family: var(--font-display, inherit);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--paper, #eef3f7);
+}
+
+.subscribe-docs-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(238, 243, 247, 0.82);
+}
+
+.subscribe-docs-list strong {
+  color: var(--paper, #eef3f7);
+}
+
+.subscribe-docs-list p {
+  margin: 0.2rem 0 0.35rem;
+}
+
+.subscribe-code {
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  overflow-x: auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  white-space: pre;
+  color: #d7e6f2;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(158, 179, 196, 0.18);
+}
+
+.subscribe-tokens {
+  margin: 0.6rem 0;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid rgba(62, 207, 142, 0.35);
+  background: rgba(62, 207, 142, 0.08);
+}
+
+.subscribe-ws-status {
+  margin: 0.35rem 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  color: rgba(238, 243, 247, 0.75);
+}
+
+.subscribe-alert-line {
+  margin: 0.2rem 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.7rem;
+  color: var(--paper, #eef3f7);
+}
+
 .subscribe-honesty,
 .subscribe-dry {
   margin-top: -0.35rem;

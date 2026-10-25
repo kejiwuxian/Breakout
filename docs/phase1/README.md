@@ -15,7 +15,7 @@ This bundle consolidates the unique Phase 1 files created during the conversatio
 - `archive/breakout_curated_stars_validation.zip` — earlier two-file downloadable validation archive (historical copy; duplicates some files above)
 - `manifest.json` — SHA-256 and file sizes for this bundle
 
-## Community subscribe (Phase 1)
+## Subscribe to events (Phase 1)
 
 Ranked-candidate push is Phase 1 (not sponsor Phase 2): two-token email
 access + refresh tokens (`POST /subscribe` / `/subscribe/refresh`), WebSocket
