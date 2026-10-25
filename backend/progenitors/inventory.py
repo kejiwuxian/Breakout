@@ -316,7 +316,8 @@ def profile_from_row(
     dec = _float_or_none(row.get("dec_deg"))
     if not star_id or ra is None or dec is None:
         return None
-    star_class = _optional_str(row.get("class")) or "RSG"
+    # Field/catalog rows without a class stay UNK — never silently become RSG.
+    star_class = _optional_str(row.get("class")) or "UNK"
     indexed = (index_rows or {}).get(star_id)
     lit = _lit_from_sources(row, indexed)
     life = _life_expectancy(star_class, lit)

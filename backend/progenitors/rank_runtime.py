@@ -19,7 +19,8 @@ import httpx
 import numpy as np
 
 from backend.config import settings
-from backend.literature.rerank import rerank
+from backend.literature.rerank import load_index, rerank
+from backend.progenitors.enrich import load_enrichment, profiles_for_candidates
 from backend.progenitors.inventory import (
     INVENTORY_PATH,
     ProgenitorProfile,
@@ -274,10 +275,33 @@ def rank_with_grok(
     t0 = time.perf_counter()
     inv_path = Path(inventory_path) if inventory_path else INVENTORY_PATH
     try:
-        profiles = load_inventory(inv_path)
+        inventory = load_inventory(inv_path)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("inventory load failed: %s — ranking without profiles", exc)
-        profiles = {}
+        logger.warning("inventory load failed: %s — ranking without curated profiles", exc)
+        inventory = {}
+    try:
+        enrichment = load_enrichment()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("replay enrichment load failed: %s", exc)
+        enrichment = {}
+
+    # Literature index (same source rerank uses) feeds profile lit scores.
+    if isinstance(index, dict):
+        index_rows: dict[str, Any] | None = index
+    else:
+        try:
+            index_rows = load_index(index)
+        except Exception:  # noqa: BLE001
+            index_rows = None
+
+    # Same production attach path as inventory build: curated → replay cache →
+    # on-the-fly profile_from_row (BSC5 SpType / curated fields).
+    profiles = profiles_for_candidates(
+        candidates,
+        inventory=inventory,
+        enrichment=enrichment,
+        index_rows=index_rows,
+    )
 
     enriched_rows = [
         _enrich_row(row, profiles.get(str(row.get("star_id")))) for row in candidates
@@ -296,9 +320,10 @@ def rank_with_grok(
     if offline or not scores:
         out = [_attach_inventory_fields(s, profiles.get(s.star_id)) for s in scores]
         logger.info(
-            "rank_with_grok mode=offline n=%d elapsed_s=%.4f",
+            "rank_with_grok mode=offline n=%d elapsed_s=%.4f enriched=%d",
             len(out),
             time.perf_counter() - t0,
+            sum(1 for s in out if s.composition or s.life_expectancy),
         )
         return out
 

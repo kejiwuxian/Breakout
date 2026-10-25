@@ -171,7 +171,17 @@ export function mountCandidates(host: HTMLElement): () => void {
     detail.hidden = false;
     const conf = fmtConfidence(row.rank_confidence ?? row.lit?.confidence);
     const life = fmtLife(row);
-    detailStar.textContent = `${row.star_id} · ${row.class} · ${fmtDistance(row.distance_kpc)} · ${strings.colConfidence} ${conf} · ${strings.colLife} ${life}`;
+    const composition = row.composition?.trim();
+    detailStar.textContent = [
+      row.star_id,
+      row.class,
+      composition || null,
+      fmtDistance(row.distance_kpc),
+      `${strings.colConfidence} ${conf}`,
+      `${strings.colLife} ${life}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
     const cached = rawCache.has(row.star_id)
       ? (rawCache.get(row.star_id) ?? null)
@@ -203,7 +213,11 @@ export function mountCandidates(host: HTMLElement): () => void {
     if (raw?.reasoning) {
       reasoningEl.textContent = raw.reasoning;
     } else {
-      reasoningEl.textContent = raw?.note || strings.detailNoReasoning;
+      // Keep inventory / replay-enrichment rank_reasoning when no Grok raw exists.
+      reasoningEl.textContent =
+        row.rank_reasoning?.trim() ||
+        raw?.note ||
+        strings.detailNoReasoning;
     }
     paintEvidence(row, raw);
   };

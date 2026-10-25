@@ -137,7 +137,11 @@ not inherit an RSG/`about 1 day` window from the top expected star.
 
 v1.1 additive fields default to `null` so legacy consumers keep working. They are
 filled by `backend.progenitors.rank_runtime.rank_with_grok` from the offline
-inventory (and optional live Grok shortlist rank when keys allow).
+inventory ∪ `data/stars/replay_rank_enrichment.parquet` (Yale BSC5 SpType /
+parallax profiles for AOI field stars; rebuild with
+`python -m backend.progenitors enrich-replay`) and optional live Grok shortlist
+rank when keys allow. Truly unclassified field stars keep breakout / life
+`n/a` — they do not inherit an RSG window.
 
 Tony imports:
 

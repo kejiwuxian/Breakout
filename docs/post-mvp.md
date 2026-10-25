@@ -40,6 +40,9 @@ npm --prefix frontend-v2 run dev   # :5174
 # Rebuild progenitor inventory offline
 python -m backend.progenitors refresh
 python -m backend.progenitors status
+# Materialize inventory-schema enrichment for every AOI-ranked replay star
+# (Yale BSC5 SpType → composition / life window; no live Grok required)
+python -m backend.progenitors enrich-replay
 
 # Manual simulated scenario
 curl -X POST 'http://127.0.0.1:8000/scenario/scenario_a_galactic_ccsn/start?speed=0'
