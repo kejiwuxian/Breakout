@@ -13,9 +13,13 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~4:43 PM PT | Light + Cursor agent | Wire e2e core loop in app.py (cache replay → fuse → filter → rerank → WS events); POST /scenario/start; test_e2e with network blocked | commit `e2e: core loop` |
 <<<<<<< HEAD
 | Sat 24 Oct 2026, ~4:55 PM PT | Light + Cursor agent | Betelgeuse Scenario A: curated Joyce 0.168 kpc, simulate_presn + SN_BURST from curated, index.parquet ADS evidence, README real vs simulated, test_scenario_betelgeuse | commit `scenario: Betelgeuse` |
+<<<<<<< HEAD
 =======
 | Sat 24 Oct 2026, ~4:53–5:20 PM PT | Tony + Cursor agent | Implement `candidates/catalog.py` (curated → parquet; SIMBAD otypes + VizieR III/215 WR + J/AJ/158/20 RSG offline) and `filter.candidates_in_region` with `p_sky`; USE_CACHED_STREAM reads parquet only; one commit per module; Tony block/checklist track | commits catalog + filter; `docs/tony-track.md` |
 >>>>>>> origin/cursor/candidates-catalog-filter-37a1
+=======
+| Sat 24 Oct 2026, ~5:05–5:20 PM PT | Tony + Cursor agent | Implement OFFLINE `literature/build_index.py`: ADS + arXiv retrieval, Grok Literature JSON, drop unknown bibcodes, resume/rate-limit, raw reasoning under `data/index/raw/`, index.parquet for curated stars; tests with recorded responses; one commit per step | commits implement → tests → curated index |
+>>>>>>> origin/cursor/literature-build-index-37a1
 
 Notes:
 
