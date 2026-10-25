@@ -20,7 +20,7 @@ This bundle consolidates the unique Phase 1 files created during the conversatio
 Ranked-candidate push is Phase 1 (not sponsor Phase 2): open **access +
 refresh** tokens (`POST /subscribe` / `/subscribe/refresh` — no prior
 credentials), WebSocket dispatch on `/ws/subscribe`, `GET /alerts/latest`,
-classic + **frontend-v2** **Subscribe to events** panels. See
+primary **frontend/** **Subscribe to events** panel (optional `frontend-v2`). See
 [`docs/community-subscribe.md`](../community-subscribe.md) and
 [`data/subscribers/README.md`](../../data/subscribers/README.md).
 
