@@ -125,8 +125,9 @@ CLASS_WINDOWS: dict[str, str] = {
     "LBV": "hours",
     # AGN/blazar: no CCSN optical breakout; use hours as a follow-up estimate label.
     "AGN": "hours",
-    # Field/catalog star without progenitor class — follow-up estimate only.
-    "UNK": "about 1 day",
+    # Field/catalog star without a progenitor class (BSC5 etc.): no CCSN
+    # optical-breakout prior — must NOT inherit RSG's "about 1 day".
+    "UNK": "n/a",
 }
 
 # IR follow-up when catalog A_V is high enough that optical discovery is likely

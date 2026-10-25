@@ -41,13 +41,14 @@ _CLASS_WINDOW_BASIS: dict[str, str] = {
     "RSG": "class optical-breakout window: extended RSG envelopes ~1 day (ADS 2010ApJ...725..904N)",
     "LBV": "class optical-breakout window: LBV inherits hours-scale default (ADS 2010ApJ...725..904N)",
     "AGN": "no CCSN optical breakout; follow-up hours label only",
+    "UNK": "no progenitor class; optical-breakout window absent (field/catalog star)",
 }
 
 
 class LifeExpectancy(BaseModel):
     """Comparable timing context — not a star-specific collapse countdown."""
 
-    optical_breakout_window: Literal["minutes", "hours", "about 1 day"]
+    optical_breakout_window: Literal["minutes", "hours", "about 1 day", "n/a"]
     stellar_stage_note: str | None = Field(
         default=None,
         description="Optional stage note copied from an ADS claim; never invented.",

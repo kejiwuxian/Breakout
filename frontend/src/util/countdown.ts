@@ -1,7 +1,12 @@
 /**
  * Breakout countdown display from CandidateScore.breakout.
  * class_window is an estimate; UI must label it as such.
+ * "n/a" / empty skips the clock (UNK field stars, non-stellar).
  */
+export function isBreakoutSkipped(classWindow: string): boolean {
+  return classWindow === "n/a" || classWindow === "";
+}
+
 export function formatElapsed(fromIso: string, nowMs = Date.now()): string {
   const t0 = Date.parse(fromIso);
   if (!Number.isFinite(t0)) return "—";
@@ -17,5 +22,6 @@ export function formatElapsed(fromIso: string, nowMs = Date.now()): string {
 }
 
 export function windowLabel(classWindow: string): string {
+  if (isBreakoutSkipped(classWindow)) return "—";
   return classWindow;
 }

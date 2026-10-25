@@ -96,7 +96,7 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
 
 - `Evidence` — `{ bibcode, claim }` (no bibcode → no claim)
 - `Literature` — `{ mass_loss, variability, evolved_stage, confidence }` each in `[0, 1]`, plus `evidence: list[Evidence]`
-- `Breakout` — `{ class_window: minutes | hours | about 1 day, countdown_from }`
+- `Breakout` — `{ class_window: minutes | hours | about 1 day | n/a, countdown_from }` (`n/a` for `UNK` field stars with no progenitor-class prior)
 - `LifeExpectancyInfo` (v1.1, optional) — class optical-breakout window + optional ADS stage note
 
 ```json
@@ -119,7 +119,7 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
   "presn_watch": false,
   "posterior": 0.0,
   "breakout": {
-    "class_window": "minutes | hours | about 1 day",
+    "class_window": "minutes | hours | about 1 day | n/a",
     "countdown_from": "ISO-8601"
   },
   "ir_followup": false,
@@ -130,6 +130,10 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
   "composition": null
 }
 ```
+
+`UNK` (Yale BSC5 / field catalog hits without a progenitor class) use
+`breakout.class_window = "n/a"` and leave `life_expectancy` null — they must
+not inherit an RSG/`about 1 day` window from the top expected star.
 
 v1.1 additive fields default to `null` so legacy consumers keep working. They are
 filled by `backend.progenitors.rank_runtime.rank_with_grok` from the offline
@@ -409,7 +413,8 @@ See full schema: [`schemas/CandidateScore.schema.json`](schemas/CandidateScore.s
           "enum": [
             "minutes",
             "hours",
-            "about 1 day"
+            "about 1 day",
+            "n/a"
           ],
           "title": "Class Window",
           "type": "string"

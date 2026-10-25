@@ -22,7 +22,8 @@ DetectorName = Literal["Super-K", "SNO+", "IceCube", "KamLAND", "JUNO"]
 # AGN added for Scenario B (IceCube-170922A / TXS 0506+056); additive enum.
 # UNK = field/catalog star without a progenitor class (e.g. Yale BSC5 AOI hit).
 StarClass = Literal["RSG", "BSG", "YSG", "WR", "LBV", "AGN", "UNK"]
-BreakoutClassWindow = Literal["minutes", "hours", "about 1 day"]
+# "n/a" = no progenitor-class breakout prior (UNK field stars); UI skips countdown.
+BreakoutClassWindow = Literal["minutes", "hours", "about 1 day", "n/a"]
 
 
 class Pointing(BaseModel):

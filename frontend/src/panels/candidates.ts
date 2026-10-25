@@ -9,7 +9,11 @@ import {
   type CandidateRow,
 } from "../state/store";
 import { adsUrl } from "../util/ads";
-import { formatElapsed, windowLabel } from "../util/countdown";
+import {
+  formatElapsed,
+  isBreakoutSkipped,
+  windowLabel,
+} from "../util/countdown";
 
 type RawLitResponse = {
   star_id?: string;
@@ -206,15 +210,20 @@ export function mountCandidatesPanel(host: HTMLElement): () => void {
         if (row.star_id === selectedStarId) tr.classList.add("selected");
         if (row.simulated) tr.classList.add("is-sim");
         tr.tabIndex = 0;
+        const skip = isBreakoutSkipped(row.breakout.class_window);
         tr.innerHTML = `
           <td>${i + 1}</td>
           <td class="star-id">${escapeHtml(row.star_id)}</td>
           <td>${escapeHtml(row.class)}</td>
           <td>${escapeHtml(fmtDistance(row.distance_kpc))}</td>
           <td>${row.posterior.toFixed(3)}</td>
-          <td class="breakout" title="${strings.countdownEstimate}">
+          <td class="breakout" title="${skip ? "n/a (no progenitor class)" : strings.countdownEstimate}">
             <span class="bw">${escapeHtml(windowLabel(row.breakout.class_window))}</span>
-            <span class="elapsed" data-role="elapsed">${formatElapsed(row.breakout.countdown_from, now)} ${strings.countdownSince}</span>
+            ${
+              skip
+                ? ""
+                : `<span class="elapsed" data-role="elapsed">${formatElapsed(row.breakout.countdown_from, now)} ${strings.countdownSince}</span>`
+            }
           </td>
           <td>${row.ir_followup ? strings.irYes : strings.irNo}</td>
         `;
@@ -234,7 +243,7 @@ export function mountCandidatesPanel(host: HTMLElement): () => void {
         if (!tr) return;
         tr.classList.toggle("selected", row.star_id === selectedStarId);
         const elapsed = tr.querySelector<HTMLElement>("[data-role=elapsed]");
-        if (elapsed) {
+        if (elapsed && !isBreakoutSkipped(row.breakout.class_window)) {
           elapsed.textContent = `${formatElapsed(row.breakout.countdown_from, now)} ${strings.countdownSince}`;
         }
       });

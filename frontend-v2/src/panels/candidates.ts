@@ -39,8 +39,11 @@ function fmtConfidence(value: number | null | undefined): string {
 
 function fmtLife(row: CandidateRow): string {
   const life = row.life_expectancy?.optical_breakout_window;
-  if (life) return life;
-  return row.breakout?.class_window || strings.distanceUnknown;
+  if (life && !isBreakoutSkipped(life)) return life;
+  const bw = row.breakout?.class_window;
+  if (bw && !isBreakoutSkipped(bw)) return bw;
+  // UNK / field stars: no progenitor life prior — do not mirror expected star.
+  return strings.distanceUnknown;
 }
 
 type RawLitResponse = {
