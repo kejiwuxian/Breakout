@@ -1,7 +1,7 @@
 /**
  * Pure-SVG Mollweide skymap. Public catalog stars + galactic plane + HEALPix
- * localization cells + smooth 90% oval. Zoom is a CSS transform on one SVG —
- * no raster PNG swap.
+ * localization cells + smooth 90% oval. Zoom/pan is SVG viewBox camera —
+ * no raster PNG swap, no CSS scale.
  */
 import strings from "../copy/strings.json";
 import {
@@ -89,6 +89,16 @@ type HoverInfo = {
 };
 
 type ViewMode = "full" | "zooming" | "zoomed";
+
+/** SVG user-space camera (= viewBox). */
+type Cam = { x: number; y: number; w: number; h: number };
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 36;
+const WHEEL_IN = 0.82;
+const WHEEL_OUT = 1.22;
+const AOI_PAD = 0.42;
+const DRAG_THRESH_PX = 4;
 
 async function fetchRegion(alertId: string): Promise<RegionPayload | null> {
   try {
@@ -201,6 +211,124 @@ function outlineRing(reg: RegionPayload): number[][] {
   return [];
 }
 
+function easeOutCubic(t: number): number {
+  return 1 - (1 - t) ** 3;
+}
+
+function camZoom(c: Cam, contentW: number): number {
+  return contentW > 0 ? contentW / Math.max(c.w, 1e-6) : 1;
+}
+
+function isNearFull(c: Cam, contentW: number, contentH: number): boolean {
+  return (
+    camZoom(c, contentW) <= 1.04 &&
+    c.x <= contentW * 0.02 &&
+    c.y <= contentH * 0.02
+  );
+}
+
+/** Aspect-preserving camera covering `bounds` with padding, clamped to content. */
+function camForBounds(
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  contentW: number,
+  contentH: number,
+  pad = AOI_PAD,
+): Cam {
+  let bw = Math.max(bounds.maxX - bounds.minX, 8);
+  let bh = Math.max(bounds.maxY - bounds.minY, 8);
+  const cx = (bounds.minX + bounds.maxX) / 2;
+  const cy = (bounds.minY + bounds.maxY) / 2;
+  bw *= 1 + pad;
+  bh *= 1 + pad;
+  const aspect = contentW / Math.max(contentH, 1);
+  if (bw / bh > aspect) bh = bw / aspect;
+  else bw = bh * aspect;
+
+  const maxW = contentW / MIN_ZOOM;
+  const minW = contentW / MAX_ZOOM;
+  bw = Math.min(Math.max(bw, minW), maxW);
+  bh = bw / aspect;
+
+  let x = cx - bw / 2;
+  let y = cy - bh / 2;
+  x = Math.min(Math.max(x, 0), Math.max(0, contentW - bw));
+  y = Math.min(Math.max(y, 0), Math.max(0, contentH - bh));
+  return { x, y, w: bw, h: bh };
+}
+
+function outlineCam(
+  reg: RegionPayload,
+  contentW: number,
+  contentH: number,
+): Cam | null {
+  const ring = outlineRing(reg);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let n = 0;
+  for (const pair of ring) {
+    const p = raDecToMollweide(
+      Number(pair[0]),
+      Number(pair[1]),
+      contentW,
+      contentH,
+    );
+    if (!p) continue;
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+    n += 1;
+  }
+  const peak = raDecToMollweide(
+    reg.peak.ra_deg,
+    reg.peak.dec_deg,
+    contentW,
+    contentH,
+  );
+  if (peak) {
+    minX = Math.min(minX, peak.x);
+    minY = Math.min(minY, peak.y);
+    maxX = Math.max(maxX, peak.x);
+    maxY = Math.max(maxY, peak.y);
+    n += 1;
+  }
+  if (n < 2 || !Number.isFinite(minX)) {
+    if (!peak) return null;
+    const fov = Math.max(reg.fov_deg || 20, 10);
+    const half = (fov / 360) * contentW * 0.55;
+    return camForBounds(
+      {
+        minX: peak.x - half,
+        minY: peak.y - half * (contentH / contentW),
+        maxX: peak.x + half,
+        maxY: peak.y + half * (contentH / contentW),
+      },
+      contentW,
+      contentH,
+    );
+  }
+  return camForBounds({ minX, minY, maxX, maxY }, contentW, contentH);
+}
+
+function clampCam(c: Cam, contentW: number, contentH: number): Cam {
+  const aspect = contentW / Math.max(contentH, 1);
+  let w = c.w;
+  const maxW = contentW / MIN_ZOOM;
+  const minW = contentW / MAX_ZOOM;
+  w = Math.min(Math.max(w, minW), maxW);
+  const h = w / aspect;
+  let x = c.x;
+  let y = c.y;
+  if (w >= contentW - 0.5) {
+    return { x: 0, y: 0, w: contentW, h: contentH };
+  }
+  x = Math.min(Math.max(x, 0), contentW - w);
+  y = Math.min(Math.max(y, 0), contentH - h);
+  return { x, y, w, h };
+}
+
 export function mountSky(host: HTMLElement): () => void {
   host.innerHTML = `
     <div class="sky-stage" data-role="stage">
@@ -211,6 +339,7 @@ export function mountSky(host: HTMLElement): () => void {
           </div>
         </div>
       </div>
+      <button type="button" class="sky-reset" data-role="reset" hidden title="${strings.skyReset}">${strings.skyReset}</button>
       <div class="sky-hover" data-role="hover" hidden></div>
       <div class="sky-meta" data-role="meta" hidden></div>
     </div>
@@ -221,6 +350,7 @@ export function mountSky(host: HTMLElement): () => void {
   const svg = host.querySelector<SVGSVGElement>("[data-role=svg]")!;
   const hoverEl = host.querySelector<HTMLElement>("[data-role=hover]")!;
   const meta = host.querySelector<HTMLElement>("[data-role=meta]")!;
+  const resetBtn = host.querySelector<HTMLButtonElement>("[data-role=reset]")!;
 
   let region: RegionPayload | null = null;
   let skyBase: SkyBase = { field_stars: [], galactic_plane: [] };
@@ -228,8 +358,17 @@ export function mountSky(host: HTMLElement): () => void {
   let seenZoomNonce = 0;
   let renderSeq = 0;
   let viewMode: ViewMode = "full";
-  let zoomTimer = 0;
-  let settleTimer = 0;
+  let contentW = 640;
+  let contentH = 320;
+  let cam: Cam = { x: 0, y: 0, w: contentW, h: contentH };
+  let camRaf = 0;
+  let zoomDelayTimer = 0;
+  let pointerDragging = false;
+  let pointerMoved = false;
+  let pointerId: number | null = null;
+  let lastPtrX = 0;
+  let lastPtrY = 0;
+  let skipStarClick = false;
 
   const fitFrame = () => {
     const ar = 2;
@@ -246,7 +385,11 @@ export function mountSky(host: HTMLElement): () => void {
     return { w: frame.clientWidth || w, h: frame.clientHeight || h };
   };
 
-  const showHover = (info: HoverInfo | null, clientX?: number, clientY?: number) => {
+  const showHover = (
+    info: HoverInfo | null,
+    clientX?: number,
+    clientY?: number,
+  ) => {
     if (!info) {
       hoverEl.hidden = true;
       hoverEl.textContent = "";
@@ -269,6 +412,12 @@ export function mountSky(host: HTMLElement): () => void {
     return strings.skyModeFocus;
   };
 
+  const syncReset = () => {
+    const zoomed =
+      !isNearFull(cam, contentW, contentH) || viewMode === "zooming";
+    resetBtn.hidden = !zoomed;
+  };
+
   const setMeta = (skymap: SkymapPayload | null, reg: RegionPayload | null) => {
     meta.hidden = false;
     if (!skymap) {
@@ -276,6 +425,7 @@ export function mountSky(host: HTMLElement): () => void {
         <span>${strings.skyModeFull}</span>
         <span>${skyBase.field_stars.length} public catalog stars</span>
       `;
+      syncReset();
       return;
     }
     const peak = reg?.peak ?? skymap.peak;
@@ -284,35 +434,105 @@ export function mountSky(host: HTMLElement): () => void {
     const axes = ell
       ? ` · oval ${ell.semi_major_deg.toFixed(1)}°×${ell.semi_minor_deg.toFixed(1)}°`
       : "";
+    const z = camZoom(cam, contentW);
+    const zoomHint = z > 1.05 ? ` · ${z.toFixed(1)}×` : "";
     meta.innerHTML = `
       <span>${strings.skyPeak} RA ${peak.ra_deg.toFixed(2)}° · Dec ${peak.dec_deg.toFixed(2)}°</span>
       <span>90% · ${area.toFixed(1)} deg²${axes}</span>
-      <span class="sky-mode">${phaseLabel()}</span>
+      <span class="sky-mode">${phaseLabel()}${zoomHint}</span>
       ${(reg?.simulated ?? skymap.simulated)
         ? `<span class="badge sim">${strings.simulatedBadge}</span>`
         : `<span class="badge real">${strings.realBadge}</span>`}
     `;
+    syncReset();
+  };
+
+  const applyCam = (next: Cam, opts?: { meta?: boolean }) => {
+    cam = clampCam(next, contentW, contentH);
+    svg.setAttribute("viewBox", `${cam.x} ${cam.y} ${cam.w} ${cam.h}`);
+    if (isNearFull(cam, contentW, contentH) && viewMode !== "zooming") {
+      viewMode = "full";
+    } else if (viewMode !== "zooming") {
+      viewMode = "zoomed";
+    }
+    syncReset();
+    if (opts?.meta !== false) {
+      const { skymap } = getState();
+      setMeta(skymap, region);
+    }
+  };
+
+  const cancelCamAnim = () => {
+    if (camRaf) {
+      cancelAnimationFrame(camRaf);
+      camRaf = 0;
+    }
+    window.clearTimeout(zoomDelayTimer);
+    zoomDelayTimer = 0;
+    if (viewMode === "zooming") {
+      viewMode = isNearFull(cam, contentW, contentH) ? "full" : "zoomed";
+    }
+  };
+
+  const animateCamTo = (
+    target: Cam,
+    skymap: SkymapPayload,
+    reg: RegionPayload,
+    durationMs = 1550,
+  ) => {
+    cancelCamAnim();
+    const from = { ...cam };
+    const to = clampCam(target, contentW, contentH);
+    viewMode = "zooming";
+    setMeta(skymap, reg);
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - t0) / durationMs);
+      const e = easeOutCubic(t);
+      applyCam(
+        {
+          x: from.x + (to.x - from.x) * e,
+          y: from.y + (to.y - from.y) * e,
+          w: from.w + (to.w - from.w) * e,
+          h: from.h + (to.h - from.h) * e,
+        },
+        { meta: false },
+      );
+      if (t < 1) {
+        camRaf = requestAnimationFrame(tick);
+        return;
+      }
+      camRaf = 0;
+      viewMode = "zoomed";
+      applyCam(to);
+      setMeta(skymap, reg);
+    };
+    camRaf = requestAnimationFrame(tick);
   };
 
   const wireStar = (g: SVGGElement, row: CandidateRow, rank: number) => {
     const info = candidateHover(row, rank);
     g.style.cursor = "pointer";
     g.addEventListener("pointerenter", (ev) => {
+      if (pointerDragging) return;
       showHover(info, ev.clientX, ev.clientY);
       selectStar(row.star_id);
     });
-    g.addEventListener("pointermove", (ev) => showHover(info, ev.clientX, ev.clientY));
-    g.addEventListener("pointerleave", () => showHover(null));
-    g.addEventListener("click", () => selectStar(row.star_id));
-  };
-
-  const clearFrameZoom = () => {
-    frame.style.transition = "none";
-    frame.classList.remove("is-zoomed");
-    frame.style.transform = "none";
-    frame.style.transformOrigin = "50% 50%";
-    void frame.offsetWidth;
-    frame.style.transition = "";
+    g.addEventListener("pointermove", (ev) => {
+      if (pointerDragging) return;
+      showHover(info, ev.clientX, ev.clientY);
+    });
+    g.addEventListener("pointerleave", () => {
+      if (!pointerDragging) showHover(null);
+    });
+    g.addEventListener("click", (ev) => {
+      if (skipStarClick || pointerMoved) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
+      }
+      selectStar(row.star_id);
+    });
   };
 
   const paintSvg = (
@@ -320,7 +540,12 @@ export function mountSky(host: HTMLElement): () => void {
     candidates: CandidateRow[],
   ): { w: number; h: number } => {
     const { w, h } = fitFrame();
-    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    const sx = contentW > 0 ? w / contentW : 1;
+    const sy = contentH > 0 ? h / contentH : 1;
+    const prevCam = cam;
+    contentW = w;
+    contentH = h;
+
     svg.setAttribute("width", String(w));
     svg.setAttribute("height", String(h));
     svg.innerHTML = "";
@@ -328,7 +553,6 @@ export function mountSky(host: HTMLElement): () => void {
     const root = createSvgEl("g");
     root.setAttribute("data-role", "scene");
 
-    // Limb + night fill
     const limb = createSvgEl("path");
     limb.setAttribute("d", mollweideLimbPath(w, h));
     limb.setAttribute("class", "sky-limb");
@@ -402,7 +626,6 @@ export function mountSky(host: HTMLElement): () => void {
       }
     }
 
-    const rankedIds = new Set(candidates.map((c) => c.star_id));
     candidates.forEach((row, idx) => {
       const p = raDecToMollweide(row.ra_deg, row.dec_deg, w, h);
       if (!p) return;
@@ -415,21 +638,57 @@ export function mountSky(host: HTMLElement): () => void {
       g.appendChild(c);
       wireStar(g, row, idx + 1);
       root.appendChild(g);
-      rankedIds.add(row.star_id);
     });
 
     svg.appendChild(root);
+
+    applyCam(
+      {
+        x: prevCam.x * sx,
+        y: prevCam.y * sy,
+        w: prevCam.w * sx,
+        h: prevCam.h * sy,
+      },
+      { meta: false },
+    );
     return { w, h };
   };
 
-  const settleZoomed = (
-    skymap: SkymapPayload,
-    reg: RegionPayload,
-    _candidates: CandidateRow[],
-  ) => {
-    // Stay on the same SVG — only the mode label changes after the zoom eases.
-    viewMode = "zoomed";
-    setMeta(skymap, reg);
+  const resetToFull = (animate = true) => {
+    cancelCamAnim();
+    const { skymap } = getState();
+    const full = { x: 0, y: 0, w: contentW, h: contentH };
+    if (animate && skymap && !isNearFull(cam, contentW, contentH)) {
+      viewMode = "zooming";
+      const from = { ...cam };
+      const t0 = performance.now();
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - t0) / 700);
+        const e = easeOutCubic(t);
+        applyCam(
+          {
+            x: from.x + (full.x - from.x) * e,
+            y: from.y + (full.y - from.y) * e,
+            w: from.w + (full.w - from.w) * e,
+            h: from.h + (full.h - from.h) * e,
+          },
+          { meta: false },
+        );
+        if (t < 1) {
+          camRaf = requestAnimationFrame(tick);
+          return;
+        }
+        camRaf = 0;
+        viewMode = "full";
+        applyCam(full);
+        setMeta(skymap, region);
+      };
+      camRaf = requestAnimationFrame(tick);
+      return;
+    }
+    viewMode = "full";
+    applyCam(full);
+    setMeta(skymap, region);
   };
 
   const runZoomSequence = (
@@ -437,41 +696,29 @@ export function mountSky(host: HTMLElement): () => void {
     reg: RegionPayload,
     candidates: CandidateRow[],
   ) => {
-    const { w, h } = paintSvg(reg, candidates);
-    const pt = raDecToMollweide(reg.peak.ra_deg, reg.peak.dec_deg, w, h);
-    const major = reg.ellipse?.semi_major_deg ?? Math.sqrt(reg.credible_deg2 / Math.PI);
-    const ovalPx = Math.max(major * (w / 360) * 1.35, 10);
-    const scale = Math.min(
-      Math.max((Math.min(w, h) * 0.62) / ovalPx, 5),
-      20,
-    );
-
+    paintSvg(reg, candidates);
+    const target = outlineCam(reg, contentW, contentH);
+    applyCam({ x: 0, y: 0, w: contentW, h: contentH });
     viewMode = "full";
-    clearFrameZoom();
-    if (pt) frame.style.transformOrigin = `${pt.x.toFixed(1)}px ${pt.y.toFixed(1)}px`;
     setMeta(skymap, reg);
 
-    window.clearTimeout(zoomTimer);
-    window.clearTimeout(settleTimer);
-
-    zoomTimer = window.setTimeout(() => {
-      viewMode = "zooming";
+    cancelCamAnim();
+    if (!target) {
+      viewMode = "full";
       setMeta(skymap, reg);
-      // Commit origin first, then scale on the next frame for a smooth CSS transition.
-      requestAnimationFrame(() => {
-        frame.classList.add("is-zoomed");
-        frame.style.transform = `scale(${scale.toFixed(3)})`;
-      });
-      settleTimer = window.setTimeout(() => {
-        settleZoomed(skymap, reg, candidates);
-      }, 1700);
-    }, 650);
+      return;
+    }
+
+    zoomDelayTimer = window.setTimeout(() => {
+      animateCamTo(target, skymap, reg, 1600);
+    }, 550);
   };
 
   const showBaseSky = () => {
+    cancelCamAnim();
     viewMode = "full";
-    clearFrameZoom();
     paintSvg(null, []);
+    applyCam({ x: 0, y: 0, w: contentW, h: contentH });
     setMeta(null, null);
   };
 
@@ -486,19 +733,102 @@ export function mountSky(host: HTMLElement): () => void {
       return;
     }
     if (viewMode === "zooming") return;
-    if (viewMode === "zoomed") {
-      settleZoomed(skymap, reg, candidates);
-      return;
-    }
-    viewMode = "full";
-    clearFrameZoom();
     paintSvg(reg, candidates);
     setMeta(skymap, reg);
   };
 
+  const onWheel = (ev: WheelEvent) => {
+    ev.preventDefault();
+    if (viewMode === "zooming") cancelCamAnim();
+    const rect = svg.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return;
+    const fracX = (ev.clientX - rect.left) / rect.width;
+    const fracY = (ev.clientY - rect.top) / rect.height;
+    const mx = cam.x + fracX * cam.w;
+    const my = cam.y + fracY * cam.h;
+    const factor = ev.deltaY < 0 ? WHEEL_IN : WHEEL_OUT;
+    const newW = cam.w * factor;
+    const newH = cam.h * factor;
+    applyCam({
+      x: mx - fracX * newW,
+      y: my - fracY * newH,
+      w: newW,
+      h: newH,
+    });
+    showHover(null);
+  };
+
+  const onPointerDown = (ev: PointerEvent) => {
+    if (ev.button !== 0) return;
+    pointerDragging = true;
+    pointerMoved = false;
+    skipStarClick = false;
+    pointerId = ev.pointerId;
+    lastPtrX = ev.clientX;
+    lastPtrY = ev.clientY;
+    svg.classList.add("is-panning");
+    try {
+      svg.setPointerCapture(ev.pointerId);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const onPointerMove = (ev: PointerEvent) => {
+    if (!pointerDragging || pointerId !== ev.pointerId) return;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return;
+    const dxScreen = ev.clientX - lastPtrX;
+    const dyScreen = ev.clientY - lastPtrY;
+    if (!pointerMoved && Math.hypot(dxScreen, dyScreen) >= DRAG_THRESH_PX) {
+      pointerMoved = true;
+      skipStarClick = true;
+      showHover(null);
+      if (viewMode === "zooming") cancelCamAnim();
+    }
+    if (!pointerMoved) return;
+    const dx = (dxScreen / rect.width) * cam.w;
+    const dy = (dyScreen / rect.height) * cam.h;
+    lastPtrX = ev.clientX;
+    lastPtrY = ev.clientY;
+    applyCam({ x: cam.x - dx, y: cam.y - dy, w: cam.w, h: cam.h });
+  };
+
+  const onPointerUp = (ev: PointerEvent) => {
+    if (pointerId !== ev.pointerId) return;
+    pointerDragging = false;
+    pointerId = null;
+    svg.classList.remove("is-panning");
+    try {
+      svg.releasePointerCapture(ev.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (skipStarClick) {
+      window.setTimeout(() => {
+        skipStarClick = false;
+        pointerMoved = false;
+      }, 0);
+    }
+  };
+
+  const onDblClick = (ev: MouseEvent) => {
+    ev.preventDefault();
+    resetToFull(true);
+  };
+
+  svg.addEventListener("wheel", onWheel, { passive: false });
+  svg.addEventListener("pointerdown", onPointerDown);
+  svg.addEventListener("pointermove", onPointerMove);
+  svg.addEventListener("pointerup", onPointerUp);
+  svg.addEventListener("pointercancel", onPointerUp);
+  svg.addEventListener("dblclick", onDblClick);
+  resetBtn.addEventListener("click", () => resetToFull(true));
+
   const render = async () => {
     const seq = ++renderSeq;
-    const { skymap, candidates, suppressSkyZoomOnce, skyZoomNonce } = getState();
+    const { skymap, candidates, suppressSkyZoomOnce, skyZoomNonce } =
+      getState();
 
     if (!skyBase.field_stars.length) {
       skyBase = await fetchSkyBase();
@@ -507,8 +837,7 @@ export function mountSky(host: HTMLElement): () => void {
 
     if (!skymap) {
       showHover(null);
-      window.clearTimeout(zoomTimer);
-      window.clearTimeout(settleTimer);
+      cancelCamAnim();
       animatedAlertId = null;
       region = null;
       showBaseSky();
@@ -523,6 +852,7 @@ export function mountSky(host: HTMLElement): () => void {
 
     if (!region) {
       paintSvg(null, candidates);
+      applyCam({ x: 0, y: 0, w: contentW, h: contentH });
       setMeta(skymap, null);
       return;
     }
@@ -537,7 +867,14 @@ export function mountSky(host: HTMLElement): () => void {
       shouldAnimate = false;
       animatedAlertId = skymap.alert_id;
       clearSkyZoomSuppress();
-    } else if (shouldAnimate) {
+      cancelCamAnim();
+      viewMode = "full";
+      paintSvg(region, candidates);
+      applyCam({ x: 0, y: 0, w: contentW, h: contentH });
+      setMeta(skymap, region);
+      return;
+    }
+    if (shouldAnimate) {
       animatedAlertId = skymap.alert_id;
     }
     showEvent(skymap, region, candidates, shouldAnimate);
@@ -550,11 +887,8 @@ export function mountSky(host: HTMLElement): () => void {
     const { skymap, candidates } = getState();
     if (viewMode === "zooming") return;
     if (skymap && region) {
-      if (viewMode === "zoomed") settleZoomed(skymap, region, candidates);
-      else {
-        paintSvg(region, candidates);
-        setMeta(skymap, region);
-      }
+      paintSvg(region, candidates);
+      setMeta(skymap, region);
     } else {
       showBaseSky();
     }
@@ -564,7 +898,12 @@ export function mountSky(host: HTMLElement): () => void {
   return () => {
     unsub();
     window.removeEventListener("resize", onResize);
-    window.clearTimeout(zoomTimer);
-    window.clearTimeout(settleTimer);
+    svg.removeEventListener("wheel", onWheel);
+    svg.removeEventListener("pointerdown", onPointerDown);
+    svg.removeEventListener("pointermove", onPointerMove);
+    svg.removeEventListener("pointerup", onPointerUp);
+    svg.removeEventListener("pointercancel", onPointerUp);
+    svg.removeEventListener("dblclick", onDblClick);
+    cancelCamAnim();
   };
 }
