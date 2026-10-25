@@ -478,17 +478,19 @@ function clampCam(c: Cam, contentW: number, contentH: number): Cam {
   return { x, y, w, h };
 }
 
-export function mountSky(host: HTMLElement): () => void {
+export function mountSky(
+  host: HTMLElement,
+  resetBtn: HTMLButtonElement,
+): () => void {
   host.innerHTML = `
     <div class="sky-stage" data-role="stage">
       <div class="sky-world" data-role="world">
         <div class="sky-zoomable" data-role="zoomable">
           <div class="sky-frame" data-role="frame">
-            <svg class="sky-svg" data-role="svg" role="img" aria-label="${strings.skyTitle}"></svg>
+            <svg class="sky-svg" id="sky-map-view" data-role="svg" role="img" aria-label="${strings.skyTitle}"></svg>
           </div>
         </div>
       </div>
-      <button type="button" class="sky-reset" data-role="reset" hidden title="${strings.skyReset}">${strings.skyReset}</button>
       <div class="sky-hover" data-role="hover" hidden></div>
       <div class="sky-meta" data-role="meta" hidden></div>
     </div>
@@ -499,11 +501,11 @@ export function mountSky(host: HTMLElement): () => void {
   const svg = host.querySelector<SVGSVGElement>("[data-role=svg]")!;
   const hoverEl = host.querySelector<HTMLElement>("[data-role=hover]")!;
   const meta = host.querySelector<HTMLElement>("[data-role=meta]")!;
-  const resetBtn = host.querySelector<HTMLButtonElement>("[data-role=reset]")!;
 
   let region: RegionPayload | null = null;
   let skyBase: SkyBase = { field_stars: [], galactic_plane: [] };
   let animatedAlertId: string | null = null;
+  let fullSkyChoice: { alertId: string; missionEpoch: number } | null = null;
   let seenZoomNonce = 0;
   let renderSeq = 0;
   /**
@@ -585,12 +587,6 @@ export function mountSky(host: HTMLElement): () => void {
     return strings.skyModeFocus;
   };
 
-  const syncReset = () => {
-    const zoomed =
-      !isNearFull(cam, contentW, contentH) || viewMode === "zooming";
-    resetBtn.hidden = !zoomed;
-  };
-
   const setMeta = (skymap: SkymapPayload | null, reg: RegionPayload | null) => {
     meta.hidden = false;
     if (!skymap) {
@@ -598,7 +594,6 @@ export function mountSky(host: HTMLElement): () => void {
         <span>${strings.skyModeFull}</span>
         <span>${skyBase.field_stars.length.toLocaleString()} BSC5 field stars</span>
       `;
-      syncReset();
       return;
     }
     const peak = reg?.peak ?? skymap.peak;
@@ -617,7 +612,6 @@ export function mountSky(host: HTMLElement): () => void {
         ? `<span class="badge sim">${strings.simulatedBadge}</span>`
         : `<span class="badge real">${strings.realBadge}</span>`}
     `;
-    syncReset();
   };
 
   const applyCam = (next: Cam, opts?: { meta?: boolean }) => {
@@ -628,7 +622,6 @@ export function mountSky(host: HTMLElement): () => void {
     } else if (viewMode !== "zooming") {
       viewMode = "zoomed";
     }
-    syncReset();
     if (opts?.meta !== false) {
       const { skymap } = getState();
       setMeta(skymap, region);
@@ -945,38 +938,17 @@ export function mountSky(host: HTMLElement): () => void {
     return { w, h };
   };
 
-  const resetToFull = (animate = true) => {
+  const resetToFull = () => {
+    // Invalidate queued replay frames as well as the active camera animation.
+    // Candidate refreshes keep this all-sky view until a new replay starts.
+    zoomGen += 1;
     cancelCamAnim();
-    const { skymap } = getState();
+    const { skymap, skyZoomNonce, missionEpoch } = getState();
+    animatedAlertId = skymap?.alert_id ?? null;
+    fullSkyChoice = skymap ? { alertId: skymap.alert_id, missionEpoch } : null;
+    seenZoomNonce = skyZoomNonce;
+    showHover(null);
     const full = { x: 0, y: 0, w: contentW, h: contentH };
-    if (animate && skymap && !isNearFull(cam, contentW, contentH)) {
-      viewMode = "zooming";
-      const from = { ...cam };
-      const t0 = performance.now();
-      const tick = (now: number) => {
-        const t = Math.min(1, (now - t0) / 700);
-        const e = easeOutCubic(t);
-        applyCam(
-          {
-            x: from.x + (full.x - from.x) * e,
-            y: from.y + (full.y - from.y) * e,
-            w: from.w + (full.w - from.w) * e,
-            h: from.h + (full.h - from.h) * e,
-          },
-          { meta: false },
-        );
-        if (t < 1) {
-          camRaf = requestAnimationFrame(tick);
-          return;
-        }
-        camRaf = 0;
-        viewMode = "full";
-        applyCam(full);
-        setMeta(skymap, region);
-      };
-      camRaf = requestAnimationFrame(tick);
-      return;
-    }
     viewMode = "full";
     applyCam(full);
     setMeta(skymap, region);
@@ -1002,6 +974,13 @@ export function mountSky(host: HTMLElement): () => void {
 
     if (!target) {
       viewMode = "full";
+      setMeta(skymap, reg);
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      viewMode = "zoomed";
+      applyCam(target);
       setMeta(skymap, reg);
       return;
     }
@@ -1127,13 +1106,13 @@ export function mountSky(host: HTMLElement): () => void {
 
   const onDblClick = (ev: MouseEvent) => {
     ev.preventDefault();
-    resetToFull(true);
+    resetToFull();
   };
 
   svg.addEventListener("wheel", onWheel, { passive: false });
   svg.addEventListener("pointerdown", onPointerDown);
   svg.addEventListener("dblclick", onDblClick);
-  resetBtn.addEventListener("click", () => resetToFull(true));
+  resetBtn.addEventListener("click", resetToFull);
 
   const render = async () => {
     // Avoid tearing down SVG nodes mid-pan (loses the gesture).
@@ -1211,7 +1190,10 @@ export function mountSky(host: HTMLElement): () => void {
       }
     }
 
-    let shouldAnimate = skymap.alert_id !== animatedAlertId;
+    const keepFullSky =
+      fullSkyChoice?.alertId === skymap.alert_id &&
+      fullSkyChoice.missionEpoch === missionEpoch;
+    let shouldAnimate = !keepFullSky && skymap.alert_id !== animatedAlertId;
     if (suppressSkyZoomOnce) {
       shouldAnimate = false;
       animatedAlertId = skymap.alert_id;
@@ -1264,6 +1246,7 @@ export function mountSky(host: HTMLElement): () => void {
     svg.removeEventListener("wheel", onWheel);
     svg.removeEventListener("pointerdown", onPointerDown);
     svg.removeEventListener("dblclick", onDblClick);
+    resetBtn.removeEventListener("click", resetToFull);
     cancelCamAnim();
   };
 }

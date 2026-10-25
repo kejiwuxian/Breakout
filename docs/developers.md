@@ -1,5 +1,10 @@
 # Developer setup
 
+Source provenance and the top-right connection guide are documented in
+[`data-sources.md`](data-sources.md). Live GCN subscriptions use documented
+IceCube tracks/cascades, Super-K burst notices, and Classic SNEWS. Cached
+mode is explicitly labeled; declared test notices never trigger ranking.
+
 Internal package and module names remain `breakout` (Python paths, env flags,
 schema ids). The public product name is **Project Supernova** — see the root
 [`README.md`](../README.md).

@@ -8,6 +8,7 @@ import { mountAbout } from "./panels/about";
 import { mountCandidates } from "./panels/candidates";
 import { mountScenarios } from "./panels/scenarios";
 import { mountSky } from "./panels/sky";
+import { mountSourcesInfo, type SourceStatus } from "./panels/sources";
 import { mountSubscribe } from "./panels/subscribe";
 import { handleVoiceEvent, mountVoice } from "./panels/voice";
 import {
@@ -171,10 +172,6 @@ function isIdleScenario(scen: string | null | undefined): boolean {
   return !scen || scen === "live_waiting";
 }
 
-function statusListening(): string {
-  return strings.listening ?? strings.connected;
-}
-
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("#app missing");
 
@@ -187,8 +184,11 @@ app.innerHTML = `
       </div>
       <div class="nav-right">
         <div class="status-cluster">
-          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
-          <p class="status-text" id="status">${strings.connecting}</p>
+          <button type="button" class="source-status-trigger" id="source-status-trigger" aria-haspopup="dialog" aria-label="Data sources and connection status">
+            <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+            <span class="status-text" id="status">Connecting to app…</span>
+            <span class="source-status-info" aria-hidden="true">ⓘ</span>
+          </button>
           <span class="badge sim" id="sim-badge" hidden>${strings.simulatedBadge}</span>
           <span class="badge hist" id="real-badge" hidden>${strings.realBadge}</span>
           <span class="badge live" id="live-badge" hidden>${strings.liveBadge}</span>
@@ -200,9 +200,12 @@ app.innerHTML = `
         <div class="page-chrome">
           <p class="page-category">${strings.pageCategory}</p>
           <h2 class="page-title">${strings.pageTitle}</h2>
-          <p class="page-purpose">${strings.pagePurpose}</p>
         </div>
         <section class="sky-host" id="panel-sky" aria-label="${strings.skyTitle}"></section>
+        <div class="event-guide">
+          <p class="page-purpose">${strings.pagePurpose}</p>
+          <button type="button" class="ghost-btn sky-reset" id="back-to-sky" aria-controls="sky-map-view">${strings.skyReset}</button>
+        </div>
         <section class="event-select-host" id="panel-scenarios" aria-label="${strings.scenariosTitle}"></section>
         <p class="stage-foot">${strings.legacyNote}</p>
       </main>
@@ -225,6 +228,7 @@ app.innerHTML = `
 
 const statusEl = document.querySelector<HTMLElement>("#status")!;
 const statusDot = document.querySelector<HTMLElement>("#status-dot")!;
+const statusTrigger = document.querySelector<HTMLButtonElement>("#source-status-trigger")!;
 const simBadge = document.querySelector<HTMLElement>("#sim-badge")!;
 const realBadge = document.querySelector<HTMLElement>("#real-badge")!;
 const liveBadge = document.querySelector<HTMLElement>("#live-badge")!;
@@ -233,6 +237,56 @@ const missionView = document.querySelector<HTMLElement>("#mission-view")!;
 const aboutView = document.querySelector<HTMLElement>("#about-view")!;
 const brandLink = document.querySelector<HTMLAnchorElement>("#brand-link")!;
 const aboutNav = document.querySelector<HTMLAnchorElement>("#nav-about")!;
+
+let appConnection: "connecting" | "open" | "closed" = "connecting";
+let sourceStatus: SourceStatus | null = null;
+let pipelineProgress = "";
+
+function renderConnectionStatus() {
+  let label: string;
+  if (appConnection === "connecting") {
+    label = "Connecting to app…";
+  } else if (appConnection === "closed") {
+    label = "App connection offline";
+  } else if (!sourceStatus) {
+    label = "App connected · source status unverified";
+  } else if (sourceStatus.mode === "cached") {
+    label = "Demo mode · connected";
+  } else if (
+    !sourceStatus.live_enabled ||
+    sourceStatus.sources.every((source) =>
+      ["reference", "disabled", "unconfigured"].includes(source.state),
+    )
+  ) {
+    label = "App connected · live feeds unavailable";
+  } else if (sourceStatus.sources.some((source) => source.state === "receiving")) {
+    label = sourceStatus.sources.some((source) => source.science_alerts > 0)
+      ? "Live neutrino alert received"
+      : sourceStatus.sources.some((source) => source.test_notices > 0)
+        ? "Live feed · service check received"
+        : "Live feed message received";
+  } else if (sourceStatus.sources.some((source) => source.state === "error")) {
+    label = "App connected · live feed error";
+  } else {
+    label = "Live mode · awaiting feed";
+  }
+  statusEl.textContent = label;
+  statusDot.classList.toggle("is-live", appConnection === "open");
+  statusTrigger.setAttribute("aria-label", `${label}. Open data sources and connection details`);
+  statusTrigger.title = [pipelineProgress, "View data sources and connection details"].filter(Boolean).join(" · ");
+}
+
+const sourcesInfo = mountSourcesInfo(statusTrigger, {
+  onStatus(status) {
+    sourceStatus = status;
+    renderConnectionStatus();
+  },
+});
+
+function updatePipelineProgress(detail: string) {
+  pipelineProgress = detail;
+  renderConnectionStatus();
+}
 
 mountAbout(aboutView);
 
@@ -349,7 +403,10 @@ function paintEventSummary() {
   `;
 }
 
-mountSky(document.querySelector("#panel-sky")!);
+mountSky(
+  document.querySelector("#panel-sky")!,
+  document.querySelector<HTMLButtonElement>("#back-to-sky")!,
+);
 mountScenarios(document.querySelector("#panel-scenarios")!, {
   onScenario: (id) => {
     activeScenario = id;
@@ -378,40 +435,36 @@ connectEvents(
       const scen = (event as { scenario?: string }).scenario;
       if (!isIdleScenario(scen)) {
         activeScenario = scen ?? null;
-        statusEl.textContent = strings.connected;
+        updatePipelineProgress(strings.connected);
       } else {
         activeScenario = null;
-        statusEl.textContent = statusListening();
+        updatePipelineProgress("Waiting for an event");
       }
     } else if (event.type === "alert") {
-      statusEl.textContent = `${strings.statusAlert}: ${String(
+      updatePipelineProgress(`${strings.statusAlert}: ${String(
         (event.payload as { kind?: string })?.kind ?? "",
-      )}`;
+      )}`);
       applyBadges(event.simulated);
+      void sourcesInfo.refresh();
     } else if (event.type === "skymap") {
-      statusEl.textContent = strings.statusSkymap;
+      updatePipelineProgress(strings.statusSkymap);
       applyBadges(event.simulated);
     } else if (event.type === "candidates") {
-      statusEl.textContent = strings.statusCandidates;
+      updatePipelineProgress(strings.statusCandidates);
       applyBadges(event.simulated);
     } else if (event.type === "voice") {
       const text = String((event.payload as { text?: string } | undefined)?.text ?? "");
-      if (text) statusEl.textContent = text;
+      if (text) updatePipelineProgress(text);
       applyBadges(event.simulated);
     } else if (event.type === "scenario_done" && event.payload?.scenario) {
       activeScenario = String(event.payload.scenario);
-      statusEl.textContent = `${strings.scenarioStarted}: ${activeScenario}`;
+      updatePipelineProgress(`${strings.scenarioStarted}: ${activeScenario}`);
     }
   },
   (state) => {
+    appConnection = state;
     setConnected(state === "open");
-    statusDot.classList.toggle("is-live", state === "open");
-    if (state === "connecting") statusEl.textContent = strings.connecting;
-    if (state === "open") {
-      statusEl.textContent = isIdleScenario(activeScenario)
-        ? statusListening()
-        : strings.connected;
-    }
-    if (state === "closed") statusEl.textContent = strings.disconnected;
+    sourcesInfo.setConnection(state === "open");
+    renderConnectionStatus();
   },
 );

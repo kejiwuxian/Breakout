@@ -419,6 +419,19 @@ a.primary-btn {
   color: var(--muted);
 }
 
+.event-guide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-shrink: 0;
+}
+
+.event-guide .page-purpose {
+  flex: 1 1 24rem;
+}
+
 .event-select-host {
   flex-shrink: 0;
   animation: rise 700ms 100ms var(--ease-out) both;
@@ -933,27 +946,9 @@ a.primary-btn {
 }
 
 .sky-reset {
-  position: absolute;
-  top: 0.7rem;
-  right: 0.7rem;
-  z-index: 6;
+  flex-shrink: 0;
   margin: 0;
-  padding: 0.28rem 0.55rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-btn);
-  background: rgba(7, 16, 22, 0.82);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .sky-reset:hover {
-    border-color: var(--signal-border);
-    color: var(--signal);
-  }
+  min-height: 36px;
 }
 
 .sky-limb {

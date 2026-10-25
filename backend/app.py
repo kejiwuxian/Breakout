@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from backend.config import ROOT, cors_allow_origins, public_ws_base_url, settings
 from backend.ingest.cache import replay_scenario
+from backend.ingest.source_status import data_sources_snapshot, mark_source_state, reset_source_activity
 from backend.notify.dispatch import latest_feed_packages
 from backend.notify.subscribers import (
     access_expires_at,
@@ -197,7 +198,7 @@ async def _start_live_listeners() -> None:
     """Spawn live ingest iterators when USE_CACHED_STREAM=False.
 
     Multiplexes every public realtime channel we can subscribe to:
-    GCN Kafka (SNEWS2 coincidence, IceCube gold/bronze, pre-SN, classic
+    GCN Kafka (IceCube tracks/cascades, direct Super-K burst notices, classic
     SNEWS text) plus optional SCiMMA Hopskotch ``snews2.alert``. Each
     listener runs in a worker thread; localization uses DiffPointing /
     pointing inside the pipeline. Credentials come only from .env.
@@ -213,6 +214,7 @@ async def _start_live_listeners() -> None:
                 fut = asyncio.run_coroutine_threadsafe(_emit_pipeline_events(alert), loop)
                 fut.result()
         except Exception:
+            mark_source_state(["snews_hop"] if name == "hop_snews" else ["icecube_tracks", "icecube_cascades", "superk", "snews"], "error")
             logger.exception("live_listener_failed %s", name)
 
     asyncio.create_task(
@@ -240,6 +242,7 @@ def _should_autostart_scenario() -> bool:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    reset_source_activity()
     # Grok Voice: live TTS pushes via this callback (background); never blocks pipeline.
     async def _push_voice(event: dict[str, Any]) -> None:
         await hub.broadcast(event)
@@ -310,6 +313,12 @@ def health() -> dict[str, Any]:
         "public_ws_base_url": public_ws_base_url(settings.public_base_url),
         "serve_frontend": settings.serve_frontend,
     }
+
+
+@app.get("/api/data-sources")
+def data_sources() -> dict[str, Any]:
+    """Actual runtime mode and observed source receipts; no secrets or fabricated activity."""
+    return data_sources_snapshot()
 
 
 class SubscribeIssueBody(BaseModel):

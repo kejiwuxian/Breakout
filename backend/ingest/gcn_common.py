@@ -16,6 +16,8 @@ from backend.schemas import DetectorHit, DetectorName, Pointing
 # Canonical Kafka topics (GCN Unified Schema / mission docs).
 TOPIC_SNEWS2_COINCIDENCE = "gcn.notices.snews2.coincidence"
 TOPIC_ICECUBE_GOLD_BRONZE = "gcn.notices.icecube.gold_bronze_track_alerts"
+TOPIC_ICECUBE_CASCADE = "gcn.classic.text.ICECUBE_CASCADE"
+TOPIC_SUPERK_SN = "gcn.notice.superk.sn_alert"
 # Pre-SN combined alert is documented as GCN circular + registered text feed
 # (arXiv:2404.09920); Kafka topic name reserved for when GCN publishes JSON.
 TOPIC_PRESN_COMBINED = "gcn.notices.presn.kamland_superk"

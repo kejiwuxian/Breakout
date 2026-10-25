@@ -2,8 +2,8 @@
 
 Channels (when ``USE_CACHED_STREAM=False`` and credentials are present):
 
-1. GCN Kafka JSON — SNEWS2 coincidence, IceCube gold/bronze, pre-SN combined
-2. GCN Classic-over-Kafka text — legacy ``gcn.classic.text.SNEWS``
+1. GCN Kafka JSON — IceCube gold/bronze and Super-K burst notices
+2. GCN Classic-over-Kafka text — SNEWS and IceCube cascades
 3. Optional SCiMMA Hopskotch — ``snews2.alert`` when ``HOP_USERNAME`` /
    ``HOP_PASSWORD`` are set (``hop`` optional dependency)
 
@@ -25,6 +25,8 @@ from backend.ingest import gcn_kafka, presn, snews
 from backend.ingest.gcn_common import (
     TOPIC_CLASSIC_SNEWS_TEXT,
     TOPIC_ICECUBE_GOLD_BRONZE,
+    TOPIC_ICECUBE_CASCADE,
+    TOPIC_SUPERK_SN,
     TOPIC_PRESN_COMBINED,
     TOPIC_SNEWS2_COINCIDENCE,
     iter_topic_messages,
@@ -32,15 +34,17 @@ from backend.ingest.gcn_common import (
     network_allowed,
 )
 from backend.ingest.snews_classic import try_parse_classic_snews
+from backend.ingest.observatory_notices import notice_category, normalize_cascade_text, normalize_superk_payload
+from backend.ingest.source_status import TOPIC_SOURCE, mark_source_state, note_source_message
 from backend.schemas import Alert
 
 logger = logging.getLogger("breakout.ingest.live_channels")
 
 # Production GCN topics we can consume without inventing credentials/topics.
 LIVE_GCN_TOPICS: tuple[str, ...] = (
-    TOPIC_SNEWS2_COINCIDENCE,
     TOPIC_ICECUBE_GOLD_BRONZE,
-    TOPIC_PRESN_COMBINED,
+    TOPIC_ICECUBE_CASCADE,
+    TOPIC_SUPERK_SN,
     TOPIC_CLASSIC_SNEWS_TEXT,
 )
 
@@ -58,6 +62,10 @@ def live_gcn_topics() -> list[str]:
 
 def _route_gcn_message(topic: str, payload: Any) -> Alert | None:
     """Map one Kafka message onto an Alert, or None if unusable."""
+    if notice_category(payload, topic) != "science":
+        return None
+    if topic == TOPIC_ICECUBE_CASCADE and isinstance(payload, str):
+        return normalize_cascade_text(payload)
     if topic == TOPIC_CLASSIC_SNEWS_TEXT or (
         isinstance(payload, str) and "SNEWS" in payload.upper()
     ):
@@ -69,6 +77,9 @@ def _route_gcn_message(topic: str, payload: Any) -> Alert | None:
 
     schema = str(payload.get("$schema") or "").lower()
     mission = str(payload.get("mission") or "").lower()
+
+    if topic == TOPIC_SUPERK_SN:
+        return normalize_superk_payload(payload)
 
     if topic == TOPIC_SNEWS2_COINCIDENCE or "snews2" in schema or mission == "snews":
         if payload.get("snews2_tier") or "detector_status" in payload or "detector_names" in payload:
@@ -98,24 +109,38 @@ def listen_gcn_live_alerts(*, live: bool | None = None) -> Iterator[Alert]:
 
     topics = live_gcn_topics()
     logger.info("gcn_live_subscribe topics=%s", topics)
-    consumer = make_consumer(topics)
-    for topic, payload in iter_topic_messages(consumer):
-        try:
-            alert = _route_gcn_message(topic, payload)
-        except Exception:
-            logger.exception("gcn_route_failed topic=%s", topic)
-            continue
-        if alert is None:
-            logger.debug("gcn_skip topic=%s", topic)
-            continue
-        logger.info(
-            "gcn_alert topic=%s id=%s kind=%s simulated=%s",
-            topic,
-            alert.alert_id,
-            alert.kind,
-            alert.simulated,
-        )
-        yield alert
+    source_ids = list({TOPIC_SOURCE[topic] for topic in topics if topic in TOPIC_SOURCE})
+    mark_source_state(source_ids, "starting")
+    consumer = None
+    try:
+        consumer = make_consumer(topics)
+        for topic, payload in iter_topic_messages(consumer):
+            source_id = TOPIC_SOURCE.get(topic)
+            category = notice_category(payload, topic)
+            if source_id:
+                note_source_message(source_id, category=category if category != "science" else "traffic")
+            if category != "science":
+                logger.info("gcn_non_science_notice topic=%s category=%s", topic, category)
+                continue
+            try:
+                alert = _route_gcn_message(topic, payload)
+            except Exception:
+                logger.exception("gcn_route_failed topic=%s", topic)
+                continue
+            if alert is None or alert.simulated:
+                logger.debug("gcn_skip topic=%s", topic)
+                continue
+            if source_id:
+                note_source_message(source_id, category="science")
+            alert.raw["ingest_topic"] = topic
+            logger.info("gcn_alert topic=%s id=%s kind=%s simulated=%s", topic, alert.alert_id, alert.kind, alert.simulated)
+            yield alert
+    except Exception:
+        mark_source_state(source_ids, "error")
+        raise
+    finally:
+        if consumer is not None:
+            consumer.close()
 
 
 def listen_hop_snews_alerts(*, live: bool | None = None) -> Iterator[Alert]:
@@ -141,12 +166,14 @@ def listen_hop_snews_alerts(*, live: bool | None = None) -> Iterator[Alert]:
         from hop.auth import Auth  # type: ignore[import-untyped]
     except ImportError:
         logger.warning("hop_snews_skip reason=hop_not_installed")
+        mark_source_state(["snews_hop"], "error")
         return
         yield  # pragma: no cover
 
     topic = (getattr(settings, "hop_snews_topic", "") or "kafka://kafka.scimma.org/snews2.alert").strip()
     auth = Auth(user, password)
     logger.info("hop_snews_subscribe topic=%s", topic)
+    mark_source_state(["snews_hop"], "starting")
     with stream.open(topic, "r", auth=auth) as s:
         for message in s:
             content = message.content
@@ -162,13 +189,22 @@ def listen_hop_snews_alerts(*, live: bool | None = None) -> Iterator[Alert]:
                         payload = json.loads(payload)
                     except json.JSONDecodeError:
                         alert = try_parse_classic_snews(payload)
-                        if alert is not None:
+                        category = notice_category(payload)
+                        note_source_message("snews_hop", category=category if category != "science" else "traffic")
+                        if alert is not None and not alert.simulated and category == "science":
+                            note_source_message("snews_hop", category="science")
                             yield alert
                         continue
                 if not isinstance(payload, dict):
                     continue
+                category = notice_category(payload)
+                note_source_message("snews_hop", category=category if category != "science" else "traffic")
+                if category != "science":
+                    continue
                 try:
-                    yield snews.normalize_snews_payload(payload, simulated=False)
+                    alert = snews.normalize_snews_payload(payload, simulated=False)
+                    note_source_message("snews_hop", category="science")
+                    yield alert
                 except Exception:
                     logger.exception("hop_snews_normalize_failed")
 

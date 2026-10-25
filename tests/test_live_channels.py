@@ -26,12 +26,14 @@ CLASSIC = FIXTURES / "snews_classic_position_notice.txt"
 SNEWS2 = FIXTURES / "snews2_coincidence_public_example.json"
 
 
-def test_live_gcn_topics_include_snews2_and_classic() -> None:
+def test_live_gcn_topics_include_documented_public_streams_only() -> None:
     topics = live_channels.live_gcn_topics()
-    assert "gcn.notices.snews2.coincidence" in topics
     assert "gcn.notices.icecube.gold_bronze_track_alerts" in topics
     assert "gcn.classic.text.SNEWS" in topics
-    assert "gcn.notices.presn.kamland_superk" in topics
+    assert "gcn.notice.superk.sn_alert" in topics
+    assert "gcn.classic.text.ICECUBE_CASCADE" in topics
+    assert "gcn.notices.snews2.coincidence" not in topics
+    assert "gcn.notices.presn.kamland_superk" not in topics
 
 
 def test_classic_snews_parse_and_pointing_fuse(tmp_path: Path) -> None:
@@ -54,6 +56,10 @@ def test_classic_snews_parse_and_pointing_fuse(tmp_path: Path) -> None:
 
 def test_route_snews2_json() -> None:
     payload = json.loads(SNEWS2.read_text(encoding="utf-8"))
+    # The published fixture is explicitly a test. Only a current science
+    # variant may be routed into the science pipeline.
+    assert live_channels._route_gcn_message("gcn.notices.snews2.coincidence", payload) is None
+    payload["alert_tense"] = "current"
     alert = live_channels._route_gcn_message(
         "gcn.notices.snews2.coincidence", payload
     )
