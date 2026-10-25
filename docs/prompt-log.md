@@ -38,6 +38,7 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sun 25 Oct 2026, ~4:05 AM PT | Light + Cursor agent | Community push UI + two-token email subscribe (no webhook) | `backend/notify/`, frontend-v2 subscribe rail |
 | Sun 25 Oct 2026, ~4:15 AM PT | Light + Cursor agent | Idle live-waiting default; manual scenario only | `BREAKOUT_AUTOSTART`, `scenario=live_waiting` |
 | Sun 25 Oct 2026, ~4:30 AM PT | Light + Cursor agent | Review/merge post-MVP PR stack onto main; refresh docs | `docs/post-mvp.md`, README |
+| Sun 25 Oct 2026, ~4:40 AM PT | Light + Cursor agent | Access + refresh WebSocket subscribe (auto-close on access expiry) | `backend/notify/`, `/ws/subscribe`, frontend rails |
 
 Notes:
 

@@ -39,8 +39,11 @@ function fmtConfidence(value: number | null | undefined): string {
 
 function fmtLife(row: CandidateRow): string {
   const life = row.life_expectancy?.optical_breakout_window;
-  if (life) return life;
-  return row.breakout?.class_window || strings.distanceUnknown;
+  if (life && !isBreakoutSkipped(life)) return life;
+  const bw = row.breakout?.class_window;
+  if (bw && !isBreakoutSkipped(bw)) return bw;
+  // UNK / field stars: no progenitor life prior — do not mirror expected star.
+  return strings.distanceUnknown;
 }
 
 type RawLitResponse = {
@@ -168,7 +171,17 @@ export function mountCandidates(host: HTMLElement): () => void {
     detail.hidden = false;
     const conf = fmtConfidence(row.rank_confidence ?? row.lit?.confidence);
     const life = fmtLife(row);
-    detailStar.textContent = `${row.star_id} · ${row.class} · ${fmtDistance(row.distance_kpc)} · ${strings.colConfidence} ${conf} · ${strings.colLife} ${life}`;
+    const composition = row.composition?.trim();
+    detailStar.textContent = [
+      row.star_id,
+      row.class,
+      composition || null,
+      fmtDistance(row.distance_kpc),
+      `${strings.colConfidence} ${conf}`,
+      `${strings.colLife} ${life}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
     const cached = rawCache.has(row.star_id)
       ? (rawCache.get(row.star_id) ?? null)
@@ -200,7 +213,11 @@ export function mountCandidates(host: HTMLElement): () => void {
     if (raw?.reasoning) {
       reasoningEl.textContent = raw.reasoning;
     } else {
-      reasoningEl.textContent = raw?.note || strings.detailNoReasoning;
+      // Keep inventory / replay-enrichment rank_reasoning when no Grok raw exists.
+      reasoningEl.textContent =
+        row.rank_reasoning?.trim() ||
+        raw?.note ||
+        strings.detailNoReasoning;
     }
     paintEvidence(row, raw);
   };
@@ -277,9 +294,19 @@ export function mountCandidates(host: HTMLElement): () => void {
       });
     }
 
-    const selected =
-      candidates.find((c) => c.star_id === selectedStarId) ?? candidates[0]!;
-    void renderDetail(selected);
+    const selected = selectedStarId
+      ? candidates.find((c) => c.star_id === selectedStarId)
+      : undefined;
+    if (selected) {
+      detail.hidden = false;
+      void renderDetail(selected);
+    } else {
+      detail.hidden = false;
+      detailStarId = null;
+      detailStar.textContent = strings.pickStarHint ?? "Hover or click a star to inspect.";
+      reasoningEl.textContent = "";
+      evidenceEl.innerHTML = "";
+    }
   };
 
   const unsub = subscribe(() => renderTable({ tickOnly: false }));

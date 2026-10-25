@@ -1,101 +1,111 @@
-# Community event push (two-token email subscribe)
+# Subscribe to events (open access + refresh over WebSocket)
 
-Phase 1 lets anyone with a telescope opt in for ranked progenitor coordinates
-when BREAKOUT localizes an `SN_BURST` / `HE_NEUTRINO` candidate set. This is
-**community follow-up**, not an official GCN notice and not a confirmed
+Anyone can subscribe for ranked progenitor coordinates when BREAKOUT localizes
+an `SN_BURST` / `HE_NEUTRINO` candidate set. **No account and no prior
+credentials** — `POST /subscribe` mints tokens for any caller (rate-limited).
+
+This is **community follow-up**, not an official GCN notice and not a confirmed
 supernova detection service.
 
-**No webhooks.** Delivery is email-only to **confirmed** subscribers after a
-two-token auth flow. That cuts abuse and wasted fan-out work from unverified
-endpoints.
+**Two-token auth** = **access token** + **refresh token**. Live delivery is
+over **WebSocket** (`/ws/subscribe`).
 
-## Two-token flow
+## 1. Issue tokens
 
-1. **Request** — `POST /subscribe/request` with `email` (+ optional `label`).
-   Server creates a **pending** subscriber, stores **hashed** short-lived
-   `request_token` + `confirm_token` (TTL ≈ 1 hour), and does **not** send
-   alert pushes yet. Response is `{ pending: true, request_id, … }` without
-   echoing secrets at the top level.
-2. **Confirm** — `POST /subscribe/confirm` with both tokens. On success the
-   subscriber becomes **active** and receives a durable `access_token` (also
-   hashed at rest). Tokens cannot be reused; expired/bad tokens are rejected.
-3. **Dispatch** — only **active** subscribers get email on the next ranked
-   package. Pending rows never receive alerts. There is no webhook path.
+```bash
+curl -X POST http://127.0.0.1:8000/subscribe \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+# optional label: {"label":"campus-0.3m"}
+```
 
-### Dry-run / no SMTP
+Response includes:
 
-With default `NOTIFY_DRY_RUN=True`, or when `SMTP_HOST` is unset, the request
-response includes a `dry_run` object labeled **Simulated/dry-run** with both
-tokens so local demos can confirm without inventing production email delivery.
-Live mail is only attempted when dry-run is off **and** SMTP is configured.
+| Field | Meaning |
+| --- | --- |
+| `access_token` | Short-lived (~5 min). Required to open `/ws/subscribe`. |
+| `refresh_token` | Longer-lived (~7 days). Exchange for a new access token. |
+| `access_expires_utc` | When the current access token dies. |
+| `ws` | `/ws/subscribe` |
 
-Abuse controls (Phase 1): in-memory rate limit by email + IP, pending expiry,
-hashed tokens at rest, active-only public listing with masked emails.
+Tokens are **hashed at rest**. Empty body is enough — email is optional and not required to listen.
+
+## 2. Refresh access
+
+```bash
+curl -X POST http://127.0.0.1:8000/subscribe/refresh \
+  -H 'Content-Type: application/json' \
+  -d '{"refresh_token":"…"}'
+```
+
+Returns a new `access_token` and a **rotated** `refresh_token`. Old refresh
+tokens cannot be reused.
+
+## 3. WebSocket
+
+```text
+ws://127.0.0.1:8000/ws/subscribe?access_token=<access_token>
+```
+
+Or connect without a query string and send as the first frame:
+
+```json
+{"type":"auth","access_token":"<access_token>"}
+```
+
+Server hello:
+
+```json
+{"type":"subscribe_hello","subscriber_id":"…","access_expires_utc":"…","expires_in_sec":…}
+```
+
+**Extend** a live session after refresh — send the new access token on the same wire:
+
+```json
+{"type":"access_token","access_token":"<new_access_token>"}
+```
+
+Server replies `access_extended` and reschedules the close timer.
+
+**Auto-close:** if access expires without a successful extend, the socket closes
+with code **4001** (`access_token_expired`).
+
+**Events:** ranked packages arrive as:
+
+```json
+{"type":"community_alert","payload":{…},"simulated":true}
+```
 
 ## Subscribe from the UI
 
 | UI | Port | Where |
 | --- | --- | --- |
-| **frontend-v2** (primary) | `5174` | Rail block **Community push** |
-| Classic `frontend/` | `5173` | **Community alerts** panel |
+| **frontend-v2** (primary) | `5174` | Rail **Subscribe to events** |
+| Classic `frontend/` | `5173` | **Subscribe to events** panel |
 
-1. Start the API (`uvicorn backend.app:app`, typically `:8000`). Cold start is
-   **idle / listening** — no auto Scenario A unless `BREAKOUT_AUTOSTART=1`.
-2. Open frontend-v2 at http://127.0.0.1:5174 (Vite proxies `/subscribe` and `/alerts`).
-3. **Step 1:** enter email (+ optional label) → **Request**.
-4. In dry-run, copy the Simulated/dry-run tokens shown in the panel into **Step 2** → **Confirm**.
-5. Active subscribers appear in the list (masked email). Browse packages at
-   [`GET /alerts/latest`](http://127.0.0.1:8000/alerts/latest).
-6. To exercise a push locally, manually **Run** a Replay scenario (packages carry
-   `simulated=true` when applicable).
+1. Start the API (`uvicorn backend.app:app`, typically `:8000`).
+2. Open frontend-v2 at http://127.0.0.1:5174 (Vite proxies `/subscribe`, `/alerts`, `/ws`).
+3. Optional label → **Get tokens & connect**. The panel documents the three
+   endpoints inline, opens `/ws/subscribe`, and auto-refreshes before expiry.
+4. Browse [`GET /alerts/latest`](http://127.0.0.1:8000/alerts/latest).
+5. Exercise a push with a manual Replay scenario (`simulated=true` when applicable).
 
 ## What gets pushed
 
-Feed packages (`breakout.community_alert.v1`) include:
+Feed packages (`breakout.community_alert.v1`) include alert metadata, skymap
+peak RA/Dec, ranked ICRS candidates, `simulated=true` when applicable, and ADS
+bibcodes **only** when already on the candidate.
 
-- Alert metadata (`alert_id`, `kind`, `source`, `t0_utc`, …)
-- Skymap peak RA/Dec and credible region size
-- Ranked candidates with **ICRS** `ra_deg` / `dec_deg`, posterior, class window
-- `simulated=true` when any field is simulated
-- ADS bibcodes **only** when already present on the candidate (never invented)
-
-Registry and append-only feed live under `data/subscribers/` (see
-[`data/subscribers/README.md`](../data/subscribers/README.md)).
-
-## Dry-run vs live
-
-| Setting | Behavior |
-| --- | --- |
-| `NOTIFY_DRY_RUN=True` (default) | Request returns Simulated/dry-run tokens in JSON; alert emails logged only |
-| `NOTIFY_DRY_RUN=False` + `SMTP_HOST` set | Confirm tokens would be emailed; alert email path enabled (Phase 1 SMTP still minimal) |
-| `NOTIFY_DRY_RUN=False` without SMTP | Tokens still returned in API for demos; no invented outbound mail |
-
-Health reports the flag: `GET /health` → `notify_dry_run`, `n_subscribers` (active only).
-
-## API
-
-```bash
-# Step 1 — request (dry-run returns tokens under dry_run)
-curl -X POST http://127.0.0.1:8000/subscribe/request \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"you@observatory.edu","label":"campus-0.3m"}'
-
-# Step 2 — confirm with both tokens from dry_run (or email)
-curl -X POST http://127.0.0.1:8000/subscribe/confirm \
-  -H 'Content-Type: application/json' \
-  -d '{"request_token":"…","confirm_token":"…"}'
-
-curl http://127.0.0.1:8000/alerts/latest
-# Optional: ?token=<access_token> or Authorization: Bearer <access_token>
-```
+## API summary
 
 | Method | Path | Role |
 | --- | --- | --- |
-| `POST` | `/subscribe/request` | Pending subscribe (email + optional label) |
-| `POST` | `/subscribe/confirm` | Activate with both tokens; returns `access_token` |
-| `POST` | `/subscribe` | Alias of `/subscribe/request` (email only; no webhook) |
-| `GET` | `/subscribe` | Active subscriber metadata (masked email) |
+| `POST` | `/subscribe` | Issue access + refresh (no prior credentials) |
+| `POST` | `/subscribe/refresh` | New access token (+ rotated refresh) |
+| `WS` | `/ws/subscribe` | Live event push (access-gated; auto-close on expiry) |
+| `GET` | `/subscribe` | Active subscriber metadata (masked) |
 | `DELETE` | `/subscribe/{id}` | Unsubscribe |
-| `GET` | `/alerts/latest` | Recent ranked-candidate packages |
+| `GET` | `/alerts/latest` | Recent packages (optional Bearer / `?token=`) |
 
-Implementation: `backend/notify/` (`subscribers.py`, `dispatch.py`, `payload.py`).
+Abuse controls: in-memory rate limit by IP (and email if provided), hashed
+tokens, refresh rotation. Implementation: `backend/notify/`.

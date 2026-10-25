@@ -263,6 +263,108 @@ def test_rank_with_grok_live_mocked(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert "Higher lit" in (scores[0].rank_reasoning or "")
 
 
+def test_rank_unk_field_star_keeps_absent_life_and_breakout(tmp_path: Path) -> None:
+    """BSC5/UNK AOI hits must not inherit expected-star life/breakout from inventory."""
+    inv_path = tmp_path / "inv.parquet"
+    build_inventory(out_path=inv_path, reviewed_utc=T0)
+    index_path = tmp_path / "index.parquet"
+    pd.DataFrame(
+        [
+            {
+                "star_id": "* alf Ori",
+                "mass_loss": 0.85,
+                "variability": 0.9,
+                "evolved_stage": 0.95,
+                "confidence": 0.9,
+                "evidence_json": "[]",
+                "simulated": False,
+            }
+        ]
+    ).to_parquet(index_path, index=False)
+    candidates = [
+        {
+            "star_id": "* alf Ori",
+            "ra_deg": 88.79,
+            "dec_deg": 7.41,
+            "class": "RSG",
+            "spectral_type": "M2 I",
+            "distance_kpc": 0.222,
+            "p_sky": 0.5,
+            "simulated": True,
+        },
+        {
+            "star_id": "HR 9999",
+            "ra_deg": 90.0,
+            "dec_deg": 8.0,
+            "class": "UNK",
+            "spectral_type": "A0V",
+            "distance_kpc": None,
+            "p_sky": 0.2,
+            "source": "yale_bsc5_v50",
+            "notes": "Yale BSC5 SpType=A0V",
+            "simulated": True,
+        },
+    ]
+    scores = rank_with_grok(
+        candidates,
+        skymap=_skymap(),
+        t0_utc=T0,
+        inventory_path=inv_path,
+        index=index_path,
+        force_offline=True,
+    )
+    by_id = {s.star_id: s for s in scores}
+    expected = by_id["* alf Ori"]
+    field = by_id["HR 9999"]
+    assert expected.breakout.class_window == "about 1 day"
+    assert expected.life_expectancy is not None
+    assert expected.life_expectancy.optical_breakout_window == "about 1 day"
+    assert field.breakout.class_window == "n/a"
+    # Enrichment attaches inventory-schema life with n/a — never clones RSG.
+    assert field.life_expectancy is not None
+    assert field.life_expectancy.optical_breakout_window == "n/a"
+    assert field.composition and "A0V" in field.composition
+    assert field.spectral_type == "A0V"
+    assert field.rank_reasoning
+    assert field.breakout.class_window != expected.breakout.class_window
+
+
+def test_rank_bsc5_supergiant_gets_class_breakout(tmp_path: Path) -> None:
+    """Published luminosity-I SpType → progenitor class + real breakout window."""
+    inv_path = tmp_path / "inv.parquet"
+    build_inventory(out_path=inv_path, reviewed_utc=T0)
+    candidates = [
+        {
+            "star_id": "HR 7001",
+            "ra_deg": 100.0,
+            "dec_deg": 10.0,
+            "class": "RSG",
+            "spectral_type": "M2 Iab",
+            "p_sky": 0.4,
+            "source": "yale_bsc5_v50",
+            "notes": "Yale BSC5 SpType=M2 Iab",
+            "catalog_refs": [{"catalog": "V/50", "bibcode": "1991bsc..book.....H"}],
+            "simulated": True,
+        }
+    ]
+    scores = rank_with_grok(
+        candidates,
+        skymap=_skymap(),
+        t0_utc=T0,
+        inventory_path=inv_path,
+        index={},
+        force_offline=True,
+    )
+    assert len(scores) == 1
+    hit = scores[0]
+    assert hit.class_ == "RSG"
+    assert hit.breakout.class_window == "about 1 day"
+    assert hit.life_expectancy is not None
+    assert hit.life_expectancy.optical_breakout_window == "about 1 day"
+    assert hit.composition and "M2 Iab" in hit.composition
+    assert hit.rank_confidence is not None
+
+
 def test_monitor_replay_dry_run(tmp_path: Path) -> None:
     inv = tmp_path / "inv.parquet"
     build_inventory(out_path=inv, reviewed_utc=T0)

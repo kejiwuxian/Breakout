@@ -7,7 +7,8 @@
           "enum": [
             "minutes",
             "hours",
-            "about 1 day"
+            "about 1 day",
+            "n/a"
           ],
           "title": "Class Window",
           "type": "string"
@@ -65,7 +66,8 @@
           "enum": [
             "minutes",
             "hours",
-            "about 1 day"
+            "about 1 day",
+            "n/a"
           ],
           "title": "Optical Breakout Window",
           "type": "string"
@@ -149,7 +151,8 @@
         "YSG",
         "WR",
         "LBV",
-        "AGN"
+        "AGN",
+        "UNK"
       ],
       "title": "Class",
       "type": "string"
@@ -273,6 +276,19 @@
     "star_id": {
       "title": "Star Id",
       "type": "string"
+    },
+    "vmag": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional V magnitude for skymap sizing (e.g. Yale BSC5).",
+      "title": "Vmag"
     }
   },
   "required": [

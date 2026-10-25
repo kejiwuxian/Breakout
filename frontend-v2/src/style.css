@@ -272,58 +272,64 @@ body::before {
   stroke-width: 0.7;
 }
 
-.sky-galactic {
-  fill: none;
-  stroke: rgba(255, 196, 120, 0.45);
-  stroke-width: 1.1;
-  stroke-dasharray: 4 3;
+.sky-field {
+  pointer-events: auto;
 }
 
 .sky-field-star {
-  fill: rgba(238, 243, 247, 0.55);
+  fill: rgba(238, 243, 247, 0.85);
   stroke: none;
+  pointer-events: auto;
 }
 
-.sky-prob-cell {
-  fill: #3ecf8e;
-  stroke: none;
+.sky-field-star:hover {
+  fill: #fff6d6;
 }
 
-.sky-nest-inner {
-  fill: rgba(62, 207, 142, 0.12);
-  stroke: rgba(62, 207, 142, 0.45);
-  stroke-width: 1;
-}
-
-.sky-nest-outer {
-  fill: rgba(62, 207, 142, 0.06);
-  stroke: rgba(62, 207, 142, 0.35);
-  stroke-width: 1;
-}
-
-.sky-outline {
-  fill: rgba(226, 59, 59, 0.14);
-  stroke: #ff4d4d;
-  stroke-width: 2.5;
+/*
+ * Dual AOI marks — fill none. Stroke color/opacity is set inline in sky.ts by
+ * projected size (larger/outer translucent, smaller/inner opaque), not by
+ * class name (IceCube peak ring is often the visual outer mark).
+ */
+.sky-outline,
+.sky-outline-peak {
+  fill: none;
+  stroke-width: 2.25;
   stroke-linejoin: round;
   stroke-linecap: round;
-  paint-order: stroke fill;
+  vector-effect: non-scaling-stroke;
+  filter: none;
+}
+
+.sky-outline-peak {
+  stroke-width: 2.5;
+}
+
+.sky-outline[data-aoi-role="outer"],
+.sky-outline-peak[data-aoi-role="outer"] {
+  stroke: rgba(255, 0, 0, 0.4);
+}
+
+.sky-outline[data-aoi-role="inner"],
+.sky-outline-peak[data-aoi-role="inner"] {
+  stroke: #ff0000;
 }
 
 .sky-star {
   pointer-events: auto;
 }
 
+/* Ranked AOI stars: same magnitude radius as field; pure red, no border/glow. */
 .sky-star circle {
-  fill: var(--signal);
-  stroke: #071018;
-  stroke-width: 1.5;
-  opacity: 0.95;
+  fill: #ff0000;
+  stroke: none;
+  filter: none;
 }
 
 .sky-star:hover circle {
-  fill: #ffd166;
-  stroke: #e23b3b;
+  fill: #ff0000;
+  stroke: none;
+  filter: none;
 }
 
 .sky-hover {
@@ -601,7 +607,79 @@ body::before {
   font-size: 0.84rem;
 }
 
-/* —— Community subscribe —— */
+/* —— Subscribe to events —— */
+.subscribe-open {
+  color: var(--signal, #3ecf8e);
+}
+
+.subscribe-docs {
+  margin: 0.75rem 0 1rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid rgba(158, 179, 196, 0.22);
+  background: rgba(7, 16, 24, 0.45);
+}
+
+.subscribe-docs-title {
+  margin: 0 0 0.45rem;
+  font-family: var(--font-display, inherit);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--paper, #eef3f7);
+}
+
+.subscribe-docs-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(238, 243, 247, 0.82);
+}
+
+.subscribe-docs-list strong {
+  color: var(--paper, #eef3f7);
+}
+
+.subscribe-docs-list p {
+  margin: 0.2rem 0 0.35rem;
+}
+
+.subscribe-code {
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  overflow-x: auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  white-space: pre;
+  color: #d7e6f2;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(158, 179, 196, 0.18);
+}
+
+.subscribe-tokens {
+  margin: 0.6rem 0;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid rgba(62, 207, 142, 0.35);
+  background: rgba(62, 207, 142, 0.08);
+}
+
+.subscribe-ws-status {
+  margin: 0.35rem 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  color: rgba(238, 243, 247, 0.75);
+}
+
+.subscribe-alert-line {
+  margin: 0.2rem 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.7rem;
+  color: var(--paper, #eef3f7);
+}
+
 .subscribe-honesty,
 .subscribe-dry {
   margin-top: -0.35rem;

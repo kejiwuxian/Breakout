@@ -96,7 +96,7 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
 
 - `Evidence` — `{ bibcode, claim }` (no bibcode → no claim)
 - `Literature` — `{ mass_loss, variability, evolved_stage, confidence }` each in `[0, 1]`, plus `evidence: list[Evidence]`
-- `Breakout` — `{ class_window: minutes | hours | about 1 day, countdown_from }`
+- `Breakout` — `{ class_window: minutes | hours | about 1 day | n/a, countdown_from }` (`n/a` for `UNK` field stars with no progenitor-class prior)
 - `LifeExpectancyInfo` (v1.1, optional) — class optical-breakout window + optional ADS stage note
 
 ```json
@@ -104,7 +104,7 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
   "star_id": "string",
   "ra_deg": 0.0,
   "dec_deg": 0.0,
-  "class": "RSG | BSG | YSG | WR | LBV",
+  "class": "RSG | BSG | YSG | WR | LBV | AGN | UNK",
   "spectral_type": "string",
   "distance_kpc": null,
   "extinction_av_mag": null,
@@ -119,7 +119,7 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
   "presn_watch": false,
   "posterior": 0.0,
   "breakout": {
-    "class_window": "minutes | hours | about 1 day",
+    "class_window": "minutes | hours | about 1 day | n/a",
     "countdown_from": "ISO-8601"
   },
   "ir_followup": false,
@@ -131,9 +131,17 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
 }
 ```
 
+`UNK` (Yale BSC5 / field catalog hits without a progenitor class) use
+`breakout.class_window = "n/a"` and leave `life_expectancy` null — they must
+not inherit an RSG/`about 1 day` window from the top expected star.
+
 v1.1 additive fields default to `null` so legacy consumers keep working. They are
 filled by `backend.progenitors.rank_runtime.rank_with_grok` from the offline
-inventory (and optional live Grok shortlist rank when keys allow).
+inventory ∪ `data/stars/replay_rank_enrichment.parquet` (Yale BSC5 SpType /
+parallax profiles for AOI field stars; rebuild with
+`python -m backend.progenitors enrich-replay`) and optional live Grok shortlist
+rank when keys allow. Truly unclassified field stars keep breakout / life
+`n/a` — they do not inherit an RSG window.
 
 Tony imports:
 
@@ -409,7 +417,8 @@ See full schema: [`schemas/CandidateScore.schema.json`](schemas/CandidateScore.s
           "enum": [
             "minutes",
             "hours",
-            "about 1 day"
+            "about 1 day",
+            "n/a"
           ],
           "title": "Class Window",
           "type": "string"

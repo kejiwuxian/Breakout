@@ -141,6 +141,31 @@ def test_rerank_class_weight_prefers_rsg_over_wr_at_equal_p_sky(tmp_path: Path) 
     assert scores[1].breakout.class_window == "minutes"
 
 
+def test_rerank_unk_field_stars_do_not_clone_rsg_breakout(tmp_path: Path) -> None:
+    """AOI BSC5/UNK rows must keep absent breakout — not RSG 'about 1 day'."""
+    index = _write_index(
+        tmp_path / "index.parquet",
+        [
+            {"star_id": "* alf Ori", "confidence": 0.9},
+            {"star_id": "HR 1234", "confidence": 0.0},
+            {"star_id": "HR 5678", "confidence": 0.0},
+        ],
+    )
+    candidates = [
+        _cand("* alf Ori", p_sky=0.5, cls="RSG"),
+        _cand("HR 1234", p_sky=0.3, cls="UNK"),
+        _cand("HR 5678", p_sky=0.2, cls="UNK"),
+    ]
+    scores = rerank(candidates, index, set(), t0_utc=T0)
+    by_id = {s.star_id: s for s in scores}
+    assert by_id["* alf Ori"].breakout.class_window == "about 1 day"
+    assert by_id["HR 1234"].breakout.class_window == "n/a"
+    assert by_id["HR 5678"].breakout.class_window == "n/a"
+    # Inventory life is attached later; rerank itself leaves life null.
+    assert by_id["HR 1234"].life_expectancy is None
+    assert by_id["HR 5678"].life_expectancy is None
+
+
 def test_rerank_ir_flag_from_extinction(tmp_path: Path) -> None:
     index = _write_index(tmp_path / "index.parquet", [{"star_id": "dusty", "confidence": 0.2}])
     scores = rerank(

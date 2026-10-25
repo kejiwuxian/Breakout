@@ -1,4 +1,4 @@
-"""Fan-out community alerts to confirmed email subscribers (no webhooks)."""
+"""Fan-out community alerts to WebSocket subscribers (+ optional email stub)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from backend import config as config_mod
 from backend.config import ROOT
 from backend.notify.payload import build_community_alert
 from backend.notify.subscribers import list_subscribers
+from backend.notify.ws_hub import schedule_alert_broadcast, subscribe_hub
 from backend.schemas import Alert, CandidateScore, SkyMap
 
 logger = logging.getLogger("breakout.notify")
@@ -25,7 +26,7 @@ def _append_feed(package: dict[str, Any]) -> None:
 
 
 def _email_stub(email: str, package: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:
-    """Email delivery: dry-run unless SMTP env is configured (Phase 1 default dry-run)."""
+    """Optional email mirror: dry-run unless SMTP env is configured."""
     smtp_host = (getattr(config_mod.settings, "smtp_host", "") or "").strip()
     if dry_run or not smtp_host:
         logger.info(
@@ -35,7 +36,6 @@ def _email_stub(email: str, package: dict[str, Any], *, dry_run: bool) -> dict[s
             len(package.get("candidates") or []),
         )
         return {"ok": True, "dry_run": True, "channel": "email"}
-    # Live SMTP intentionally minimal — only when operator sets SMTP_HOST.
     return {
         "ok": False,
         "dry_run": False,
@@ -70,30 +70,42 @@ def dispatch_ranked_alert(
     *,
     run_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Build package, append feed, email only *active* (confirmed) subscribers."""
+    """Build package, append feed, push to live WS subscribers, optional email."""
     package = build_community_alert(alert, skymap, candidates)
     _append_feed(package)
 
     dry_run = bool(getattr(config_mod.settings, "notify_dry_run", True))
     deliveries: list[dict[str, Any]] = []
-    # Only confirmed subscribers receive email; webhook path removed.
+
+    schedule_alert_broadcast(package)
+    ws_connected = subscribe_hub.n_connected
+    deliveries.append(
+        {
+            "channel": "websocket",
+            "n_connected": ws_connected,
+            "ok": True,
+            "dry_run": False,
+        }
+    )
+
     for sub in list_subscribers(public=False, active_only=True):
         sid = str(sub.get("id") or "")
         entry: dict[str, Any] = {"subscriber_id": sid, "label": sub.get("label")}
         em = sub.get("email")
         if isinstance(em, str) and em:
             entry["email"] = _email_stub(em, package, dry_run=dry_run)
-        deliveries.append(entry)
+            deliveries.append(entry)
 
     summary = {
         "alert_id": alert.alert_id,
         "simulated": bool(package.get("simulated")),
         "n_candidates": len(package.get("candidates") or []),
-        "n_subscribers": len(deliveries),
+        "n_subscribers": len(list_subscribers(public=True, active_only=True)),
+        "n_ws_connected": ws_connected,
         "dry_run": dry_run,
         "deliveries": deliveries,
         "schema": package.get("schema"),
-        "channels": ["email"],
+        "channels": ["websocket", "email"],
     }
 
     if run_dir is not None:
@@ -109,9 +121,10 @@ def dispatch_ranked_alert(
         )
 
     logger.info(
-        "notify_dispatch alert_id=%s subscribers=%s dry_run=%s simulated=%s",
+        "notify_dispatch alert_id=%s subscribers=%s ws=%s dry_run=%s simulated=%s",
         alert.alert_id,
-        len(deliveries),
+        summary["n_subscribers"],
+        ws_connected,
         dry_run,
         package.get("simulated"),
     )

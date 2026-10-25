@@ -41,13 +41,14 @@ _CLASS_WINDOW_BASIS: dict[str, str] = {
     "RSG": "class optical-breakout window: extended RSG envelopes ~1 day (ADS 2010ApJ...725..904N)",
     "LBV": "class optical-breakout window: LBV inherits hours-scale default (ADS 2010ApJ...725..904N)",
     "AGN": "no CCSN optical breakout; follow-up hours label only",
+    "UNK": "no progenitor class; optical-breakout window absent (field/catalog star)",
 }
 
 
 class LifeExpectancy(BaseModel):
     """Comparable timing context — not a star-specific collapse countdown."""
 
-    optical_breakout_window: Literal["minutes", "hours", "about 1 day"]
+    optical_breakout_window: Literal["minutes", "hours", "about 1 day", "n/a"]
     stellar_stage_note: str | None = Field(
         default=None,
         description="Optional stage note copied from an ADS claim; never invented.",
@@ -315,7 +316,8 @@ def profile_from_row(
     dec = _float_or_none(row.get("dec_deg"))
     if not star_id or ra is None or dec is None:
         return None
-    star_class = _optional_str(row.get("class")) or "RSG"
+    # Field/catalog rows without a class stay UNK — never silently become RSG.
+    star_class = _optional_str(row.get("class")) or "UNK"
     indexed = (index_rows or {}).get(star_id)
     lit = _lit_from_sources(row, indexed)
     life = _life_expectancy(star_class, lit)

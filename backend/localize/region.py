@@ -2,11 +2,13 @@
 
 Derives a **smooth oval** (probability-weighted covariance ellipse) for the
 90% credible region from the fused NESTED HEALPix map, plus public-catalog
-field stars and a galactic-plane guide. Also writes ``region.json`` (and a
-legacy focus PNG for classic UI).
+field stars. Also writes ``region.json`` (and a legacy focus PNG for classic
+UI). The galactic-plane (b=0) guide is intentionally omitted from the skymap.
 
-Never invents coordinates: localization from the fused map; star positions
-from the curated public SIMBAD/VizieR table on disk.
+Never invents coordinates: localization from the fused map; background star
+positions from the committed Yale Bright Star Catalogue subset
+(``data/stars/sky_background.json``, CDS V/50 / NASA HEASARC BSC5P). Ranked
+SN progenitors remain a separate overlay from the curated inventory.
 """
 
 from __future__ import annotations
@@ -28,8 +30,59 @@ from backend.localize.fuse import credible_region_area_deg2, credible_region_pix
 
 logger = logging.getLogger("breakout.localize.region")
 
-SVG_RENDER_VERSION = "svg_v1"
+SVG_RENDER_VERSION = "svg_v2"
 CURATED_STARS_PATH = ROOT / "data" / "stars" / "curated_stars.json"
+SKY_BACKGROUND_PATH = ROOT / "data" / "stars" / "sky_background.json"
+
+# IceCube-scale peak ring: angular radius tied to the drawn outer mark in
+# frontend-v2 sky.ts (PEAK_RING_AOI_RADIUS_DEG). When the credible ellipse is
+# smaller than PEAK_RING_MAJOR_THRESHOLD_DEG, the peak ring is the visual outer
+# AOI — ranking/filter membership expands to this aperture.
+PEAK_RING_AOI_RADIUS_DEG = 4.5
+PEAK_RING_MAJOR_THRESHOLD_DEG = 8.0
+
+
+def outer_aoi_radius_deg(
+    ellipse: dict[str, float],
+    *,
+    nested_ellipses: list[dict[str, Any]] | None = None,
+) -> float:
+    """Angular radius (deg) of the outer AOI used for star ranking.
+
+    Takes the larger of: 90% credible semi-major, any nested ellipse
+    semi-major, and (when the ellipse is tiny enough that the peak ring is
+    drawn) the peak-ring ranking aperture. Geometry — not CSS class names —
+    decides which mark is outer.
+    """
+    majors: list[float] = []
+    try:
+        majors.append(float(ellipse.get("semi_major_deg") or 0.0))
+    except (TypeError, ValueError):
+        majors.append(0.0)
+    if nested_ellipses:
+        for item in nested_ellipses:
+            if not isinstance(item, dict):
+                continue
+            ell = item.get("ellipse")
+            if not isinstance(ell, dict):
+                continue
+            try:
+                majors.append(float(ell.get("semi_major_deg") or 0.0))
+            except (TypeError, ValueError):
+                continue
+    outer = max(majors) if majors else 0.0
+    if outer < PEAK_RING_MAJOR_THRESHOLD_DEG:
+        outer = max(outer, float(PEAK_RING_AOI_RADIUS_DEG))
+    return float(outer)
+
+
+def peak_ring_drawn(ellipse: dict[str, float]) -> bool:
+    """True when the UI draws the IceCube-scale peak ring (tiny ellipse)."""
+    try:
+        major = float(ellipse.get("semi_major_deg") or 0.0)
+    except (TypeError, ValueError):
+        major = 0.0
+    return not (major > 0) or major < PEAK_RING_MAJOR_THRESHOLD_DEG
 
 
 def _unwrap_ra(ras: np.ndarray, *, center_deg: float) -> np.ndarray:
@@ -174,11 +227,61 @@ def focus_fov_deg(
 
 def load_public_field_stars(
     *,
-    path: Path = CURATED_STARS_PATH,
-    limit: int = 80,
+    path: Path | None = None,
+    limit: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Bright progenitor-catalog stars from the public curated SIMBAD table."""
-    path = Path(path)
+    """All-sky background stars for SVG rendering (Yale BSC5 / HEASARC BSC5P).
+
+    Prefers the committed compact catalog at ``SKY_BACKGROUND_PATH`` (thousands
+    of magnitude-limited stars spanning the whole sky). Falls back to the
+    curated progenitor list only when the background file is missing so cold
+    start never invents coordinates.
+    """
+    bg = Path(path) if path is not None else SKY_BACKGROUND_PATH
+    if bg.is_file():
+        try:
+            payload = json.loads(bg.read_text(encoding="utf-8"))
+        except Exception:
+            logger.exception("failed_reading_sky_background path=%s", bg)
+            payload = None
+        rows: list[Any]
+        if isinstance(payload, dict):
+            rows = payload.get("stars") if isinstance(payload.get("stars"), list) else []
+        elif isinstance(payload, list):
+            rows = payload
+        else:
+            rows = []
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            try:
+                ra = float(row["ra_deg"])
+                dec = float(row["dec_deg"])
+            except Exception:
+                continue
+            item: dict[str, Any] = {
+                "star_id": str(row.get("star_id") or ""),
+                "common_name": row.get("common_name"),
+                "ra_deg": ra,
+                "dec_deg": dec,
+                "source": "yale_bsc5_v50",
+            }
+            if row.get("vmag") is not None:
+                try:
+                    item["vmag"] = float(row["vmag"])
+                except Exception:
+                    pass
+            if row.get("class"):
+                item["class"] = str(row["class"])
+            out.append(item)
+            if limit is not None and len(out) >= int(limit):
+                break
+        if out:
+            return out
+
+    # Offline fallback: curated progenitors (sparse — not a uniform sky).
+    path = CURATED_STARS_PATH
     if not path.is_file():
         return []
     try:
@@ -186,10 +289,11 @@ def load_public_field_stars(
     except Exception:
         logger.exception("failed_reading_curated_stars path=%s", path)
         return []
-    out: list[dict[str, Any]] = []
+    out = []
     if not isinstance(rows, list):
         return out
-    for row in rows[:limit]:
+    cap = 80 if limit is None else int(limit)
+    for row in rows[:cap]:
         if not isinstance(row, dict):
             continue
         try:
@@ -273,13 +377,26 @@ def healpix_prob_cells(
 
 
 def public_sky_base() -> dict[str, Any]:
-    """Layers that do not require an alert: public catalog + galactic plane."""
+    """Layers that do not require an alert: BSC5 background field stars."""
+    field = load_public_field_stars()
+    source = (
+        "yale_bsc5_v50"
+        if field and field[0].get("source") == "yale_bsc5_v50"
+        else "curated_fallback"
+    )
     return {
         "frame": "ICRS",
         "render": SVG_RENDER_VERSION,
-        "field_stars": load_public_field_stars(),
-        "galactic_plane": galactic_plane_icrs(),
-        "source": "public_catalog+astropy_galactic",
+        "field_stars": field,
+        # Galactic plane guide removed from the skymap (no dashed b=0 line).
+        "galactic_plane": [],
+        "source": source,
+        "field_catalog": (
+            "Yale Bright Star Catalogue 5th Ed. (Hoffleit+1991) V<=6.5"
+            if source.startswith("yale_bsc5")
+            else "curated_stars.json fallback"
+        ),
+        "n_field_stars": len(field),
     }
 
 
@@ -306,6 +423,10 @@ def build_region_payload(
             }
         )
     base = public_sky_base()
+    # Do not embed the full ~8k-star background in every region.json — the UI
+    # loads field stars once from ``/api/sky/base``. Keep an empty list so
+    # older clients still see the key.
+    outer_r = outer_aoi_radius_deg(ellipse, nested_ellipses=nested)
     return {
         "alert_id": alert_id,
         "level": level,
@@ -320,11 +441,15 @@ def build_region_payload(
         "shape": "ellipse",
         "render": SVG_RENDER_VERSION,
         "nested_ellipses": nested,
+        "outer_aoi_radius_deg": float(outer_r),
+        "peak_ring": bool(peak_ring_drawn(ellipse)),
         "prob_cells": healpix_prob_cells(prob, level=level),
-        "field_stars": base["field_stars"],
-        "galactic_plane": base["galactic_plane"],
+        "field_stars": [],
+        "field_stars_via": "/api/sky/base",
+        "n_field_stars_base": int(base.get("n_field_stars") or 0),
+        "galactic_plane": [],
         "simulated": bool(simulated),
-        "survey_hint": "public_catalog_svg",
+        "survey_hint": "yale_bsc5_svg",
     }
 
 

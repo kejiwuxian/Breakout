@@ -1,0 +1,24 @@
+{
+  "path": "data/stars/sky_background.json",
+  "built_at_utc": "2026-10-25T12:53:53Z",
+  "source_url": "file:///tmp/bsc5/catalog.gz",
+  "source_sha256": "3dc44b1e90be8fbe5bcc7656032560f51275f985c7e3f783c9028e1838ec7bed",
+  "cds_vizier": "https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=V/50",
+  "nasa_heasarc_bsc5p": "https://heasarc.gsfc.nasa.gov/W3Browse/star-catalog/bsc5p.html",
+  "bibcode": "1991bsc..book.....H",
+  "attribution": "Bright Star Catalogue, 5th Revised Ed. (Hoffleit+, 1991). CDS catalogue V/50; NASA HEASARC BSC5P is derived from the same edition. Redistributed here as a compact magnitude-limited subset for offline SVG rendering.",
+  "license_note": "Astronomical catalogue data from CDS/VizieR; redistributed as a compact derived table for BREAKOUT offline rendering. Cite Hoffleit & Warren 1991 (bibcode 1991bsc..book.....H) and CDS V/50.",
+  "vmax": 6.5,
+  "n_raw_rows": 9110,
+  "coverage": {
+    "n": 8404,
+    "ra_min_deg": 0.08,
+    "ra_max_deg": 359.9792,
+    "dec_min_deg": -88.9564,
+    "dec_max_deg": 89.2642,
+    "vmag_min": -1.46,
+    "vmag_max": 6.5,
+    "sky_bins_occupied_of_72": 72
+  },
+  "rebuild": "python scripts/build_sky_background_catalog.py"
+}

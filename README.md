@@ -19,7 +19,7 @@ MVP gate: `bash scripts/mvp_gate.sh` must print PASS. Phase 2 sponsor integratio
 
 ## After MVP gate
 
-Full post-gate index: [`docs/post-mvp.md`](docs/post-mvp.md) — idle live-waiting default, SVG skymap zoom/pan, progenitor inventory (CandidateScore v1.1), two-token community push, DiffPointing / live channels, Apify behind flags.
+Full post-gate index: [`docs/post-mvp.md`](docs/post-mvp.md) — idle live-waiting default, SVG skymap zoom/pan, progenitor inventory (CandidateScore v1.1), Subscribe to events (access + refresh over WebSocket), DiffPointing / live channels, Apify behind flags.
 
 ## Quick start
 
@@ -35,26 +35,24 @@ npm --prefix frontend install && npm --prefix frontend run dev         # :5173
 
 Offline capability (`USE_CACHED_STREAM=True`): fixtures under `data/cache/` are available, with **no network** on the trigger path — but scenarios do **not** auto-play. Cold start is idle / listening (hello `scenario=live_waiting`); use the UI **Replay** rail or `POST /scenario/{name}/start` to inject simulated events. Opt-in auto-replay only with `BREAKOUT_AUTOSTART=1`. Keys may stay empty. Label every simulated number (`simulated=true` in JSON; Simulated badge in the UI).
 
-**Skymap:** pure SVG Mollweide; field stars are the curated progenitor catalog (not a uniform all-sky survey); dashed line = galactic plane; wheel zoom + drag pan; auto zoom to the localization oval on event.
+**Skymap:** pure SVG Mollweide; **background field** = Yale Bright Star Catalogue 5th Ed. (Hoffleit+1991 / CDS V/50 / NASA HEASARC BSC5P, V≤6.5, ~8.4k stars — rebuild with `python scripts/build_sky_background_catalog.py`); **ranked progenitors** stay a separate curated-inventory overlay (pure red, magnitude-matched radius). Wheel zoom + drag pan; auto zoom to the localization oval on event.
 
 ## Community alerts (Phase 1) — catch potential SNe today
 
-**UI:** frontend-v2 (`:5174`) rail **Community push**, or the classic dashboard (`:5173`) **Community alerts** panel — **two-token email** confirm (no webhook), status line, honesty note, link to `/alerts/latest`.
+**UI:** frontend-v2 (`:5174`) rail **Subscribe to events**, or the classic dashboard (`:5173`) **Community alerts** panel — **access + refresh** tokens over WebSocket, honesty note, link to `/alerts/latest`.
 
-Confirm an email, then receive ranked ICRS targets by email on the next SN_BURST / HE_NEUTRINO candidate set:
+Issue tokens, connect `/ws/subscribe`, and receive ranked ICRS targets on the next SN_BURST / HE_NEUTRINO candidate set:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/subscribe/request \
+curl -X POST http://127.0.0.1:8000/subscribe \
   -H 'Content-Type: application/json' \
   -d '{"email":"you@observatory.edu","label":"campus-0.3m"}'
-# dry-run returns request_token + confirm_token under dry_run — then:
-curl -X POST http://127.0.0.1:8000/subscribe/confirm \
-  -H 'Content-Type: application/json' \
-  -d '{"request_token":"…","confirm_token":"…"}'
+# → access_token + refresh_token; open ws://127.0.0.1:8000/ws/subscribe?access_token=…
+# Refresh: POST /subscribe/refresh {"refresh_token":"…"} then send the new access_token on the live WS.
 curl http://127.0.0.1:8000/alerts/latest
 ```
 
-Default `NOTIFY_DRY_RUN=True` returns Simulated/dry-run tokens in the API and logs alert emails (no SMTP). Only confirmed subscribers are emailed. This is community follow-up for potential counterparts, not a confirmed supernova detection service. Full walkthrough: [`docs/community-subscribe.md`](docs/community-subscribe.md).
+Default live push is WebSocket (`/ws/subscribe`) with access + refresh tokens. `NOTIFY_DRY_RUN=True` logs optional email mirrors (no SMTP). This is community follow-up for potential counterparts, not a confirmed supernova detection service. Full walkthrough: [`docs/community-subscribe.md`](docs/community-subscribe.md).
 
 ## Layout
 

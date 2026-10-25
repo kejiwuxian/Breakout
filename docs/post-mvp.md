@@ -13,7 +13,7 @@ gate. Honesty rules unchanged: never invent numbers/bibcodes; label
 | **SVG skymap** | Pure SVG Mollweide: curated progenitor field stars, galactic plane (dashed), HEALPix cells, smooth localization oval. | `backend/localize/region.py`, `frontend-v2/src/panels/sky.ts` |
 | **Zoom / pan** | Auto zoom-to-AOI on event; mouse wheel zoom; drag pan; double-click / reset to full sky. | `frontend-v2/src/panels/sky.ts` |
 | **Progenitor inventory** | Offline inventory of SN-potential stars (position, composition, class life window, confidence). Runtime AOI filter + `rank_with_grok` (offline when cached / no key). | `backend/progenitors/`, CandidateScore **v1.1** |
-| **Community push** | Two-token email confirm (**no webhook**); only active subscribers get email; `/alerts/latest` feed. | `backend/notify/`, frontend-v2 **Community push** rail |
+| **Subscribe to events** | Access + refresh tokens over **`/ws/subscribe`** (auto-close on access expiry); `/alerts/latest` feed. | `backend/notify/`, frontend-v2 **Subscribe to events** rail |
 | **DiffPointing + live channels** | SNEWS-style timing localization; public GCN/Hopskotch subscriptions when `USE_CACHED_STREAM=False`. | `backend/localize/snews_diffpointing.py`, `backend/ingest/live_channels.py` |
 | **Actions + Voice** | LCOGT/ToO/GCN drafts; Grok Voice announcer + judge tools. | `backend/actions/`, `backend/voice/` |
 | **Apify literature (P2.3)** | Optional offline actor behind `APIFY_ENABLED=False` by default. | `actors/breakout-star-literature/`, `backend/integrations/apify_literature.py` |
@@ -40,6 +40,9 @@ npm --prefix frontend-v2 run dev   # :5174
 # Rebuild progenitor inventory offline
 python -m backend.progenitors refresh
 python -m backend.progenitors status
+# Materialize inventory-schema enrichment for every AOI-ranked replay star
+# (Yale BSC5 SpType → composition / life window; no live Grok required)
+python -m backend.progenitors enrich-replay
 
 # Manual simulated scenario
 curl -X POST 'http://127.0.0.1:8000/scenario/scenario_a_galactic_ccsn/start?speed=0'

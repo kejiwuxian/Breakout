@@ -10,6 +10,11 @@ deterministic offline fallback otherwise).
 
 from __future__ import annotations
 
+from backend.progenitors.enrich import (
+    ENRICHMENT_PATH,
+    build_replay_enrichment,
+    load_enrichment,
+)
 from backend.progenitors.inventory import (
     INVENTORY_PATH,
     ProgenitorProfile,
@@ -20,9 +25,12 @@ from backend.progenitors.inventory import (
 from backend.progenitors.rank_runtime import rank_with_grok
 
 __all__ = [
+    "ENRICHMENT_PATH",
     "INVENTORY_PATH",
     "ProgenitorProfile",
     "build_inventory",
+    "build_replay_enrichment",
+    "load_enrichment",
     "load_inventory",
     "load_inventory_rows",
     "rank_with_grok",

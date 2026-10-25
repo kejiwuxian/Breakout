@@ -19,6 +19,7 @@ export type CandidateRow = {
   distance_kpc: number | null;
   extinction_av_mag: number | null;
   p_sky: number;
+  vmag?: number | null;
   lit: {
     mass_loss: number;
     variability: number;
@@ -136,9 +137,7 @@ export function hydrateMission(opts: {
     if (typeof opts.simulated === "boolean") {
       state.candidatesSimulated = opts.simulated;
     }
-    if (state.candidates.length && !state.selectedStarId) {
-      state.selectedStarId = state.candidates[0]!.star_id;
-    }
+    // Do not auto-select (e.g. Betelgeuse) — wait for user hover/click.
   }
   if (typeof opts.simulated === "boolean") {
     state.lastSimulated = opts.simulated;
@@ -185,9 +184,7 @@ export function applyEvent(event: PipelineEvent): void {
     const list = (event.payload.candidates as CandidateRow[]) || [];
     state.candidates = [...list].sort((a, b) => b.posterior - a.posterior);
     state.candidatesSimulated = Boolean(event.simulated);
-    if (state.candidates.length && !state.selectedStarId) {
-      state.selectedStarId = state.candidates[0]!.star_id;
-    }
+    // Keep selection null until the user picks a star on the map or table.
   }
 
   if (event.type === "voice" && event.payload) {

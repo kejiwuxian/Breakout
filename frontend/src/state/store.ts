@@ -141,7 +141,7 @@ export function applyEvent(event: PipelineEvent): void {
     state.candidates = [...list].sort((a, b) => b.posterior - a.posterior);
     state.candidatesSimulated = Boolean(event.simulated);
     if (state.candidates.length && !state.selectedStarId) {
-      state.selectedStarId = state.candidates[0].star_id;
+      // no auto-select
     }
   }
 

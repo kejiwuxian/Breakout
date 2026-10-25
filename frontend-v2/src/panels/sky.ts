@@ -1,5 +1,5 @@
 /**
- * Pure-SVG Mollweide skymap. Public catalog stars + galactic plane + HEALPix
+ * Pure-SVG Mollweide skymap. Public catalog stars + HEALPix
  * localization cells + smooth 90% oval. Zoom/pan is SVG viewBox camera —
  * no raster PNG swap, no CSS scale.
  */
@@ -17,9 +17,89 @@ import {
   createSvgEl,
   drawEquatorialGrid,
   mollweideLimbPath,
-  projectPolyline,
   projectRing,
 } from "../sky/svgMap";
+
+
+/** Shared magnitude → radius/opacity for field stars and ranked AOI stars. */
+export function starStyleFromVmag(vmag: number | null | undefined): {
+  r: number;
+  opacity: number;
+} {
+  const v =
+    vmag != null && !Number.isNaN(Number(vmag)) ? Number(vmag) : 5.5;
+  return {
+    r: Math.max(0.55, Math.min(2.8, 2.35 - 0.28 * v)),
+    opacity: Math.max(0.22, Math.min(0.9, 0.82 - 0.09 * v)),
+  };
+}
+
+/**
+ * Angular radius of the IceCube-scale peak ring — must match backend
+ * ``PEAK_RING_AOI_RADIUS_DEG`` (outer AOI ranking floor).
+ */
+export const PEAK_RING_AOI_RADIUS_DEG = 4.5;
+/** Draw peak ring when credible semi-major is below this (matches backend). */
+export const PEAK_RING_MAJOR_THRESHOLD_DEG = 8;
+
+const AOI_STROKE_OUTER = "rgba(255, 0, 0, 0.4)";
+const AOI_STROKE_INNER = "#ff0000";
+
+/** Projected SVG radius of the peak ring at ``(ra, dec)``. */
+export function peakRingRadiusPx(
+  raDeg: number,
+  decDeg: number,
+  width: number,
+  height: number,
+  radiusDeg = PEAK_RING_AOI_RADIUS_DEG,
+): number | null {
+  const center = raDecToMollweide(raDeg, decDeg, width, height);
+  if (!center) return null;
+  const edgeDec = Math.max(-90, Math.min(90, decDeg + radiusDeg));
+  const edge = raDecToMollweide(raDeg, edgeDec, width, height);
+  const projected = edge
+    ? Math.hypot(edge.x - center.x, edge.y - center.y)
+    : Math.min(width, height) * 0.022;
+  return Math.max(10, projected);
+}
+
+/** Max distance from ``(cx, cy)`` to points in an SVG ``points`` string. */
+export function projectedOutlineRadiusPx(
+  points: string,
+  cx: number,
+  cy: number,
+): number {
+  let maxR = 0;
+  for (const token of points.trim().split(/\s+/)) {
+    if (!token) continue;
+    const [xs, ys] = token.split(",");
+    const x = Number(xs);
+    const y = Number(ys);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    maxR = Math.max(maxR, Math.hypot(x - cx, y - cy));
+  }
+  return maxR;
+}
+
+/** Assign outer (translucent) vs inner (opaque) strokes by projected size. */
+export function assignAoiStrokeBySize(
+  marks: Array<{ el: Element; sizePx: number }>,
+): void {
+  if (marks.length === 0) return;
+  let outerIdx = 0;
+  for (let i = 1; i < marks.length; i++) {
+    if (marks[i]!.sizePx > marks[outerIdx]!.sizePx) outerIdx = i;
+  }
+  marks.forEach((m, i) => {
+    const outer = i === outerIdx;
+    // Inline style beats stylesheet `stroke: #ff0000` so geometry wins.
+    const el = m.el as HTMLElement & SVGElement;
+    el.setAttribute("fill", "none");
+    el.setAttribute("data-aoi-role", outer ? "outer" : "inner");
+    el.style.fill = "none";
+    el.style.stroke = outer ? AOI_STROKE_OUTER : AOI_STROKE_INNER;
+  });
+}
 
 export type EllipsePayload = {
   ra_deg: number;
@@ -36,6 +116,8 @@ export type FieldStar = {
   ra_deg: number;
   dec_deg: number;
   class?: string;
+  vmag?: number | null;
+  source?: string;
 };
 
 export type ProbCell = {
@@ -120,7 +202,8 @@ async function fetchSkyBase(): Promise<SkyBase> {
     const body = (await res.json()) as SkyBase;
     return {
       field_stars: body.field_stars ?? [],
-      galactic_plane: body.galactic_plane ?? [],
+      // Intentionally unused — galactic plane guide removed from the skymap.
+      galactic_plane: [],
     };
   } catch {
     return { field_stars: [], galactic_plane: [] };
@@ -174,10 +257,13 @@ function candidateHover(row: CandidateRow, rank: number): HoverInfo {
     distance_kpc: row.distance_kpc,
     rank_confidence: row.rank_confidence ?? row.lit?.confidence ?? null,
     composition: row.composition ?? row.spectral_type ?? null,
-    life_window:
-      row.life_expectancy?.optical_breakout_window ??
-      row.breakout?.class_window ??
-      null,
+    life_window: (() => {
+      const life = row.life_expectancy?.optical_breakout_window;
+      if (life && life !== "n/a" && life !== "") return life;
+      const bw = row.breakout?.class_window;
+      if (bw && bw !== "n/a" && bw !== "") return bw;
+      return null;
+    })(),
     life_note: row.life_expectancy?.stellar_stage_note ?? null,
     rank_reasoning: row.rank_reasoning ?? null,
   };
@@ -425,7 +511,7 @@ export function mountSky(host: HTMLElement): () => void {
     if (!skymap) {
       meta.innerHTML = `
         <span>${strings.skyModeFull}</span>
-        <span>${skyBase.field_stars.length} public catalog stars</span>
+        <span>${skyBase.field_stars.length.toLocaleString()} BSC5 field stars</span>
       `;
       syncReset();
       return;
@@ -512,6 +598,27 @@ export function mountSky(host: HTMLElement): () => void {
     camRaf = requestAnimationFrame(tick);
   };
 
+  const showFieldTip = (
+    tip: string | null,
+    clientX?: number,
+    clientY?: number,
+  ) => {
+    if (!tip) {
+      hoverEl.hidden = true;
+      hoverEl.textContent = "";
+      return;
+    }
+    hoverEl.hidden = false;
+    hoverEl.textContent = tip;
+    if (clientX != null && clientY != null) {
+      const rect = host.getBoundingClientRect();
+      const x = Math.min(clientX - rect.left + 12, rect.width - 280);
+      const y = Math.min(clientY - rect.top + 12, rect.height - 120);
+      hoverEl.style.left = `${Math.max(8, x)}px`;
+      hoverEl.style.top = `${Math.max(8, y)}px`;
+    }
+  };
+
   const wireStar = (g: SVGGElement, row: CandidateRow, rank: number) => {
     const info = candidateHover(row, rank);
     g.style.cursor = "pointer";
@@ -562,19 +669,12 @@ export function mountSky(host: HTMLElement): () => void {
 
     drawEquatorialGrid(root, w, h);
 
-    const plane = reg?.galactic_plane?.length
-      ? reg.galactic_plane
-      : skyBase.galactic_plane;
-    if (plane.length >= 2) {
-      const gp = createSvgEl("path");
-      gp.setAttribute("d", projectPolyline(plane, w, h));
-      gp.setAttribute("class", "sky-galactic");
-      root.appendChild(gp);
-    }
-
-    const field = reg?.field_stars?.length
-      ? reg.field_stars
-      : skyBase.field_stars;
+    // Always prefer the dense /api/sky/base catalog. Region payloads omit the
+    // full ~8k-star list so region.json stays small; ranked progenitors are
+    // drawn separately below as .sky-star overlays.
+    const field = skyBase.field_stars.length
+      ? skyBase.field_stars
+      : (reg?.field_stars ?? []);
     const fieldG = createSvgEl("g");
     fieldG.setAttribute("class", "sky-field");
     for (const star of field) {
@@ -583,60 +683,150 @@ export function mountSky(host: HTMLElement): () => void {
       const c = createSvgEl("circle");
       c.setAttribute("cx", String(p.x));
       c.setAttribute("cy", String(p.y));
-      c.setAttribute("r", "1.6");
+      const v =
+        star.vmag != null && !Number.isNaN(Number(star.vmag))
+          ? Number(star.vmag)
+          : 5.5;
+      const { r, opacity } = starStyleFromVmag(v);
+      c.setAttribute("r", String(r));
+      c.setAttribute("fill-opacity", String(opacity));
       c.setAttribute("class", "sky-field-star");
       c.setAttribute("data-id", star.star_id);
+      const label = star.common_name || star.star_id;
+      c.setAttribute(
+        "data-tip",
+        `${label} · V ${v.toFixed(2)} · RA ${star.ra_deg.toFixed(3)}° · Dec ${star.dec_deg.toFixed(3)}°`,
+      );
       fieldG.appendChild(c);
     }
+    fieldG.addEventListener("pointerover", (ev) => {
+      if (pointerDragging) return;
+      const t = ev.target as Element | null;
+      if (!t || t.tagName.toLowerCase() !== "circle") return;
+      const tip = t.getAttribute("data-tip");
+      if (tip) showFieldTip(tip, ev.clientX, ev.clientY);
+    });
+    fieldG.addEventListener("pointermove", (ev) => {
+      if (pointerDragging) return;
+      const t = ev.target as Element | null;
+      if (!t || t.tagName.toLowerCase() !== "circle") return;
+      const tip = t.getAttribute("data-tip");
+      if (tip) showFieldTip(tip, ev.clientX, ev.clientY);
+    });
+    fieldG.addEventListener("pointerout", (ev) => {
+      const related = ev.relatedTarget as Node | null;
+      if (related && fieldG.contains(related)) return;
+      if (!pointerDragging) showFieldTip(null);
+    });
     root.appendChild(fieldG);
 
     if (reg) {
-      const cellsG = createSvgEl("g");
-      cellsG.setAttribute("class", "sky-prob-cells");
-      for (const cell of reg.prob_cells ?? []) {
-        const pts = projectRing(cell.corners, w, h);
-        if (!pts) continue;
-        const poly = createSvgEl("polygon");
-        poly.setAttribute("points", pts);
-        poly.setAttribute("class", "sky-prob-cell");
-        poly.setAttribute(
-          "fill-opacity",
-          String(Math.min(0.75, 0.12 + 0.65 * (cell.weight || 0))),
-        );
-        cellsG.appendChild(poly);
-      }
-      root.appendChild(cellsG);
+      // Two intentional red AOI marks only — no HEALPix fills or nested light
+      // ellipses (those were the green/white clutter). Opacity is assigned by
+      // projected size (larger/outer = translucent; smaller/inner = opaque),
+      // never by CSS class name — IceCube's peak ring is visually outer.
+      const ring = outlineRing(reg);
+      const ovalPts = projectRing(ring, w, h);
+      const aoiMarks: Array<{ el: Element; sizePx: number }> = [];
+      const peakPt = reg.peak
+        ? raDecToMollweide(reg.peak.ra_deg, reg.peak.dec_deg, w, h)
+        : null;
+      const ovalCenter = peakPt
+        ? peakPt
+        : reg.ellipse
+          ? raDecToMollweide(reg.ellipse.ra_deg, reg.ellipse.dec_deg, w, h)
+          : null;
 
-      for (const nest of reg.nested_ellipses ?? []) {
-        const pts = projectRing(nest.outline, w, h);
-        if (!pts) continue;
-        const poly = createSvgEl("polygon");
-        poly.setAttribute("points", pts);
-        poly.setAttribute(
-          "class",
-          nest.level >= 0.85 ? "sky-nest-outer" : "sky-nest-inner",
-        );
-        root.appendChild(poly);
-      }
-
-      const ovalPts = projectRing(outlineRing(reg), w, h);
       if (ovalPts) {
         const oval = createSvgEl("polygon");
         oval.setAttribute("points", ovalPts);
         oval.setAttribute("class", "sky-outline");
+        oval.setAttribute("vector-effect", "non-scaling-stroke");
+        oval.setAttribute("fill", "none");
         root.appendChild(oval);
+        const cx = ovalCenter?.x ?? w / 2;
+        const cy = ovalCenter?.y ?? h / 2;
+        aoiMarks.push({
+          el: oval,
+          sizePx: projectedOutlineRadiusPx(ovalPts, cx, cy),
+        });
       }
+      // Tiny IceCube-scale ellipses get a readable peak ring sized to the
+      // shared outer-AOI angular radius (ranking aperture).
+      const major = Number(reg.ellipse?.semi_major_deg ?? 0);
+      const needsPeakRing =
+        !ovalPts || !(major > 0) || major < PEAK_RING_MAJOR_THRESHOLD_DEG;
+      if (reg.peak && needsPeakRing) {
+        const peak = peakPt;
+        const rPx = peakRingRadiusPx(
+          reg.peak.ra_deg,
+          reg.peak.dec_deg,
+          w,
+          h,
+        );
+        if (peak && rPx != null) {
+          const ringEl = createSvgEl("circle");
+          ringEl.setAttribute("cx", String(peak.x));
+          ringEl.setAttribute("cy", String(peak.y));
+          ringEl.setAttribute("r", String(rPx));
+          ringEl.setAttribute("class", "sky-outline-peak");
+          ringEl.setAttribute("vector-effect", "non-scaling-stroke");
+          ringEl.setAttribute("fill", "none");
+          root.appendChild(ringEl);
+          aoiMarks.push({ el: ringEl, sizePx: rPx });
+        }
+      }
+      assignAoiStrokeBySize(aoiMarks);
     }
 
+    const fieldById = new Map(
+      field.map((s) => [s.star_id, s] as const),
+    );
+    const fieldElById = new Map<string, Element>();
+    for (const el of Array.from(fieldG.querySelectorAll("[data-id]"))) {
+      const id = el.getAttribute("data-id");
+      if (id) fieldElById.set(id, el);
+    }
+    const nRanked = Math.max(candidates.length, 1);
     candidates.forEach((row, idx) => {
       const p = raDecToMollweide(row.ra_deg, row.dec_deg, w, h);
       if (!p) return;
+      // Hide the matching field-star underlay so size does not visually double.
+      const under = fieldById.get(row.star_id);
+      const underEl = fieldElById.get(row.star_id);
+      if (underEl) underEl.setAttribute("visibility", "hidden");
       const g = createSvgEl("g");
       g.setAttribute("class", "sky-star");
       const c = createSvgEl("circle");
       c.setAttribute("cx", String(p.x));
       c.setAttribute("cy", String(p.y));
-      c.setAttribute("r", idx === 0 ? "6.5" : "5");
+      let vmag =
+        (row as CandidateRow & { vmag?: number | null }).vmag ??
+        under?.vmag ??
+        null;
+      if (vmag == null) {
+        let best: { d: number; v: number } | null = null;
+        for (const s of field) {
+          if (s.vmag == null) continue;
+          const dra =
+            (s.ra_deg - row.ra_deg) *
+            Math.cos(((s.dec_deg + row.dec_deg) * Math.PI) / 360);
+          const ddec = s.dec_deg - row.dec_deg;
+          const d = Math.hypot(dra, ddec);
+          if (d < 0.05 && (!best || d < best.d)) {
+            best = { d, v: Number(s.vmag) };
+          }
+        }
+        vmag = best?.v ?? null;
+      }
+      // Same magnitude radius as field stars — do not enlarge after replay.
+      const { r } = starStyleFromVmag(vmag);
+      // Pure red; opacity by rank (1st most opaque → lower ranks more transparent).
+      const opacity = Math.max(0.22, 1 - (idx / nRanked) * 0.78);
+      c.setAttribute("r", String(r));
+      c.setAttribute("fill", "#ff0000");
+      c.setAttribute("fill-opacity", String(opacity));
+      c.setAttribute("stroke", "none");
       g.appendChild(c);
       wireStar(g, row, idx + 1);
       root.appendChild(g);
