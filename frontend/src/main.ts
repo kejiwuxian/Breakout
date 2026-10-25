@@ -11,8 +11,10 @@ import { mountSubscribe } from "./panels/subscribe";
 import { handleVoiceEvent, mountVoice } from "./panels/voice";
 import {
   applyEvent,
+  beginScenarioSwitch,
   getState,
   hydrateMission,
+  packageMatchesScenario,
   setConnected,
   subscribe,
   type CandidateRow,
@@ -22,6 +24,19 @@ import { connectEvents } from "./ws/events";
 
 type CommunityCandidate = CandidateRow & {
   evidence?: { bibcode: string; claim: string }[];
+};
+
+type LatestPackage = {
+  alert_id?: string;
+  simulated?: boolean;
+  skymap?: {
+    peak_ra_deg?: number;
+    peak_dec_deg?: number;
+    credible_90_deg2?: number;
+    components?: string[];
+    simulated?: boolean;
+  };
+  candidates?: CommunityCandidate[];
 };
 
 /** Normalize community-alert rows into CandidateRow (lit + v1.1 fields). */
@@ -59,6 +74,25 @@ function wantsHydrateFromLatest(): boolean {
   }
 }
 
+function packageToSkymap(pkg: LatestPackage): SkymapPayload | null {
+  if (!pkg?.alert_id || !pkg.skymap) return null;
+  const sky = pkg.skymap;
+  return {
+    alert_id: pkg.alert_id,
+    nside: 64,
+    ordering: "NESTED",
+    frame: "ICRS",
+    prob_path: `data/run/${pkg.alert_id}/skymap.fits`,
+    components: sky.components ?? [],
+    credible_90_deg2: Number(sky.credible_90_deg2 ?? 0),
+    peak: {
+      ra_deg: Number(sky.peak_ra_deg ?? 0),
+      dec_deg: Number(sky.peak_dec_deg ?? 0),
+    },
+    simulated: Boolean(sky.simulated ?? pkg.simulated),
+  };
+}
+
 /**
  * Optionally seed skymap + candidates from /alerts/latest.
  * Default cold start stays empty (listening) — only hydrate with ?hydrate=1
@@ -67,49 +101,68 @@ function wantsHydrateFromLatest(): boolean {
 async function hydrateFromLatest(opts?: {
   /** Default true for page-load hydrate; false after Scenario Run so AOI zoom plays. */
   suppressZoom?: boolean;
-}): Promise<void> {
+  /** Only accept a package that belongs to this scenario (avoids stale flash). */
+  scenarioId?: string;
+  /** Reject if the user already started another scenario. */
+  expectEpoch?: number;
+}): Promise<boolean> {
   try {
     const res = await fetch("/alerts/latest", { cache: "no-store" });
-    if (!res.ok) return;
-    const body = (await res.json()) as {
-      packages?: Array<{
-        alert_id?: string;
-        simulated?: boolean;
-        skymap?: {
-          peak_ra_deg?: number;
-          peak_dec_deg?: number;
-          credible_90_deg2?: number;
-          components?: string[];
-          simulated?: boolean;
-        };
-        candidates?: CommunityCandidate[];
-      }>;
-    };
-    const pkg = body.packages?.[0];
-    if (!pkg?.alert_id || !pkg.skymap) return;
-    const sky = pkg.skymap;
-    const skymap: SkymapPayload = {
-      alert_id: pkg.alert_id,
-      nside: 64,
-      ordering: "NESTED",
-      frame: "ICRS",
-      prob_path: `data/run/${pkg.alert_id}/skymap.fits`,
-      components: sky.components ?? [],
-      credible_90_deg2: Number(sky.credible_90_deg2 ?? 0),
-      peak: {
-        ra_deg: Number(sky.peak_ra_deg ?? 0),
-        dec_deg: Number(sky.peak_dec_deg ?? 0),
-      },
-      simulated: Boolean(sky.simulated ?? pkg.simulated),
-    };
-    hydrateMission({
+    if (!res.ok) return false;
+    const body = (await res.json()) as { packages?: LatestPackage[] };
+    const packages = body.packages ?? [];
+    const pkg = opts?.scenarioId
+      ? packages.find((p) => packageMatchesScenario(p, opts.scenarioId!))
+      : packages[0];
+    if (!pkg) return false;
+    const skymap = packageToSkymap(pkg);
+    if (!skymap) return false;
+    // WS may have already applied this alert — skip a redundant emit/zoom bump.
+    const current = getState();
+    if (
+      current.skymap?.alert_id === skymap.alert_id &&
+      current.candidates.length > 0
+    ) {
+      return true;
+    }
+    return hydrateMission({
       skymap,
       candidates: normalizeCandidates(pkg.candidates),
-      simulated: Boolean(pkg.simulated ?? sky.simulated),
+      simulated: Boolean(pkg.simulated ?? pkg.skymap?.simulated),
       suppressZoom: opts?.suppressZoom,
+      expectEpoch: opts?.expectEpoch,
     });
   } catch {
     // Offline / empty feed — sky stays on waiting/empty until a live alert or Replay.
+    return false;
+  }
+}
+
+/** Poll until WS or a matching /alerts/latest package fills the mission. */
+async function settleScenarioMission(
+  scenarioId: string,
+  expectEpoch: number,
+): Promise<void> {
+  for (let i = 0; i < 25; i++) {
+    if (getState().missionEpoch !== expectEpoch) return;
+    const { skymap, candidates } = getState();
+    if (
+      skymap &&
+      packageMatchesScenario(
+        { alert_id: skymap.alert_id, simulated: skymap.simulated },
+        scenarioId,
+      ) &&
+      (candidates.length > 0 || i >= 8)
+    ) {
+      return;
+    }
+    const ok = await hydrateFromLatest({
+      suppressZoom: false,
+      scenarioId,
+      expectEpoch,
+    });
+    if (ok) return;
+    await new Promise((r) => setTimeout(r, 200));
   }
 }
 
@@ -145,8 +198,8 @@ app.innerHTML = `
           <h2 class="page-title">${strings.pageTitle}</h2>
           <p class="page-purpose">${strings.pagePurpose}</p>
         </div>
-        <section class="event-select-host" id="panel-scenarios" aria-label="${strings.scenariosTitle}"></section>
         <section class="sky-host" id="panel-sky" aria-label="${strings.skyTitle}"></section>
+        <section class="event-select-host" id="panel-scenarios" aria-label="${strings.scenariosTitle}"></section>
         <p class="stage-foot">${strings.legacyNote}</p>
       </main>
       <aside class="rail" aria-label="Mission detail">
@@ -167,6 +220,7 @@ const liveBadge = document.querySelector<HTMLElement>("#live-badge")!;
 const summaryHost = document.querySelector<HTMLElement>("#panel-event-summary")!;
 
 let activeScenario: string | null = null;
+let activeEpoch = 0;
 
 function natureLabel(simulated: boolean | undefined, scenarioHint?: string | null): "sim" | "hist" | "live" | "unknown" {
   const scen = scenarioHint ?? activeScenario;
@@ -189,10 +243,15 @@ function applyBadges(simulated: boolean | undefined, scenarioHint?: string | nul
 
 function paintEventSummary() {
   const { skymap, candidates, lastSimulated, scenario } = getState();
-  const nature = natureLabel(
-    typeof lastSimulated === "boolean" ? lastSimulated : skymap?.simulated,
-    scenario ?? activeScenario,
-  );
+  // Prefer the live skymap honesty bit over a possibly-stale lastSimulated
+  // left by a prior scenario's WS frames.
+  const simulatedBit =
+    typeof skymap?.simulated === "boolean"
+      ? skymap.simulated
+      : typeof lastSimulated === "boolean"
+        ? lastSimulated
+        : undefined;
+  const nature = natureLabel(simulatedBit, scenario ?? activeScenario);
   const natureText =
     nature === "sim"
       ? strings.simulatedBadge
@@ -243,12 +302,10 @@ mountSky(document.querySelector("#panel-sky")!);
 mountScenarios(document.querySelector("#panel-scenarios")!, {
   onScenario: (id) => {
     activeScenario = id;
+    activeEpoch = beginScenarioSwitch(id);
   },
-  onStarted: async () => {
-    // Brief settle so community notify package is written, then refresh UI
-    // even when the websocket is offline — without suppressing AOI zoom.
-    await new Promise((r) => setTimeout(r, 400));
-    await hydrateFromLatest({ suppressZoom: false });
+  onStarted: async (id) => {
+    await settleScenarioMission(id, activeEpoch);
   },
 });
 mountCandidates(document.querySelector("#panel-candidates")!);

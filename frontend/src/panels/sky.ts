@@ -443,7 +443,17 @@ export function mountSky(host: HTMLElement): () => void {
   let animatedAlertId: string | null = null;
   let seenZoomNonce = 0;
   let renderSeq = 0;
+  /**
+   * Zoom generation — bumps only when the mission target changes (alert / nonce),
+   * not when candidates/selection refresh. Candidate emits used to bump renderSeq
+   * and abort the 550ms zoom delay (map stuck at full sky).
+   */
+  let zoomGen = 0;
+  /** Alert id the in-flight zoom animation was started for (stale if mismatched). */
+  let zoomAlertId: string | null = null;
   let viewMode: ViewMode = "full";
+  /** Mollweide content aspect — projection is 2:1 (width:height). */
+  const MOLLWEIDE_AR = 2;
   let contentW = 640;
   let contentH = 320;
   let cam: Cam = { x: 0, y: 0, w: contentW, h: contentH };
@@ -458,18 +468,30 @@ export function mountSky(host: HTMLElement): () => void {
   /** Skip re-paints when only selection/voice chrome changed (hover must not tear down SVG). */
   let lastSkyKey = "";
 
+  /**
+   * Size the SVG frame to the Mollweide aspect inside the stage.
+   * The stage itself is CSS-sized to 2:1; this fills it exactly when layout
+   * has settled, and letterboxes if the host briefly differs.
+   */
   const fitFrame = () => {
-    const ar = 2;
+    const ar = MOLLWEIDE_AR;
     const pw = world.clientWidth || host.clientWidth || 640;
     const ph = world.clientHeight || host.clientHeight || 360;
     let w = pw;
     let h = w / ar;
-    if (h > ph) {
+    if (h > ph + 0.5) {
       h = ph;
       w = h * ar;
     }
-    frame.style.width = `${Math.max(1, Math.floor(w))}px`;
-    frame.style.height = `${Math.max(1, Math.floor(h))}px`;
+    // Prefer integer CSS px so SVG width/height match the visible viewport.
+    w = Math.max(1, Math.floor(w));
+    h = Math.max(1, Math.round(w / ar));
+    if (h > ph) {
+      h = Math.max(1, Math.floor(ph));
+      w = Math.max(1, Math.round(h * ar));
+    }
+    frame.style.width = `${w}px`;
+    frame.style.height = `${h}px`;
     return { w: frame.clientWidth || w, h: frame.clientHeight || h };
   };
 
@@ -557,6 +579,7 @@ export function mountSky(host: HTMLElement): () => void {
     }
     window.clearTimeout(zoomDelayTimer);
     zoomDelayTimer = 0;
+    zoomAlertId = null;
     if (viewMode === "zooming") {
       viewMode = isNearFull(cam, contentW, contentH) ? "full" : "zoomed";
     }
@@ -567,14 +590,26 @@ export function mountSky(host: HTMLElement): () => void {
     skymap: SkymapPayload,
     reg: RegionPayload,
     durationMs = 1550,
+    genAtStart = zoomGen,
   ) => {
     cancelCamAnim();
+    zoomAlertId = skymap.alert_id;
     const from = { ...cam };
     const to = clampCam(target, contentW, contentH);
     viewMode = "zooming";
     setMeta(skymap, reg);
     const t0 = performance.now();
     const tick = (now: number) => {
+      // Ignore frames after a newer scenario took over (not candidate refreshes).
+      if (genAtStart !== zoomGen || zoomAlertId !== skymap.alert_id) {
+        camRaf = 0;
+        return;
+      }
+      const { skymap: live } = getState();
+      if (!live || live.alert_id !== skymap.alert_id) {
+        camRaf = 0;
+        return;
+      }
       const t = Math.min(1, (now - t0) / durationMs);
       const e = easeOutCubic(t);
       applyCam(
@@ -591,6 +626,7 @@ export function mountSky(host: HTMLElement): () => void {
         return;
       }
       camRaf = 0;
+      zoomAlertId = null;
       viewMode = "zoomed";
       applyCam(to);
       setMeta(skymap, reg);
@@ -887,22 +923,33 @@ export function mountSky(host: HTMLElement): () => void {
     skymap: SkymapPayload,
     reg: RegionPayload,
     candidates: CandidateRow[],
+    genAtStart: number,
   ) => {
+    if (genAtStart !== zoomGen) return;
+    if (reg.alert_id !== skymap.alert_id) return;
+    const live = getState().skymap;
+    if (!live || live.alert_id !== skymap.alert_id) return;
+
+    cancelCamAnim();
     paintSvg(reg, candidates);
     const target = outlineCam(reg, contentW, contentH);
     applyCam({ x: 0, y: 0, w: contentW, h: contentH });
     viewMode = "full";
     setMeta(skymap, reg);
 
-    cancelCamAnim();
     if (!target) {
       viewMode = "full";
       setMeta(skymap, reg);
       return;
     }
 
+    zoomAlertId = skymap.alert_id;
     zoomDelayTimer = window.setTimeout(() => {
-      animateCamTo(target, skymap, reg, 1600);
+      if (genAtStart !== zoomGen) return;
+      const still = getState().skymap;
+      if (!still || still.alert_id !== skymap.alert_id) return;
+      if (!region || region.alert_id !== skymap.alert_id) return;
+      animateCamTo(target, skymap, reg, 1600, genAtStart);
     }, 550);
   };
 
@@ -919,12 +966,20 @@ export function mountSky(host: HTMLElement): () => void {
     reg: RegionPayload,
     candidates: CandidateRow[],
     animate: boolean,
+    genAtStart: number,
   ) => {
     if (animate) {
-      requestAnimationFrame(() => runZoomSequence(skymap, reg, candidates));
+      // Capture zoomGen so a later scenario switch cancels this rAF work.
+      requestAnimationFrame(() => {
+        if (genAtStart !== zoomGen) return;
+        runZoomSequence(skymap, reg, candidates, genAtStart);
+      });
       return;
     }
-    if (viewMode === "zooming") return;
+    // Candidate/selection refresh during zoom: keep the camera animation.
+    // (Re-painting would rebuild the SVG and fight the viewBox tween.)
+    if (viewMode === "zooming" && zoomAlertId === skymap.alert_id) return;
+    if (viewMode === "zooming") cancelCamAnim();
     paintSvg(reg, candidates);
     setMeta(skymap, reg);
   };
@@ -1021,13 +1076,14 @@ export function mountSky(host: HTMLElement): () => void {
     // Avoid tearing down SVG nodes mid-pan (loses the gesture).
     if (pointerDragging) return;
     const seq = ++renderSeq;
-    const { skymap, candidates, suppressSkyZoomOnce, skyZoomNonce } =
+    const { skymap, candidates, suppressSkyZoomOnce, skyZoomNonce, missionEpoch } =
       getState();
 
     // Hover calls selectStar → store emit; ignore paints that only change selection.
     const skyKey = [
       skymap?.alert_id ?? "",
       skyZoomNonce,
+      missionEpoch,
       suppressSkyZoomOnce ? 1 : 0,
       candidates.map((c) => c.star_id).join(","),
       candidates.map((c) => c.posterior.toFixed(5)).join(","),
@@ -1046,14 +1102,31 @@ export function mountSky(host: HTMLElement): () => void {
       cancelCamAnim();
       animatedAlertId = null;
       region = null;
+      zoomGen += 1;
       showBaseSky();
       lastSkyKey = skyKey;
       return;
     }
 
+    // Drop the previous scenario's region immediately so we never paint or
+    // zoom against stale AOI geometry while the new region.json is fetching.
+    if (region && region.alert_id !== skymap.alert_id) {
+      cancelCamAnim();
+      region = null;
+      animatedAlertId = null;
+      zoomGen += 1;
+      viewMode = "full";
+      paintSvg(null, candidates);
+      applyCam({ x: 0, y: 0, w: contentW, h: contentH });
+      setMeta(skymap, null);
+    }
+
     if (!region || region.alert_id !== skymap.alert_id) {
-      const next = await fetchRegion(skymap.alert_id);
+      const wantId = skymap.alert_id;
+      const next = await fetchRegion(wantId);
       if (seq !== renderSeq) return;
+      const live = getState().skymap;
+      if (!live || live.alert_id !== wantId) return;
       region = next;
     }
 
@@ -1067,7 +1140,12 @@ export function mountSky(host: HTMLElement): () => void {
 
     if (skyZoomNonce !== seenZoomNonce) {
       seenZoomNonce = skyZoomNonce;
-      animatedAlertId = null;
+      // Nonce bump from beginScenarioSwitch clears skymap first; only reset
+      // animatedAlertId when we actually have a map to (re)play against.
+      if (skymap) {
+        animatedAlertId = null;
+        zoomGen += 1;
+      }
     }
 
     let shouldAnimate = skymap.alert_id !== animatedAlertId;
@@ -1076,6 +1154,7 @@ export function mountSky(host: HTMLElement): () => void {
       animatedAlertId = skymap.alert_id;
       clearSkyZoomSuppress();
       cancelCamAnim();
+      zoomGen += 1;
       viewMode = "full";
       paintSvg(region, candidates);
       applyCam({ x: 0, y: 0, w: contentW, h: contentH });
@@ -1083,10 +1162,18 @@ export function mountSky(host: HTMLElement): () => void {
       lastSkyKey = skyKey;
       return;
     }
+    const genAtStart = zoomGen;
     if (shouldAnimate) {
       animatedAlertId = skymap.alert_id;
+      zoomGen += 1;
     }
-    showEvent(skymap, region, candidates, shouldAnimate);
+    showEvent(
+      skymap,
+      region,
+      candidates,
+      shouldAnimate,
+      shouldAnimate ? zoomGen : genAtStart,
+    );
     lastSkyKey = skyKey;
   };
 

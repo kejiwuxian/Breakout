@@ -66,6 +66,12 @@ export type DashState = {
   suppressSkyZoomOnce: boolean;
   /** Bumped on Scenario Run so zoom replays even if alert_id is reused. */
   skyZoomNonce: number;
+  /**
+   * Monotonic epoch bumped when the user starts a new scenario. Sky/hydrate
+   * paths ignore stale payloads from a previous epoch (overlapping WS +
+   * /alerts/latest races).
+   */
+  missionEpoch: number;
 };
 
 type Listener = (state: DashState) => void;
@@ -83,6 +89,7 @@ const state: DashState = {
   voiceSimulated: false,
   suppressSkyZoomOnce: false,
   skyZoomNonce: 0,
+  missionEpoch: 0,
 };
 
 const listeners = new Set<Listener>();
@@ -117,6 +124,27 @@ export function setVoiceCaption(text: string, simulated: boolean): void {
   emit();
 }
 
+/**
+ * Drop the previous mission sky/candidates immediately when the user picks a
+ * new scenario so the map cannot zoom into the prior AOI while the next
+ * package is still in flight.
+ */
+export function beginScenarioSwitch(scenarioId: string): number {
+  state.scenario = scenarioId;
+  state.alert = null;
+  state.skymap = null;
+  state.candidates = [];
+  state.candidatesSimulated = false;
+  state.selectedStarId = null;
+  state.lastSimulated = null;
+  state.voiceCaption = "";
+  state.suppressSkyZoomOnce = false;
+  state.skyZoomNonce += 1;
+  state.missionEpoch += 1;
+  emit();
+  return state.missionEpoch;
+}
+
 /** Seed skymap + candidates without a live WS event (e.g. /alerts/latest hydrate). */
 export function hydrateMission(opts: {
   skymap: SkymapPayload;
@@ -127,7 +155,15 @@ export function hydrateMission(opts: {
    * Pass false after Scenario Run so AOI zoom can play on the fresh package.
    */
   suppressZoom?: boolean;
-}): void {
+  /** Reject stale hydrates from a previous scenario switch. */
+  expectEpoch?: number;
+}): boolean {
+  if (
+    typeof opts.expectEpoch === "number" &&
+    opts.expectEpoch !== state.missionEpoch
+  ) {
+    return false;
+  }
   state.skymap = opts.skymap;
   state.suppressSkyZoomOnce = opts.suppressZoom !== false;
   if (opts.candidates) {
@@ -143,6 +179,7 @@ export function hydrateMission(opts: {
     state.lastSimulated = opts.simulated;
   }
   emit();
+  return true;
 }
 
 /** Call when the user starts a scenario so the sky zoom sequence can replay. */
@@ -157,19 +194,89 @@ export function clearSkyZoomSuppress(): void {
   state.suppressSkyZoomOnce = false;
 }
 
-export function applyEvent(event: PipelineEvent): void {
-  if (typeof event.simulated === "boolean") {
-    state.lastSimulated = event.simulated;
+/**
+ * True when a community /alerts package belongs to the given scenario id.
+ * Prevents hydrating the previous run's package while the new scenario is still writing.
+ */
+export function packageMatchesScenario(
+  pkg: { alert_id?: string; simulated?: boolean },
+  scenarioId: string,
+): boolean {
+  const id = String(pkg.alert_id ?? "");
+  if (scenarioId === "scenario_b_icecube_170922a") {
+    return /icecube/i.test(id);
+  }
+  if (scenarioId === "scenario_a_galactic_ccsn") {
+    return Boolean(pkg.simulated) || /^sim[-_]/i.test(id);
+  }
+  return Boolean(id);
+}
+
+/**
+ * After beginScenarioSwitch, the previous scenario's pipeline may still emit
+ * WS frames. Drop those so we never paint/zoom the wrong AOI or flip badges.
+ */
+function isStaleScenarioEvent(event: PipelineEvent): boolean {
+  const scen = state.scenario;
+  if (!scen) return false;
+
+  if (event.type === "skymap" && event.payload) {
+    const next = event.payload as SkymapPayload;
+    return !packageMatchesScenario(
+      {
+        alert_id: next.alert_id,
+        simulated:
+          typeof event.simulated === "boolean"
+            ? event.simulated
+            : next.simulated,
+      },
+      scen,
+    );
   }
 
+  if (
+    event.type === "alert" ||
+    event.type === "candidates" ||
+    event.type === "voice"
+  ) {
+    if (scen === "scenario_b_icecube_170922a") {
+      // IceCube replay is historical (simulated=false).
+      return event.simulated === true;
+    }
+    if (scen === "scenario_a_galactic_ccsn") {
+      return event.simulated === false;
+    }
+  }
+
+  if (event.type === "scenario_done" && event.payload?.scenario) {
+    return String(event.payload.scenario) !== scen;
+  }
+
+  return false;
+}
+
+export function applyEvent(event: PipelineEvent): void {
   if (event.type === "hello") {
     const flat = event as PipelineEvent & { scenario?: string };
     const scenario = flat.scenario ?? (event.payload?.scenario as string | undefined);
+    // Do not let a reconnect hello roll back a user-selected scenario switch.
     if (typeof scenario === "string" && scenario !== "live_waiting") {
-      state.scenario = scenario;
-    } else if (scenario === "live_waiting") {
+      if (!state.scenario || state.scenario === scenario) {
+        state.scenario = scenario;
+      }
+    } else if (scenario === "live_waiting" && !state.scenario) {
       state.scenario = null;
     }
+    emit();
+    return;
+  }
+
+  if (isStaleScenarioEvent(event)) {
+    return;
+  }
+
+  if (typeof event.simulated === "boolean") {
+    state.lastSimulated = event.simulated;
   }
 
   if (event.type === "alert" && event.payload) {

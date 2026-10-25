@@ -2,7 +2,6 @@
  * Event select cards — same POST /scenario/{id}/start as the mission UI.
  */
 import strings from "../copy/strings.json";
-import { requestSkyZoomReplay } from "../state/store";
 
 export type ScenarioHooks = {
   onScenario?: (id: string) => void;
@@ -90,8 +89,9 @@ export function mountScenarios(
           throw new Error(body || String(res.status));
         }
         status.textContent = `${strings.scenarioStarted}: ${scen.id}`;
+        // Zoom is triggered once by main (WS skymap or filtered hydrate) —
+        // do not bump skyZoomNonce here (that caused a double zoom flash).
         await hooks.onStarted?.(scen.id);
-        requestSkyZoomReplay();
       } catch (err) {
         status.textContent = `${strings.scenarioFailed}: ${String(err)}`;
         btn.setAttribute("aria-pressed", "false");
