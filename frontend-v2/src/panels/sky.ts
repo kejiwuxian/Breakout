@@ -760,10 +760,12 @@ export function mountSky(host: HTMLElement): () => void {
 
   const onPointerMove = (ev: PointerEvent) => {
     if (!pointerDragging || pointerId !== ev.pointerId) return;
+    // Ignore coalesced companion events with no movement.
     const rect = svg.getBoundingClientRect();
     if (rect.width < 1 || rect.height < 1) return;
     const dxScreen = ev.clientX - lastPtrX;
     const dyScreen = ev.clientY - lastPtrY;
+    if (dxScreen === 0 && dyScreen === 0) return;
     if (!pointerMoved && Math.hypot(dxScreen, dyScreen) >= DRAG_THRESH_PX) {
       pointerMoved = true;
       skipStarClick = true;
@@ -775,6 +777,7 @@ export function mountSky(host: HTMLElement): () => void {
     const dy = (dyScreen / rect.height) * cam.h;
     lastPtrX = ev.clientX;
     lastPtrY = ev.clientY;
+    svg.dataset.pan = `${dx.toFixed(2)},${dy.toFixed(2)}`;
     applyCam({ x: cam.x - dx, y: cam.y - dy, w: cam.w, h: cam.h });
   };
 
@@ -783,6 +786,7 @@ export function mountSky(host: HTMLElement): () => void {
     pointerDragging = false;
     pointerId = null;
     svg.classList.remove("is-panning");
+    svg.dataset.pan = "up";
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerUp);
@@ -795,7 +799,11 @@ export function mountSky(host: HTMLElement): () => void {
   };
 
   const onPointerDown = (ev: PointerEvent) => {
-    if (ev.button !== 0) return;
+    // Accept primary mouse / touch / pen. Some CDP mouse streams omit button=0
+    // on pointerdown; `buttons` bitmask is more reliable mid-gesture.
+    if (ev.pointerType === "mouse" && ev.button !== 0 && ev.buttons === 0) {
+      return;
+    }
     pointerDragging = true;
     pointerMoved = false;
     skipStarClick = false;
@@ -803,6 +811,7 @@ export function mountSky(host: HTMLElement): () => void {
     lastPtrX = ev.clientX;
     lastPtrY = ev.clientY;
     svg.classList.add("is-panning");
+    svg.dataset.pan = `down:${ev.pointerId}:${ev.button}:${ev.buttons}`;
     // Window-level move/up so pan keeps working if the cursor leaves the SVG.
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
