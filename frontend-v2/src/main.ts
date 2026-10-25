@@ -7,6 +7,7 @@ import strings from "./copy/strings.json";
 import { mountCandidates } from "./panels/candidates";
 import { mountScenarios } from "./panels/scenarios";
 import { mountSky } from "./panels/sky";
+import { mountSubscribe } from "./panels/subscribe";
 import { handleVoiceEvent, mountVoice } from "./panels/voice";
 import {
   applyEvent,
@@ -16,6 +17,36 @@ import {
   type SkymapPayload,
 } from "./state/store";
 import { connectEvents } from "./ws/events";
+
+type CommunityCandidate = CandidateRow & {
+  evidence?: { bibcode: string; claim: string }[];
+};
+
+/** Normalize community-alert rows into CandidateRow (lit + v1.1 fields). */
+function normalizeCandidates(rows: CommunityCandidate[] | undefined): CandidateRow[] {
+  if (!rows?.length) return [];
+  return rows.map((row) => {
+    const evidence =
+      row.lit?.evidence?.length
+        ? row.lit.evidence
+        : (row.evidence ?? []).filter((e) => e?.bibcode && e?.claim);
+    const lit = row.lit ?? {
+      mass_loss: 0,
+      variability: 0,
+      evolved_stage: 0,
+      confidence:
+        typeof row.rank_confidence === "number" ? row.rank_confidence : 0,
+      evidence,
+    };
+    return {
+      ...row,
+      lit: {
+        ...lit,
+        evidence,
+      },
+    };
+  });
+}
 
 /** Load the latest community alert so the sky panel has a default Mollweide. */
 async function hydrateFromLatest(): Promise<void> {
@@ -33,7 +64,7 @@ async function hydrateFromLatest(): Promise<void> {
           components?: string[];
           simulated?: boolean;
         };
-        candidates?: CandidateRow[];
+        candidates?: CommunityCandidate[];
       }>;
     };
     const pkg = body.packages?.[0];
@@ -55,7 +86,7 @@ async function hydrateFromLatest(): Promise<void> {
     };
     hydrateMission({
       skymap,
-      candidates: pkg.candidates ?? [],
+      candidates: normalizeCandidates(pkg.candidates),
       simulated: Boolean(pkg.simulated ?? sky.simulated),
     });
   } catch {
@@ -88,6 +119,7 @@ app.innerHTML = `
     <aside class="rail" aria-label="Mission controls">
       <div id="panel-scenarios"></div>
       <div id="panel-candidates"></div>
+      <div id="panel-subscribe"></div>
       <div id="panel-voice"></div>
     </aside>
   </div>
@@ -118,10 +150,19 @@ function applyBadges(simulated: boolean | undefined, scenarioHint?: string | nul
 }
 
 mountSky(document.querySelector("#panel-sky")!);
-mountScenarios(document.querySelector("#panel-scenarios")!, (id) => {
-  activeScenario = id;
+mountScenarios(document.querySelector("#panel-scenarios")!, {
+  onScenario: (id) => {
+    activeScenario = id;
+  },
+  onStarted: async () => {
+    // Brief settle so community notify package is written, then refresh UI
+    // even when the websocket is offline.
+    await new Promise((r) => setTimeout(r, 400));
+    await hydrateFromLatest();
+  },
 });
 mountCandidates(document.querySelector("#panel-candidates")!);
+mountSubscribe(document.querySelector("#panel-subscribe")!);
 mountVoice(document.querySelector("#panel-voice")!);
 
 void hydrateFromLatest();

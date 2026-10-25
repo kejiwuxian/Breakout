@@ -16,7 +16,7 @@ def _candidate_public(score: CandidateScore) -> dict[str, Any]:
         for e in score.lit.evidence
         if e.bibcode
     ]
-    return {
+    row: dict[str, Any] = {
         "star_id": score.star_id,
         "ra_deg": score.ra_deg,
         "dec_deg": score.dec_deg,
@@ -33,7 +33,17 @@ def _candidate_public(score: CandidateScore) -> dict[str, Any]:
         "presn_watch": score.presn_watch,
         "evidence": evidence,
         "simulated": bool(score.simulated),
+        # v1.1 inventory / Grok rank fields (null when absent)
+        "rank_confidence": score.rank_confidence,
+        "rank_reasoning": score.rank_reasoning,
+        "composition": score.composition,
+        "life_expectancy": (
+            score.life_expectancy.model_dump(mode="json")
+            if score.life_expectancy is not None
+            else None
+        ),
     }
+    return row
 
 
 def build_community_alert(

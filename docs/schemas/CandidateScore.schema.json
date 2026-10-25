@@ -47,6 +47,50 @@
       "title": "Evidence",
       "type": "object"
     },
+    "LifeExpectancyInfo": {
+      "description": "Comparable timing context from the progenitor inventory (v1.1 additive).\n\n``optical_breakout_window`` is a class estimate, not a star-specific\ncollapse countdown. ``stellar_stage_note`` appears only when an ADS claim\nalready supports it.",
+      "properties": {
+        "basis": {
+          "minLength": 1,
+          "title": "Basis",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "optical_breakout_window": {
+          "enum": [
+            "minutes",
+            "hours",
+            "about 1 day"
+          ],
+          "title": "Optical Breakout Window",
+          "type": "string"
+        },
+        "stellar_stage_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stellar Stage Note"
+        }
+      },
+      "required": [
+        "optical_breakout_window",
+        "confidence",
+        "basis"
+      ],
+      "title": "LifeExpectancyInfo",
+      "type": "object"
+    },
     "Literature": {
       "description": "Precomputed offline literature scores (each 0..1) plus evidence.",
       "properties": {
@@ -93,7 +137,7 @@
     }
   },
   "$id": "https://breakout.local/schemas/CandidateScore.schema.json",
-  "description": "One row per star; output of literature/rerank.py (CandidateScore v1).",
+  "description": "One row per star; output of literature/rerank.py (+ progenitors rank_runtime).\n\nv1.1 adds optional inventory/ranking fields (default None for legacy clients).",
   "properties": {
     "breakout": {
       "$ref": "#/$defs/Breakout"
@@ -109,6 +153,19 @@
       ],
       "title": "Class",
       "type": "string"
+    },
+    "composition": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Catalog spectral/class composition summary.",
+      "title": "Composition"
     },
     "dec_deg": {
       "title": "Dec Deg",
@@ -143,6 +200,18 @@
       "title": "Ir Followup",
       "type": "boolean"
     },
+    "life_expectancy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LifeExpectancyInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Inventory life/timing context for SN-probability comparison."
+    },
     "lit": {
       "$ref": "#/$defs/Literature"
     },
@@ -162,6 +231,34 @@
     "ra_deg": {
       "title": "Ra Deg",
       "type": "number"
+    },
+    "rank_confidence": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Per-star ranking confidence from inventory / Grok (0..1).",
+      "title": "Rank Confidence"
+    },
+    "rank_reasoning": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Brief ranking rationale; must not invent bibcodes.",
+      "title": "Rank Reasoning"
     },
     "simulated": {
       "default": false,
@@ -189,6 +286,6 @@
     "posterior",
     "breakout"
   ],
-  "title": "BREAKOUT CandidateScore (v1)",
+  "title": "BREAKOUT CandidateScore (v1.1)",
   "type": "object"
 }

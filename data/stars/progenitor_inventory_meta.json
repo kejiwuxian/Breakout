@@ -1,0 +1,11 @@
+{
+  "path": "data/stars/progenitor_inventory.parquet",
+  "n_stars": 41,
+  "built_utc": "2026-10-25T10:41:32Z",
+  "sources": {
+    "curated": "data/stars/curated_stars.json",
+    "star_table": "data/stars/star_table.parquet",
+    "literature_index": "backend/literature/index.parquet"
+  },
+  "note": "Inventory consolidates public catalog + offline literature scores. Life expectancy optical_breakout_window is a class estimate; stellar_stage_note only appears when an ADS claim exists."
+}

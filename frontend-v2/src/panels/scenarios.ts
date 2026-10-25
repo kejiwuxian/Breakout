@@ -4,6 +4,12 @@
 import strings from "../copy/strings.json";
 import { requestSkyZoomReplay } from "../state/store";
 
+export type ScenarioHooks = {
+  onScenario?: (id: string) => void;
+  /** Re-pull /alerts/latest after a successful start (covers WS-offline demos). */
+  onStarted?: (id: string) => void | Promise<void>;
+};
+
 const SCENARIOS: { id: string; label: string; realData: boolean }[] = [
   {
     id: "scenario_a_galactic_ccsn",
@@ -19,8 +25,10 @@ const SCENARIOS: { id: string; label: string; realData: boolean }[] = [
 
 export function mountScenarios(
   host: HTMLElement,
-  onScenario?: (id: string) => void,
+  onScenario?: ((id: string) => void) | ScenarioHooks,
 ): () => void {
+  const hooks: ScenarioHooks =
+    typeof onScenario === "function" ? { onScenario } : onScenario ?? {};
   host.innerHTML = `
     <div class="rail-block scenarios">
       <h2 class="rail-title">${strings.scenariosTitle}</h2>
@@ -49,7 +57,7 @@ export function mountScenarios(
     btn.textContent = strings.scenarioStart;
     btn.dataset.scenario = scen.id;
     btn.addEventListener("click", async () => {
-      onScenario?.(scen.id);
+      hooks.onScenario?.(scen.id);
       requestSkyZoomReplay();
       btn.disabled = true;
       btn.textContent = strings.scenarioStarting;
@@ -64,6 +72,7 @@ export function mountScenarios(
           throw new Error(body || String(res.status));
         }
         status.textContent = `${strings.scenarioStarted}: ${scen.id}`;
+        await hooks.onStarted?.(scen.id);
       } catch (err) {
         status.textContent = `${strings.scenarioFailed}: ${String(err)}`;
       } finally {

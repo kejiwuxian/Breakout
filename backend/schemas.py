@@ -1,4 +1,4 @@
-"""Pydantic models for Alert, SkyMap, and CandidateScore v1.
+"""Pydantic models for Alert, SkyMap, and CandidateScore (v1.1).
 
 Contract freeze between Light's pipeline and Tony's ranking code.
 Any later field change needs a version bump and a note in docs/schemas.md.
@@ -14,7 +14,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 # Bump this and document the change in docs/schemas.md when fields change.
-CONTRACT_VERSION = "v1"
+CONTRACT_VERSION = "v1.1"
 
 AlertKind = Literal["PRESN", "SN_BURST", "HE_NEUTRINO"]
 AlertSource = Literal["presn", "snews2", "gcn_kafka", "snewpy_sim", "cache"]
@@ -106,8 +106,25 @@ class Breakout(BaseModel):
     countdown_from: str = Field(..., description="ISO-8601 UTC")
 
 
+class LifeExpectancyInfo(BaseModel):
+    """Comparable timing context from the progenitor inventory (v1.1 additive).
+
+    ``optical_breakout_window`` is a class estimate, not a star-specific
+    collapse countdown. ``stellar_stage_note`` appears only when an ADS claim
+    already supports it.
+    """
+
+    optical_breakout_window: BreakoutClassWindow
+    stellar_stage_note: str | None = None
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    basis: str = Field(..., min_length=1)
+
+
 class CandidateScore(BaseModel):
-    """One row per star; output of literature/rerank.py (CandidateScore v1)."""
+    """One row per star; output of literature/rerank.py (+ progenitors rank_runtime).
+
+    v1.1 adds optional inventory/ranking fields (default None for legacy clients).
+    """
 
     star_id: str
     ra_deg: float
@@ -126,6 +143,25 @@ class CandidateScore(BaseModel):
         default=False,
         description="True when scores/values are simulated; UI must label it.",
     )
+    # --- v1.1 additive (optional) ---
+    rank_confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Per-star ranking confidence from inventory / Grok (0..1).",
+    )
+    rank_reasoning: str | None = Field(
+        default=None,
+        description="Brief ranking rationale; must not invent bibcodes.",
+    )
+    life_expectancy: LifeExpectancyInfo | None = Field(
+        default=None,
+        description="Inventory life/timing context for SN-probability comparison.",
+    )
+    composition: str | None = Field(
+        default=None,
+        description="Catalog spectral/class composition summary.",
+    )
 
     model_config = {"populate_by_name": True}
 
@@ -134,6 +170,7 @@ class CandidateScore(BaseModel):
 LiteratureEvidence = Evidence
 LiteratureScores = Literature
 BreakoutInfo = Breakout
+LifeExpectancy = LifeExpectancyInfo
 
 
 def export_json_schemas() -> dict[str, dict[str, Any]]:
