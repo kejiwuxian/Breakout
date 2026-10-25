@@ -5,6 +5,7 @@
  */
 import strings from "../copy/strings.json";
 import {
+  clearSkyZoomSuppress,
   getState,
   selectStar,
   subscribe,
@@ -155,6 +156,7 @@ export function mountSky(host: HTMLElement): () => void {
   let region: RegionPayload | null = null;
   /** Alert id we already played the zoom sequence for (survives render races). */
   let animatedAlertId: string | null = null;
+  let seenZoomNonce = 0;
   let renderSeq = 0;
   let viewMode: ViewMode = "full";
   let zoomTimer = 0;
@@ -424,13 +426,23 @@ export function mountSky(host: HTMLElement): () => void {
     }
 
     // Candidate / store updates must not cancel an in-flight zoom sequence.
-    if (viewMode !== "focus") return;
-    await settleOnFocus(skymap, reg, candidates);
+    if (viewMode === "zooming") return;
+    if (viewMode === "focus") {
+      await settleOnFocus(skymap, reg, candidates);
+      return;
+    }
+
+    // Hydrate / resume: show full-sky Mollweide + oval without replaying zoom.
+    viewMode = "full";
+    resetTransform();
+    full.classList.add("is-in");
+    drawFullOverlay(reg, candidates);
+    setMeta(skymap, reg);
   };
 
   const render = async () => {
     const seq = ++renderSeq;
-    const { skymap, candidates } = getState();
+    const { skymap, candidates, suppressSkyZoomOnce, skyZoomNonce } = getState();
     if (!skymap) {
       empty.hidden = false;
       world.hidden = true;
@@ -466,8 +478,19 @@ export function mountSky(host: HTMLElement): () => void {
       return;
     }
 
-    const shouldAnimate = skymap.alert_id !== animatedAlertId;
-    if (shouldAnimate) animatedAlertId = skymap.alert_id;
+    if (skyZoomNonce !== seenZoomNonce) {
+      seenZoomNonce = skyZoomNonce;
+      animatedAlertId = null; // Scenario Run — replay zoom even if alert_id reused.
+    }
+
+    let shouldAnimate = skymap.alert_id !== animatedAlertId;
+    if (suppressSkyZoomOnce) {
+      shouldAnimate = false;
+      animatedAlertId = skymap.alert_id;
+      clearSkyZoomSuppress();
+    } else if (shouldAnimate) {
+      animatedAlertId = skymap.alert_id;
+    }
     await showEvent(skymap, region, candidates, shouldAnimate);
   };
 

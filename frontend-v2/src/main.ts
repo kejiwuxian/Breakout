@@ -8,8 +8,60 @@ import { mountCandidates } from "./panels/candidates";
 import { mountScenarios } from "./panels/scenarios";
 import { mountSky } from "./panels/sky";
 import { handleVoiceEvent, mountVoice } from "./panels/voice";
-import { applyEvent, setConnected } from "./state/store";
+import {
+  applyEvent,
+  hydrateMission,
+  setConnected,
+  type CandidateRow,
+  type SkymapPayload,
+} from "./state/store";
 import { connectEvents } from "./ws/events";
+
+/** Load the latest community alert so the sky panel has a default Mollweide. */
+async function hydrateFromLatest(): Promise<void> {
+  try {
+    const res = await fetch("/alerts/latest", { cache: "no-store" });
+    if (!res.ok) return;
+    const body = (await res.json()) as {
+      packages?: Array<{
+        alert_id?: string;
+        simulated?: boolean;
+        skymap?: {
+          peak_ra_deg?: number;
+          peak_dec_deg?: number;
+          credible_90_deg2?: number;
+          components?: string[];
+          simulated?: boolean;
+        };
+        candidates?: CandidateRow[];
+      }>;
+    };
+    const pkg = body.packages?.[0];
+    if (!pkg?.alert_id || !pkg.skymap) return;
+    const sky = pkg.skymap;
+    const skymap: SkymapPayload = {
+      alert_id: pkg.alert_id,
+      nside: 64,
+      ordering: "NESTED",
+      frame: "ICRS",
+      prob_path: `data/run/${pkg.alert_id}/skymap.fits`,
+      components: sky.components ?? [],
+      credible_90_deg2: Number(sky.credible_90_deg2 ?? 0),
+      peak: {
+        ra_deg: Number(sky.peak_ra_deg ?? 0),
+        dec_deg: Number(sky.peak_dec_deg ?? 0),
+      },
+      simulated: Boolean(sky.simulated ?? pkg.simulated),
+    };
+    hydrateMission({
+      skymap,
+      candidates: pkg.candidates ?? [],
+      simulated: Boolean(pkg.simulated ?? sky.simulated),
+    });
+  } catch {
+    // Offline / empty feed — sky stays on empty state until a scenario runs.
+  }
+}
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("#app missing");
@@ -71,6 +123,8 @@ mountScenarios(document.querySelector("#panel-scenarios")!, (id) => {
 });
 mountCandidates(document.querySelector("#panel-candidates")!);
 mountVoice(document.querySelector("#panel-voice")!);
+
+void hydrateFromLatest();
 
 connectEvents(
   (event) => {
