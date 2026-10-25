@@ -63,4 +63,41 @@ test.describe("BREAKOUT dashboard e2e", () => {
       [],
     );
   });
+
+  test("scenario A shows Grok Voice caption (audio mocked)", async ({ page }) => {
+    // Block real audio fetches; captions must still appear from voice events.
+    await page.route("**/api/voice/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "audio/mpeg",
+        body: Buffer.alloc(0),
+      });
+    });
+    await page.addInitScript(() => {
+      const proto = window.HTMLMediaElement.prototype;
+      proto.play = () => Promise.resolve();
+      proto.pause = () => undefined;
+    });
+
+    await page.goto("/");
+    await expect(page.locator("#voice-panel")).toBeVisible();
+    await expect(page.locator(".judge-ptt")).toHaveText(/Ask mission control/i);
+
+    await page
+      .locator('button[data-scenario="scenario_a_galactic_ccsn"]')
+      .click();
+
+    const caption = page.locator("#voice-caption");
+    await expect(caption).toBeVisible({ timeout: 90_000 });
+    await expect
+      .poll(async () => (await caption.textContent())?.trim() || "", {
+        timeout: 90_000,
+      })
+      .not.toBe("");
+
+    // Scenario A announcer lines are simulated=true → Simulated badge on the voice panel.
+    await expect(
+      page.locator("#voice-panel .badge.simulated:visible"),
+    ).toBeVisible({ timeout: 30_000 });
+  });
 });
