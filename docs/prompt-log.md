@@ -39,6 +39,8 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sun 25 Oct 2026, ~4:15 AM PT | Light + Cursor agent | Idle live-waiting default; manual scenario only | `BREAKOUT_AUTOSTART`, `scenario=live_waiting` |
 | Sun 25 Oct 2026, ~4:30 AM PT | Light + Cursor agent | Review/merge post-MVP PR stack onto main; refresh docs | `docs/post-mvp.md`, README |
 | Sun 25 Oct 2026, ~4:40 AM PT | Light + Cursor agent | Access + refresh WebSocket subscribe (auto-close on access expiry) | `backend/notify/`, `/ws/subscribe`, frontend rails |
+| Sun 25 Oct 2026, ~6:00 AM PT | Light + Cursor agent | Yale BSC5 all-sky field + AOI outer ranking + dual red outlines + enrich-replay; merge #35; supersede #33/#36 | `sky_background.json`, `enrich-replay`, PR #35 |
+| Sun 25 Oct 2026, ~6:05 AM PT | Light + Cursor agent | Docs refresh post-merge: remove galactic-plane / Community-push / curated-only / UNK-clones-RSG claims | `docs/post-mvp.md`, READMEs |
 
 Notes:
 
