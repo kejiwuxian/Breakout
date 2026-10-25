@@ -30,6 +30,19 @@ function fmtDistance(kpc: number | null | undefined): string {
   return `${Number(kpc).toFixed(3)} ${strings.distanceUnit}`;
 }
 
+function fmtConfidence(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return strings.distanceUnknown;
+  }
+  return `${(Number(value) * 100).toFixed(0)}%`;
+}
+
+function fmtLife(row: CandidateRow): string {
+  const life = row.life_expectancy?.optical_breakout_window;
+  if (life) return life;
+  return row.breakout?.class_window || strings.distanceUnknown;
+}
+
 type RawLitResponse = {
   reasoning?: string | null;
   literature?: { evidence?: { bibcode: string; claim: string }[] };
@@ -85,6 +98,9 @@ export function mountCandidates(host: HTMLElement): () => void {
               <th>${strings.colRank}</th>
               <th>${strings.colStar}</th>
               <th>${strings.colClass}</th>
+              <th>${strings.colDistance}</th>
+              <th>${strings.colConfidence}</th>
+              <th>${strings.colLife}</th>
               <th>${strings.colPosterior}</th>
               <th>${strings.colBreakout}</th>
             </tr>
@@ -150,7 +166,9 @@ export function mountCandidates(host: HTMLElement): () => void {
     const starChanged = detailStarId !== row.star_id;
     detailStarId = row.star_id;
     detail.hidden = false;
-    detailStar.textContent = `${row.star_id} · ${row.class} · ${fmtDistance(row.distance_kpc)}`;
+    const conf = fmtConfidence(row.rank_confidence ?? row.lit?.confidence);
+    const life = fmtLife(row);
+    detailStar.textContent = `${row.star_id} · ${row.class} · ${fmtDistance(row.distance_kpc)} · ${strings.colConfidence} ${conf} · ${strings.colLife} ${life}`;
 
     const cached = rawCache.has(row.star_id)
       ? (rawCache.get(row.star_id) ?? null)
@@ -158,8 +176,9 @@ export function mountCandidates(host: HTMLElement): () => void {
 
     if (starChanged) {
       // Only clear/replace when the selected star changes — never on countdown ticks.
+      const inventoryReason = row.rank_reasoning?.trim() || "";
       if (cached === undefined) {
-        reasoningEl.textContent = strings.detailLoading;
+        reasoningEl.textContent = inventoryReason || strings.detailLoading;
         evidenceEl.innerHTML = "";
         // Show row evidence immediately while raw reasoning loads.
         paintEvidence(row, null);
@@ -167,7 +186,8 @@ export function mountCandidates(host: HTMLElement): () => void {
         reasoningEl.textContent = cached.reasoning;
         paintEvidence(row, cached);
       } else {
-        reasoningEl.textContent = cached?.note || strings.detailNoReasoning;
+        reasoningEl.textContent =
+          inventoryReason || cached?.note || strings.detailNoReasoning;
         paintEvidence(row, cached);
       }
     }
@@ -216,10 +236,14 @@ export function mountCandidates(host: HTMLElement): () => void {
         if (row.simulated) tr.classList.add("is-sim");
         tr.tabIndex = 0;
         const skip = isBreakoutSkipped(row.breakout.class_window);
+        const conf = row.rank_confidence ?? row.lit?.confidence;
         tr.innerHTML = `
           <td>${i + 1}</td>
           <td class="star-id">${escapeHtml(row.star_id)}</td>
           <td>${escapeHtml(row.class)}</td>
+          <td class="mono">${escapeHtml(fmtDistance(row.distance_kpc))}</td>
+          <td class="mono" title="${escapeHtml(row.rank_reasoning || "")}">${escapeHtml(fmtConfidence(conf))}</td>
+          <td class="mono" title="${escapeHtml(row.life_expectancy?.basis || "")}">${escapeHtml(fmtLife(row))}</td>
           <td class="mono">${row.posterior.toFixed(3)}</td>
           <td class="breakout" title="${skip ? strings.countdownSkipped : strings.countdownEstimate}">
             <span class="bw">${escapeHtml(windowLabel(row.breakout.class_window))}</span>

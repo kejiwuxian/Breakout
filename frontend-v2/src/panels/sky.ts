@@ -80,6 +80,12 @@ type HoverInfo = {
   ra_deg: number;
   dec_deg: number;
   simulated: boolean;
+  distance_kpc?: number | null;
+  rank_confidence?: number | null;
+  composition?: string | null;
+  life_window?: string | null;
+  life_note?: string | null;
+  rank_reasoning?: string | null;
 };
 
 type ViewMode = "full" | "zooming" | "zoomed";
@@ -115,11 +121,34 @@ function formatHover(info: HoverInfo): string {
   const post = (info.posterior * 100).toFixed(1);
   const psky = (info.p_sky * 100).toFixed(2);
   const sim = info.simulated ? ` · ${strings.simulatedBadge}` : "";
-  return (
-    `#${info.rank} ${info.star_id} · ${info.class}${sim}\n` +
-    `${strings.skyHoverPosterior}: ${post}% · ${strings.skyHoverPSky}: ${psky}%\n` +
-    `RA ${info.ra_deg.toFixed(3)}° · Dec ${info.dec_deg.toFixed(3)}°`
-  );
+  const conf =
+    info.rank_confidence != null && !Number.isNaN(Number(info.rank_confidence))
+      ? `${(Number(info.rank_confidence) * 100).toFixed(0)}%`
+      : "—";
+  const dist =
+    info.distance_kpc != null && !Number.isNaN(Number(info.distance_kpc))
+      ? `${Number(info.distance_kpc).toFixed(3)} kpc`
+      : "—";
+  const life = info.life_window || "—";
+  const lines = [
+    `#${info.rank} ${info.star_id} · ${info.class}${sim}`,
+    `${strings.skyHoverPosterior}: ${post}% · ${strings.skyHoverPSky}: ${psky}% · ${strings.skyHoverConfidence}: ${conf}`,
+    `RA ${info.ra_deg.toFixed(3)}° · Dec ${info.dec_deg.toFixed(3)}° · ${dist}`,
+    `${strings.skyHoverLife}: ${life}`,
+  ];
+  if (info.composition) {
+    lines.push(`${strings.skyHoverComposition}: ${info.composition}`);
+  }
+  if (info.life_note) {
+    lines.push(info.life_note);
+  } else if (info.rank_reasoning) {
+    const short =
+      info.rank_reasoning.length > 160
+        ? `${info.rank_reasoning.slice(0, 157)}…`
+        : info.rank_reasoning;
+    lines.push(short);
+  }
+  return lines.join("\n");
 }
 
 function candidateHover(row: CandidateRow, rank: number): HoverInfo {
@@ -132,6 +161,15 @@ function candidateHover(row: CandidateRow, rank: number): HoverInfo {
     ra_deg: row.ra_deg,
     dec_deg: row.dec_deg,
     simulated: Boolean(row.simulated),
+    distance_kpc: row.distance_kpc,
+    rank_confidence: row.rank_confidence ?? row.lit?.confidence ?? null,
+    composition: row.composition ?? row.spectral_type ?? null,
+    life_window:
+      row.life_expectancy?.optical_breakout_window ??
+      row.breakout?.class_window ??
+      null,
+    life_note: row.life_expectancy?.stellar_stage_note ?? null,
+    rank_reasoning: row.rank_reasoning ?? null,
   };
 }
 
@@ -218,8 +256,8 @@ export function mountSky(host: HTMLElement): () => void {
     hoverEl.textContent = formatHover(info);
     if (clientX != null && clientY != null) {
       const rect = host.getBoundingClientRect();
-      const x = Math.min(clientX - rect.left + 12, rect.width - 220);
-      const y = Math.min(clientY - rect.top + 12, rect.height - 90);
+      const x = Math.min(clientX - rect.left + 12, rect.width - 280);
+      const y = Math.min(clientY - rect.top + 12, rect.height - 160);
       hoverEl.style.left = `${Math.max(8, x)}px`;
       hoverEl.style.top = `${Math.max(8, y)}px`;
     }

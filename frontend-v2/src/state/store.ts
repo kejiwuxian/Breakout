@@ -3,6 +3,13 @@
  */
 import type { PipelineEvent } from "../ws/events";
 
+export type LifeExpectancyRow = {
+  optical_breakout_window: string;
+  stellar_stage_note?: string | null;
+  confidence: number;
+  basis: string;
+};
+
 export type CandidateRow = {
   star_id: string;
   ra_deg: number;
@@ -24,6 +31,11 @@ export type CandidateRow = {
   breakout: { class_window: string; countdown_from: string };
   ir_followup: boolean;
   simulated: boolean;
+  /** v1.1 optional inventory / Grok rank fields */
+  rank_confidence?: number | null;
+  rank_reasoning?: string | null;
+  life_expectancy?: LifeExpectancyRow | null;
+  composition?: string | null;
 };
 
 export type SkymapPayload = {
