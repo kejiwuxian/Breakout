@@ -1,0 +1,62 @@
+//////////////////////////////////////////////////////////////////////
+TITLE:            GCN/AMON NOTICE
+NOTICE_DATE:      Tue 01 Oct 19 20:09:48 UT
+NOTICE_TYPE:      ICECUBE Astrotrack Gold
+STREAM:           24
+RUN_NUM:          133119
+EVENT_NUM:        22683750
+SRC_RA:           314.3550d {+20h 57m 25s} (J2000),
+                  314.5905d {+20h 58m 22s} (current),
+                  313.7588d {+20h 55m 02s} (1950)
+SRC_DEC:          +12.5755d {+12d 34' 32"} (J2000),
+                  +12.6525d {+12d 39' 09"} (current),
+                  +12.3819d {+12d 22' 55"} (1950)
+SRC_ERROR:        47.20 [arcmin radius, stat-only, 90% containment]
+SRC_ERROR50:      18.38 [arcmin radius, stat-only, 50% containment]
+DISCOVERY_DATE:   18757 TJD;   274 DOY;   19/10/01 (yy/mm/dd)
+DISCOVERY_TIME:   72558 SOD {20:09:18.17} UT
+REVISION:         0
+ENERGY:           2.1742e+02 [TeV]
+SIGNALNESS:       5.8898e-01 [dn]
+FAR:              0.8578 [yr^-1]
+SUN_POSTN:        187.68d {+12h 30m 43s}   -3.31d {-03d 18' 53"}
+SUN_DIST:         126.70 [deg]   Sun_angle= -8.5 [hr] (East of Sun)
+MOON_POSTN:       229.41d {+15h 17m 40s}  -14.07d {-14d 04' 12"}
+MOON_DIST:         88.49 [deg]
+GAL_COORDS:        60.05,-20.76 [deg] galactic lon,lat of the event
+ECL_COORDS:       320.94, 28.51 [deg] ecliptic lon,lat of the event
+COMMENTS:         IceCube Gold event.  
+COMMENTS:         The position error is statistical only, there is no systematic added.  
+ 
+ 
+//////////////////////////////////////////////////////////////////////
+TITLE:            GCN/AMON NOTICE
+NOTICE_DATE:      Wed 02 Oct 19 18:43:07 UT
+NOTICE_TYPE:      ICECUBE Astrotrack Gold
+STREAM:           24
+RUN_NUM:          133119
+EVENT_NUM:        22683750
+SRC_RA:           314.0799d {+20h 56m 19s} (J2000),
+                  314.3148d {+20h 57m 16s} (current),
+                  313.4852d {+20h 53m 56s} (1950)
+SRC_DEC:          +12.9399d {+12d 56' 24"} (J2000),
+                  +13.0165d {+13d 00' 60"} (current),
+                  +12.7473d {+12d 44' 50"} (1950)
+SRC_ERROR:        177.00 [arcmin radius, stat-only, 90% containment]
+SRC_ERROR50:      81.00 [arcmin radius, stat-only, 50% containment]
+DISCOVERY_DATE:   18757 TJD;   274 DOY;   19/10/01 (yy/mm/dd)
+DISCOVERY_TIME:   72558 SOD {20:09:18.17} UT
+REVISION:         1
+ENERGY:           2.1742e+02 [TeV]
+SIGNALNESS:       5.8898e-01 [dn]
+FAR:              0.8578 [yr^-1]
+SUN_POSTN:        188.53d {+12h 34m 07s}   -3.68d {-03d 40' 43"}
+SUN_DIST:         125.66 [deg]   Sun_angle= -8.4 [hr] (East of Sun)
+MOON_POSTN:       242.62d {+16h 10m 29s}  -17.76d {-17d 45' 31"}
+MOON_DIST:         77.13 [deg]
+GAL_COORDS:        60.20,-20.33 [deg] galactic lon,lat of the event
+ECL_COORDS:       320.78, 28.94 [deg] ecliptic lon,lat of the event
+COMMENTS:         IceCube Gold event.  
+COMMENTS:         The position error is statistical only, there is no systematic added.  
+ 
+ 

@@ -23,6 +23,8 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~7:40 PM PT | Tony + Cursor agent | Grok Voice frontend panel: captions, mute, push-to-talk judge Q&A over realtime tools | PR #15 |
 | Sat 24 Oct 2026, ~7:41–8:00 PM PT | Light + Cursor agent | Review plan Page; merge standing PRs onto main for code freeze; Scenario B GCN archive copies; gate PASS | mainline MVP freeze |
 | Sat 24 Oct 2026, ~8:16 PM PT | Light + Cursor agent | Review SNEWS2/SNEWS_Coincidence_System for direction finding; adopt snewpdag DiffPointing joint-χ² (Coincidence System has no skymap) into localize/fuse | `backend/localize/snews_diffpointing.py` |
+| Sat 24 Oct 2026, ~8:35 PM PT | Light + Cursor agent | Confirm real-data validation still PASS after DiffPointing; add IceCube historical alert catalog + Scenario C (GCN IceCube-230416A example); document SN1987A clock limits | `data/cache/icecube_alert_catalog/`, `scenario_c_icecube_230416a/` |
+| Sat 24 Oct 2026, ~8:40 PM PT | Light + Cursor agent | Add Scenario D IceCube-191001A from GCN Circular 25913 + AMON archive; re-run real-data suite | `scenario_d_icecube_191001a/`, tests green |
 
 Notes:
 
