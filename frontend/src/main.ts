@@ -10,7 +10,8 @@ import { mountCandidatesPanel } from "./panels/candidates";
 import { mountScenariosPanel } from "./panels/scenarios";
 import { mountSkyMapPanel } from "./panels/skyMap";
 import { applyEvent, setConnected } from "./state/store";
-import { handleVoiceEvent } from "./voice/announcer";
+import { handleVoiceEvent, mountAnnouncerPanel } from "./voice/announcer";
+import { mountJudgeQa } from "./voice/judge_qa";
 import { connectEvents } from "./ws/events";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -31,10 +32,10 @@ app.innerHTML = `
         <span class="badge real" id="real-badge" hidden>${strings.realBadge}</span>
       </div>
     </header>
-    <p class="voice-caption" id="voice-caption" aria-live="polite"></p>
     <div class="dash-grid">
       <div id="panel-sky" class="dash-sky"></div>
       <aside class="dash-side">
+        <div id="voice-panel" class="slot-voice"></div>
         <div id="panel-scenarios" class="slot-scenarios"></div>
         <div id="panel-candidates" class="slot-candidates"></div>
         <div id="panel-actions" class="slot-actions"></div>
@@ -50,6 +51,10 @@ mountSkyMapPanel(document.querySelector("#panel-sky")!);
 mountScenariosPanel(document.querySelector("#panel-scenarios")!);
 mountCandidatesPanel(document.querySelector("#panel-candidates")!);
 mountActionsPanel(document.querySelector("#panel-actions")!);
+
+const voiceSlot = document.querySelector<HTMLElement>("#voice-panel");
+const judgeSlot = mountAnnouncerPanel(voiceSlot);
+mountJudgeQa(judgeSlot);
 
 // Scenario buttons also note which path was requested (for Real vs Simulated).
 document.querySelector("#panel-scenarios")?.addEventListener(

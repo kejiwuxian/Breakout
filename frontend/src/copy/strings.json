@@ -61,5 +61,14 @@
   "actionsMissing": "(draft missing)",
   "actionsAlert": "Alert",
   "actionsDryBadge": "LCOGT dry-run",
+  "voiceTitle": "Grok Voice",
+  "voiceMute": "Mute",
+  "voiceUnmute": "Unmute",
+  "voiceAsk": "Ask mission control",
+  "voiceAskHint": "Hold to talk. Answers use only tool results and name ADS bibcodes.",
+  "voiceListening": "Listening…",
+  "voiceRealtimeError": "Realtime voice unavailable",
+  "voiceRealtimeTimeout": "Realtime session timed out",
+  "voiceMicError": "Microphone unavailable",
   "footer": "Built with Cursor and Grok Bot"
 }

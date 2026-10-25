@@ -55,11 +55,14 @@ def mint_client_secret(*, expires_after_seconds: int = 300) -> dict[str, Any]:
 
     expires_at = data.get("expires_at")
     model = settings.xai_voice_model or "grok-voice-latest"
+    # Browser session.update voice — from XAI_TTS_VOICE (.env), never the API key.
+    voice = settings.xai_tts_voice or "eve"
 
     # Return only what the browser needs — never the API key or raw env secrets.
     out: dict[str, Any] = {
         "token": token,
         "model": model,
+        "voice": voice,
         "expires_at": expires_at,
         "expires_after_seconds": int(expires_after_seconds),
     }
