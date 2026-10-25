@@ -434,27 +434,12 @@ def attach_to_hub(hub: Any) -> None:
     raise TypeError("hub must support subscribe(listener)")
 
 
-def _on_hub_event(event: dict[str, Any]) -> None:
-    """Sync hub listener: schedule background speak without awaiting."""
+def _on_hub_event(event: dict[str, Any]) -> Any:
+    """Hub listener: return a coroutine the hub can await or background-task."""
     event_type = str(event.get("type") or "")
     if event_type not in EVENT_LINE_KEYS:
-        return
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        # No running loop (tests / sync path): run inline for off/cached only.
-        mode = (config_mod.settings.voice_mode or "off").lower()
-        if mode == "live":
-            logger.warning("voice live skipped: no running event loop")
-            return
-        for ve in speak_event_lines(event):
-            pusher = _push_voice
-            if pusher is not None:
-                result = pusher(ve)
-                if asyncio.iscoroutine(result):
-                    logger.warning("voice async pusher ignored without loop")
-        return
-    loop.create_task(handle_pipeline_event(event))
+        return None
+    return handle_pipeline_event(event)
 
 
 def prerender_scenario(scenario: str, *, force: bool = False) -> list[Path]:

@@ -64,6 +64,14 @@ body {
   color: var(--muted);
 }
 
+.voice-caption {
+  margin: 0 0 1rem;
+  min-height: 1.35em;
+  color: var(--accent);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
 .dash-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.9fr);

@@ -9,6 +9,7 @@ import { mountCandidatesPanel } from "./panels/candidates";
 import { mountScenariosPanel } from "./panels/scenarios";
 import { mountSkyMapPanel } from "./panels/skyMap";
 import { applyEvent, setConnected } from "./state/store";
+import { handleVoiceEvent } from "./voice/announcer";
 import { connectEvents } from "./ws/events";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -29,6 +30,7 @@ app.innerHTML = `
         <span class="badge real" id="real-badge" hidden>${strings.realBadge}</span>
       </div>
     </header>
+    <p class="voice-caption" id="voice-caption" aria-live="polite"></p>
     <div class="dash-grid">
       <div id="panel-sky" class="dash-sky"></div>
       <aside class="dash-side">
@@ -69,6 +71,10 @@ connectEvents(
       statusEl.textContent = strings.statusSkymap;
     } else if (event.type === "candidates") {
       statusEl.textContent = strings.statusCandidates;
+    } else if (event.type === "voice") {
+      handleVoiceEvent(event);
+      const text = String((event.payload as { text?: string } | undefined)?.text ?? "");
+      if (text) statusEl.textContent = text;
     } else if (event.type === "scenario_done") {
       statusEl.textContent = `${strings.scenarioStarted}: ${String(event.payload?.scenario ?? "")}`;
     }
