@@ -81,7 +81,7 @@ Core collapse can, in some models, lead to black-hole formation without a normal
 **Source:** [Adams et al.](https://arxiv.org/abs/1306.0559).
 
 ### 18b. Can community telescopes help catch a potential counterpart today?
-Yes as a follow-up strategy: published Galactic-supernova plans emphasize searching a localization region quickly, and small optical/NIR instruments can cover ranked progenitor coordinates while large facilities ramp up. BREAKOUT's Phase 1 community alerts deliver those ranked ICRS targets via webhook/feed; they are **not** official GCN notices and do not confirm a supernova by themselves.  
+Yes as a follow-up strategy: published Galactic-supernova plans emphasize searching a localization region quickly, and small optical/NIR instruments can cover ranked progenitor coordinates while large facilities ramp up. BREAKOUT's Phase 1 **Subscribe to events** path delivers those ranked ICRS targets via access + refresh tokens over WebSocket (`/ws/subscribe`) and `/alerts/latest`; they are **not** official GCN notices and do not confirm a supernova by themselves.  
 **Source:** [Adams et al.](https://arxiv.org/abs/1306.0559); [Walter, Scolnic & Slosar](https://arxiv.org/abs/1901.01599).
 
 ## Demonstration integrity
