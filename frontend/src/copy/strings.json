@@ -1,5 +1,6 @@
 {
   "brand": "BREAKOUT",
+  "pageTitle": "BREAKOUT",
   "tagline": "Neutrino-first supernova interceptor.",
   "connecting": "Connecting to /ws/events…",
   "connected": "Connected. Waiting for pipeline events.",
@@ -33,9 +34,12 @@
   "adsLinkLabel": "ADS",
   "countdownEstimate": "Estimate from class window",
   "countdownSince": "since burst t0",
+  "tooltipBreakout": "Class window and time since burst (estimate).",
+  "tooltipIR": "Flagged when dust may hide the optical transient.",
+  "tooltipSimulated": "Values marked simulated are not real observations (simulated=true).",
   "scenariosTitle": "Scenarios",
-  "scenarioA": "Scenario A — galactic CCSN (Betelgeuse)",
-  "scenarioB": "Scenario B — IceCube-170922A",
+  "scenarioA": "Scenario A: galactic core collapse (simulated)",
+  "scenarioB": "Scenario B: IceCube-170922A (real data)",
   "scenarioStart": "Start",
   "scenarioStarting": "Starting…",
   "scenarioStarted": "Scenario started",
@@ -43,5 +47,6 @@
   "statusAlert": "Alert",
   "statusSkymap": "Skymap",
   "statusCandidates": "Candidates",
-  "presnWatch": "Pre-SN watch"
+  "presnWatch": "Pre-SN watch",
+  "footer": "Built with Cursor and Grok Bot"
 }
