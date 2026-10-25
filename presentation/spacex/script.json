@@ -1,0 +1,127 @@
+{
+  "title": "Project Supernova",
+  "subtitle": "SpaceXAI · Make it Legendary",
+  "tagline": "Neutrinos first. Optical breakout next.",
+  "url": "https://supernova.lylinks.com/spacex/",
+  "one_liner": "When the next galactic supernova goes off, neutrinos reach Earth first. Project Supernova fuses the detectors' signals into a sky map, ranks the stars most likely to have exploded using literature it read ahead of time, and has telescope requests ready before the light breaks out.",
+  "slides": [
+    {
+      "id": "01-title",
+      "kind": "title",
+      "eyebrow": "CAL HACKS 13.0  ·  SPACEX TRACK",
+      "headline": "PROJECT SUPERNOVA",
+      "sub": "Neutrinos first. Optical breakout next.",
+      "footer": "Webcast mission control for neutrino-led follow-up",
+      "say": "Neutrino detectors have won three Nobel Prizes, the latest this month for IceCube. The next galactic supernova will reach all of them before any telescope sees it. Project Supernova turns that head start into a pointed telescope.",
+      "duration_s": 18
+    },
+    {
+      "id": "02-hook",
+      "kind": "bullets",
+      "eyebrow": "THE RACE",
+      "headline": "Light is late. Neutrinos are not.",
+      "bullets": [
+        "2002 · 2015 · 2026 — three Physics Nobels on neutrino detectors",
+        "Core collapse → neutrinos escape first; optical shock breakout can lag minutes to about a day",
+        "That gap is the product: localize, rank known massive stars, push coordinates while the window is open"
+      ],
+      "say": "Core collapse releases neutrinos promptly. The explosion shock still has to climb through the stellar envelope before light escapes. That gap is the race.",
+      "duration_s": 14
+    },
+    {
+      "id": "03-idle",
+      "kind": "shot",
+      "eyebrow": "01  ·  IDLE",
+      "headline": "Cold start. Pad is clear.",
+      "caption": "Full Yale BSC5 sky. Empty ranked list. Nothing auto-plays — we listen.",
+      "shot": "spacex-demo-16x9-idle.png",
+      "say": "For the closest stars, the joint KamLAND and Super-K alert can warn hours before collapse. We put those stars at the top before the burst arrives. On a cold start the webcast stage just listens.",
+      "duration_s": 14
+    },
+    {
+      "id": "04-replay",
+      "kind": "shot",
+      "eyebrow": "02  ·  REPLAY",
+      "headline": "Select an event. Run the mission.",
+      "caption": "IceCube-170922A (historical) or galactic CCSN / Betelgeuse (simulated — always labeled).",
+      "shot": "spacex-demo-16x9-event-cards.png",
+      "say": "We demo two paths. Scenario A is a simulated galactic core collapse on Betelgeuse. Scenario B replays the real IceCube-170922A alert through the same ingest and localization path.",
+      "duration_s": 14
+    },
+    {
+      "id": "05-aoi",
+      "kind": "shot",
+      "eyebrow": "03  ·  LOCALIZATION",
+      "headline": "Fuse pointing and timing into one map.",
+      "caption": "Dual AOI outlines. Zoom to the outer aperture. Field stars light up.",
+      "shot": "spacex-demo-16x9-icecube.png",
+      "say": "Super-K points to a few degrees. Light-travel delays across Earth, at most forty-two milliseconds, add rings. We fuse both into one probability map and zoom the webcast stage to the area of interest.",
+      "duration_s": 16
+    },
+    {
+      "id": "06-rank",
+      "kind": "shot",
+      "eyebrow": "04  ·  RANKED PROGENITORS",
+      "headline": "Literature already read. Trigger time is a lookup.",
+      "caption": "Posterior-sorted candidates with class life window, confidence, and ADS bibcodes.",
+      "shot": "spacex-demo-16x9-candidate-detail.png",
+      "say": "Grok read the literature on every catalogued massive star ahead of time, so at trigger time this is a lookup and rerank in seconds, with every claim linked to a paper. Each star gets its own clock: minutes for a Wolf-Rayet, about a day for a red supergiant.",
+      "duration_s": 18
+    },
+    {
+      "id": "07-betelgeuse",
+      "kind": "shot",
+      "eyebrow": "SIMULATED PATH",
+      "headline": "Betelgeuse — honesty on the wire.",
+      "caption": "SIM badge on every simulated number. Real SIMBAD coords, real ADS citations.",
+      "shot": "spacex-demo-16x9-betelgeuse-ranked.png",
+      "say": "When we simulate, we say so. Coordinates and citations stay real. The countdown is a class-window estimate, not a promise for any one star.",
+      "duration_s": 12
+    },
+    {
+      "id": "08-subscribe",
+      "kind": "shot",
+      "eyebrow": "05  ·  SUBSCRIBE",
+      "headline": "Coordinates on the wire — not a slideshow.",
+      "caption": "Open access + refresh tokens → live WebSocket. Campus scopes and backyard instruments welcome.",
+      "shot": "spacex-demo-16x9-subscribe-endpoints.png",
+      "say": "Robotic telescopes get a ready request. People approve the circular and the space-telescope proposals. Anyone can subscribe over a live WebSocket and watch the next candidate package land.",
+      "duration_s": 14
+    },
+    {
+      "id": "09-about",
+      "kind": "shot",
+      "eyebrow": "MISSION BRIEF",
+      "headline": "Same loop. Launch-webcast chrome.",
+      "caption": "Black stage, LIVE lower-thirds, telemetry rail — SpaceX-track skin of Project Supernova.",
+      "shot": "spacex-demo-16x9-about.png",
+      "say": "This SpaceX-track UI is the same mission loop as the primary app: alert, localization, ranked stars, subscribe — presented like a launch webcast.",
+      "duration_s": 12
+    },
+    {
+      "id": "10-built",
+      "kind": "bullets",
+      "eyebrow": "BUILT WITH CURSOR + GROK BOT",
+      "headline": "Make it Legendary.",
+      "bullets": [
+        "Cursor agent built modules from the plan Page — rules file, prompt log, commit history",
+        "Grok Voice mission-control announcer + spoken judge Q&A from our own tools",
+        "Grok Bot held the plan, task split, and team check-ins all weekend",
+        "Real data paths: IceCube historical alerts, Yale BSC5, ADS bibcodes — never invented"
+      ],
+      "say": "We built this in Cursor this weekend and planned it with Grok Bot. Grok Voice speaks each alert and can answer a judge from our own data. When the next one goes, the first light will have an audience.",
+      "duration_s": 16
+    },
+    {
+      "id": "11-close",
+      "kind": "title",
+      "eyebrow": "LIVE DEMO",
+      "headline": "PROJECT SUPERNOVA",
+      "sub": "https://supernova.lylinks.com/spacex/",
+      "footer": "Neutrinos first. Optical breakout next.",
+      "say": "Project Supernova. Neutrinos first. Optical breakout next. Thank you.",
+      "duration_s": 10
+    }
+  ],
+  "walkthrough_intro": "Here is the SpaceX-track interface running end to end: About, IceCube localization zoom, ranked candidate, Subscribe, then back to the full sky."
+}
