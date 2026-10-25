@@ -14,7 +14,8 @@ import pytest
 
 
 DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "stars" / "curated_stars.json"
-ALLOWED_CLASSES = {"RSG", "BSG", "YSG", "WR", "LBV"}
+# AGN added for Scenario B (TXS 0506+056); matches CandidateScore StarClass.
+ALLOWED_CLASSES = {"RSG", "BSG", "YSG", "WR", "LBV", "AGN"}
 REQUIRED_STAR_FIELDS = {
     "star_id",
     "ra_deg",
@@ -127,19 +128,32 @@ def test_required_fields_and_ranges():
 
 
 def test_every_evidence_has_a_bibcode():
+    """Bibcode required unless the evidence path is listed in ``uncertain``.
+
+    Pipeline ranking drops null-bibcode evidence; curated may keep the claim
+    with an explicit uncertain marker instead of inventing a bibcode.
+    """
     errors = []
     for index, star in enumerate(_read_stars()):
         if not isinstance(star, dict) or not isinstance(star.get("lit"), dict):
             continue
+        uncertain = {
+            str(u) for u in (star.get("uncertain") or []) if isinstance(u, str)
+        }
         for evidence_index, item in enumerate(star["lit"].get("evidence", [])):
             label = f"{_star_label(star, index)} lit.evidence[{evidence_index}]"
+            uncertain_key = f"lit.evidence[{evidence_index}].bibcode"
             if not isinstance(item, dict):
                 errors.append(f"{label}: evidence must be a JSON object")
-            elif not isinstance(item.get("bibcode"), str) or not item["bibcode"].strip():
-                errors.append(f"{label}: missing bibcode (found {item.get('bibcode')!r})")
-            if isinstance(item, dict) and (
-                not isinstance(item.get("claim"), str) or not item["claim"].strip()
-            ):
+                continue
+            bib = item.get("bibcode")
+            if not isinstance(bib, str) or not bib.strip():
+                if uncertain_key not in uncertain:
+                    errors.append(
+                        f"{label}: missing bibcode (found {bib!r}); "
+                        f"add {uncertain_key!r} to uncertain or supply ADS bibcode"
+                    )
+            if not isinstance(item.get("claim"), str) or not item["claim"].strip():
                 errors.append(f"{label}: missing evidence claim")
     assert not errors, "\n" + "\n".join(errors)
 
