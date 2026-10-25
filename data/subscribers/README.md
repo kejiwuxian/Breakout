@@ -20,3 +20,6 @@ Set `NOTIFY_DRY_RUN=False` to POST live JSON to registered webhooks.
 
 Every package sets `simulated=true` when any field is simulated. Evidence
 bibcodes are copied only from CandidateScore — never invented.
+
+**UI:** frontend-v2 (`:5174`) **Community push** rail and classic (`:5173`)
+**Community alerts** panel. How-to: [`docs/community-subscribe.md`](../../docs/community-subscribe.md).

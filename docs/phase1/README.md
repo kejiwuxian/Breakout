@@ -15,6 +15,13 @@ This bundle consolidates the unique Phase 1 files created during the conversatio
 - `archive/breakout_curated_stars_validation.zip` — earlier two-file downloadable validation archive (historical copy; duplicates some files above)
 - `manifest.json` — SHA-256 and file sizes for this bundle
 
+## Community subscribe (Phase 1)
+
+Ranked-candidate push is Phase 1 (not sponsor Phase 2): `POST /subscribe`,
+`GET /alerts/latest`, classic + **frontend-v2** subscribe panels. See
+[`docs/community-subscribe.md`](../community-subscribe.md) and
+[`data/subscribers/README.md`](../../data/subscribers/README.md).
+
 ## Important notes
 
 - The curated star data has not been modified in this packaging pass.

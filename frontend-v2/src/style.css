@@ -581,6 +581,95 @@ body::before {
   font-size: 0.84rem;
 }
 
+/* —— Community subscribe —— */
+.subscribe-honesty,
+.subscribe-dry {
+  margin-top: -0.35rem;
+  color: rgba(158, 179, 196, 0.78);
+  font-size: 0.78rem;
+}
+
+.subscribe-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.subscribe-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--fog);
+  letter-spacing: 0.02em;
+}
+
+.subscribe-field input {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(7, 16, 24, 0.55);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.subscribe-field input::placeholder {
+  color: rgba(158, 179, 196, 0.45);
+}
+
+.subscribe-field input:focus {
+  outline: none;
+  border-color: rgba(30, 200, 178, 0.55);
+}
+
+.subscribe-btn {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+}
+
+.subscribe-status {
+  margin: 0.65rem 0 0;
+  min-height: 1.2em;
+  font-size: 0.8rem;
+  color: var(--fog);
+}
+
+.subscribe-status.is-ok {
+  color: var(--ok);
+}
+
+.subscribe-status.is-error {
+  color: var(--warn);
+}
+
+.subscribe-status.is-info {
+  color: var(--fog);
+}
+
+.subscribe-feed-link {
+  color: var(--signal);
+  text-decoration: none;
+  margin-left: 0.25rem;
+}
+
+.subscribe-feed-link:hover {
+  text-decoration: underline;
+}
+
+.subscribe-list {
+  margin: 0.55rem 0 0;
+  padding-left: 1.05rem;
+  font-size: 0.8rem;
+  color: var(--fog);
+}
+
+.subscribe-list .muted {
+  list-style: none;
+  margin-left: -1.05rem;
+  color: rgba(158, 179, 196, 0.65);
+}
+
 @keyframes brand-in {
   from {
     opacity: 0;
