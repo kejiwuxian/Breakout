@@ -48,5 +48,14 @@
   "statusSkymap": "Skymap",
   "statusCandidates": "Candidates",
   "presnWatch": "Pre-SN watch",
-  "footer": "Built with Cursor and Grok Bot"
+  "footer": "Built with Cursor and Grok Bot",
+  "voiceTitle": "Grok Voice",
+  "voiceMute": "Mute",
+  "voiceUnmute": "Unmute",
+  "voiceAsk": "Ask mission control",
+  "voiceAskHint": "Hold to talk. Answers use only tool results and name ADS bibcodes.",
+  "voiceListening": "Listening…",
+  "voiceRealtimeError": "Realtime voice unavailable",
+  "voiceRealtimeTimeout": "Realtime session timed out",
+  "voiceMicError": "Microphone unavailable"
 }
