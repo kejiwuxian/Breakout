@@ -279,9 +279,18 @@ body::before {
   stroke-dasharray: 4 3;
 }
 
+.sky-field {
+  pointer-events: auto;
+}
+
 .sky-field-star {
-  fill: rgba(238, 243, 247, 0.55);
+  fill: rgba(238, 243, 247, 0.85);
   stroke: none;
+  pointer-events: auto;
+}
+
+.sky-field-star:hover {
+  fill: #fff6d6;
 }
 
 .sky-prob-cell {

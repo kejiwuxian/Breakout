@@ -9,8 +9,8 @@ Redesigned mission UI for the same product and backend as `frontend/`.
 - Brand-first: **BREAKOUT** is the hero signal
 - Expressive type: Syne + IBM Plex Sans / Mono
 - Atmospheric night field (gradients + sparse star dust), not a flat fill
-- Interactive localization: **pure SVG** Mollweide (curated progenitor catalog stars + galactic plane + HEALPix cells); on an event, a **smooth red oval** appears and the view **zooms the same SVG** (no raster swap). **Wheel zoom**, **drag pan**, double-click / Full sky reset. Hover ranked stars for posterior, confidence, life window, composition.
-- Field stars are **not** a uniform all-sky survey — they are the curated SN-progenitor list. The dashed line is the **galactic plane**.
+- Interactive localization: **pure SVG** Mollweide (Yale BSC5 all-sky background + galactic plane + HEALPix cells); on an event, a **smooth red oval** appears and the view **zooms the same SVG** (no raster swap). **Wheel zoom**, **drag pan**, double-click / Full sky reset. Hover ranked progenitors for posterior, confidence, life window, composition; light hover on background stars shows name / V / coords.
+- **Background field stars** = magnitude-limited Yale Bright Star Catalogue (`/api/sky/base`, ~8.4k stars, V≤6.5) — dense across the whole sky. **Ranked markers** = curated SN-progenitor inventory / CandidateScore overlay (AOI + Grok ranking). The dashed line is the **galactic plane**.
 - Simulated / Real badges preserved; no invented numbers or citations
 - Motion: brand letter-spacing settle, rail rise, skymap fade-in (reduced-motion safe)
 

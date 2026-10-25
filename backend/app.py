@@ -461,7 +461,12 @@ def skymap_png(alert_id: str) -> FileResponse:
 
 @app.get("/api/sky/base")
 def sky_base_layers() -> dict[str, Any]:
-    """Public SVG sky layers (curated SIMBAD stars + galactic plane) with no alert."""
+    """Public SVG sky layers (Yale BSC5 background + galactic plane) with no alert.
+
+    Background stars come from ``data/stars/sky_background.json`` (Hoffleit+1991
+    / CDS V/50 / NASA HEASARC BSC5P, V<=6.5). Ranked SN progenitors are a
+    separate CandidateScore overlay — not this field catalog.
+    """
     from backend.localize.region import public_sky_base
 
     return public_sky_base()

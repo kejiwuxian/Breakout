@@ -4,11 +4,15 @@ This bundle consolidates the unique Phase 1 files created during the conversatio
 
 ## Contents
 
-- `data/stars/curated_stars.json` — original curated star catalog (40 objects, unchanged)
+- `data/stars/curated_stars.json` — original curated star catalog (40 objects, unchanged; ranking / AOI inventory)
+- `data/stars/sky_background.json` — Yale BSC5 all-sky SVG background (V≤6.5; post-MVP skymap field)
+- `data/stars/sky_background_meta.json` — BSC5 provenance / attribution
 - `data/stars/citation_audit.json` — star evidence citation audit
 - `data/stars/citation_audit.md` — human-readable citation audit
 - `tests/test_curated_stars.py` — schema and provenance validation tests
+- `tests/test_sky_background.py` — all-sky background catalog coverage tests
 - `tests/pytest_curated_stars_results.txt` — saved validation test output
+- `scripts/build_sky_background_catalog.py` — rebuild BSC5 compact background from CDS V/50
 - `docs/BREAKOUT_judge_science_QA.md` — provisional 20-question science judge Q&A sheet
 - `scripts/build_breakout.py` — catalog-building source script, retained for provenance only
 - `scripts/generate_citation_audit.py` — audit-generation source script, retained for provenance only

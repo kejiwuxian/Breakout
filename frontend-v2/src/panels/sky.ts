@@ -36,6 +36,8 @@ export type FieldStar = {
   ra_deg: number;
   dec_deg: number;
   class?: string;
+  vmag?: number | null;
+  source?: string;
 };
 
 export type ProbCell = {
@@ -425,7 +427,7 @@ export function mountSky(host: HTMLElement): () => void {
     if (!skymap) {
       meta.innerHTML = `
         <span>${strings.skyModeFull}</span>
-        <span>${skyBase.field_stars.length} public catalog stars</span>
+        <span>${skyBase.field_stars.length.toLocaleString()} BSC5 field stars</span>
       `;
       syncReset();
       return;
@@ -512,6 +514,27 @@ export function mountSky(host: HTMLElement): () => void {
     camRaf = requestAnimationFrame(tick);
   };
 
+  const showFieldTip = (
+    tip: string | null,
+    clientX?: number,
+    clientY?: number,
+  ) => {
+    if (!tip) {
+      hoverEl.hidden = true;
+      hoverEl.textContent = "";
+      return;
+    }
+    hoverEl.hidden = false;
+    hoverEl.textContent = tip;
+    if (clientX != null && clientY != null) {
+      const rect = host.getBoundingClientRect();
+      const x = Math.min(clientX - rect.left + 12, rect.width - 280);
+      const y = Math.min(clientY - rect.top + 12, rect.height - 120);
+      hoverEl.style.left = `${Math.max(8, x)}px`;
+      hoverEl.style.top = `${Math.max(8, y)}px`;
+    }
+  };
+
   const wireStar = (g: SVGGElement, row: CandidateRow, rank: number) => {
     const info = candidateHover(row, rank);
     g.style.cursor = "pointer";
@@ -572,9 +595,12 @@ export function mountSky(host: HTMLElement): () => void {
       root.appendChild(gp);
     }
 
-    const field = reg?.field_stars?.length
-      ? reg.field_stars
-      : skyBase.field_stars;
+    // Always prefer the dense /api/sky/base catalog. Region payloads omit the
+    // full ~8k-star list so region.json stays small; ranked progenitors are
+    // drawn separately below as .sky-star overlays.
+    const field = skyBase.field_stars.length
+      ? skyBase.field_stars
+      : (reg?.field_stars ?? []);
     const fieldG = createSvgEl("g");
     fieldG.setAttribute("class", "sky-field");
     for (const star of field) {
@@ -583,11 +609,43 @@ export function mountSky(host: HTMLElement): () => void {
       const c = createSvgEl("circle");
       c.setAttribute("cx", String(p.x));
       c.setAttribute("cy", String(p.y));
-      c.setAttribute("r", "1.6");
+      const v =
+        star.vmag != null && !Number.isNaN(Number(star.vmag))
+          ? Number(star.vmag)
+          : 5.5;
+      // Brighter → larger / more opaque (V~-1.5 … 6.5).
+      const r = Math.max(0.55, Math.min(2.8, 2.35 - 0.28 * v));
+      const opacity = Math.max(0.22, Math.min(0.9, 0.82 - 0.09 * v));
+      c.setAttribute("r", String(r));
+      c.setAttribute("fill-opacity", String(opacity));
       c.setAttribute("class", "sky-field-star");
       c.setAttribute("data-id", star.star_id);
+      const label = star.common_name || star.star_id;
+      c.setAttribute(
+        "data-tip",
+        `${label} · V ${v.toFixed(2)} · RA ${star.ra_deg.toFixed(3)}° · Dec ${star.dec_deg.toFixed(3)}°`,
+      );
       fieldG.appendChild(c);
     }
+    fieldG.addEventListener("pointerover", (ev) => {
+      if (pointerDragging) return;
+      const t = ev.target as Element | null;
+      if (!t || t.tagName.toLowerCase() !== "circle") return;
+      const tip = t.getAttribute("data-tip");
+      if (tip) showFieldTip(tip, ev.clientX, ev.clientY);
+    });
+    fieldG.addEventListener("pointermove", (ev) => {
+      if (pointerDragging) return;
+      const t = ev.target as Element | null;
+      if (!t || t.tagName.toLowerCase() !== "circle") return;
+      const tip = t.getAttribute("data-tip");
+      if (tip) showFieldTip(tip, ev.clientX, ev.clientY);
+    });
+    fieldG.addEventListener("pointerout", (ev) => {
+      const related = ev.relatedTarget as Node | null;
+      if (related && fieldG.contains(related)) return;
+      if (!pointerDragging) showFieldTip(null);
+    });
     root.appendChild(fieldG);
 
     if (reg) {
