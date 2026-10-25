@@ -35,6 +35,9 @@ logger = logging.getLogger("breakout.literature.rerank")
 
 # Re-export config weights for tests / callers.
 CLASS_WEIGHT: dict[str, float] = dict(RANKING_CLASS_WEIGHT)
+# Keep AGN in the live weight map even if settings.ranking_weights was frozen earlier.
+if "AGN" not in CLASS_WEIGHT:
+    CLASS_WEIGHT["AGN"] = float(RANKING_CLASS_WEIGHT.get("AGN", 0.7))
 
 
 def _class_weights() -> dict[str, float]:
@@ -98,6 +101,12 @@ def _parse_evidence(src: dict[str, Any]) -> list[Evidence]:
 def _float_or_zero(value: Any) -> float:
     if value is None:
         return 0.0
+    # Vincent curated lit scores may be ``{value, reason}`` with qualitative text.
+    if isinstance(value, dict):
+        inner = value.get("value")
+        if isinstance(inner, (int, float)) and not isinstance(inner, bool):
+            return float(inner)
+        return 0.0
     try:
         if isinstance(value, float) and np.isnan(value):
             return 0.0
@@ -114,6 +123,13 @@ def _lit_from_row(row: dict[str, Any], index_rows: dict[str, dict[str, Any]]) ->
     star_id = str(row.get("star_id", ""))
     indexed = index_rows.get(star_id)
     src = indexed if indexed is not None else row.get("lit")
+    if src is None and row.get("lit_json"):
+        raw = row["lit_json"]
+        if isinstance(raw, str) and raw.strip():
+            try:
+                src = json.loads(raw)
+            except json.JSONDecodeError:
+                src = None
     if isinstance(src, Literature):
         return src
     if isinstance(src, dict):

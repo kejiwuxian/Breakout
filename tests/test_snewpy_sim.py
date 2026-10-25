@@ -159,5 +159,6 @@ def test_build_scenario_from_curated_betelgeuse() -> None:
     assert alerts[0].kind == "PRESN" and alerts[0].simulated is True
     assert alerts[1].kind == "SN_BURST" and alerts[1].simulated is True
     assert alerts[1].raw["ra_deg"] == pytest.approx(88.792939)
-    assert alerts[1].raw["distance_kpc"] == pytest.approx(0.168)
+    # Harper et al. 2017 (Vincent curated): 0.222 kpc, not Joyce 0.168.
+    assert alerts[1].raw["distance_kpc"] == pytest.approx(0.222)
 

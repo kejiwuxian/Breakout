@@ -6,7 +6,9 @@ import asyncio
 import json
 import logging
 import os
+from collections.abc import Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -16,17 +18,24 @@ from backend.config import ROOT, settings
 from backend.ingest.cache import replay_scenario
 from backend.pipeline import process_alert, reset_watchlist
 from backend.schemas import WsHelloEvent
+from backend.voice import announcer as voice_announcer
+from backend.voice.tools import reset_run_state, update_run_state
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("breakout.app")
 
 
 class EventHub:
-    """Fan-out hub for /ws/events subscribers."""
+    """Fan-out hub for /ws/events subscribers + internal listeners."""
 
     def __init__(self) -> None:
         self._clients: set[WebSocket] = set()
+        self._listeners: list[Callable[[dict[str, Any]], Any]] = []
         self._lock = asyncio.Lock()
+
+    def subscribe(self, listener: Callable[[dict[str, Any]], Any]) -> None:
+        """Register an internal listener (e.g. Grok Voice announcer)."""
+        self._listeners.append(listener)
 
     async def connect(self, ws: WebSocket) -> None:
         await ws.accept()
@@ -41,6 +50,7 @@ class EventHub:
         data = json.dumps(event)
         async with self._lock:
             clients = list(self._clients)
+            listeners = list(self._listeners)
         dead: list[WebSocket] = []
         for ws in clients:
             try:
@@ -49,6 +59,23 @@ class EventHub:
                 dead.append(ws)
         for ws in dead:
             await self.disconnect(ws)
+        # Internal subscribers (voice). Live TTS is background; cached/off are awaited
+        # so captions stay ordered with the pipeline event that triggered them.
+        et = str(event.get("type") or "")
+        mode = (settings.voice_mode or "off").lower()
+        for listener in listeners:
+            try:
+                result = listener(event)
+                if asyncio.iscoroutine(result) or asyncio.isfuture(result):
+                    if (
+                        et in voice_announcer.EVENT_LINE_KEYS
+                        and mode == "live"
+                    ):
+                        asyncio.create_task(result)  # type: ignore[arg-type]
+                    else:
+                        await result  # type: ignore[misc]
+            except Exception:
+                logger.exception("event hub listener failed type=%s", event.get("type"))
 
 
 hub = EventHub()
@@ -57,9 +84,50 @@ _run_task: asyncio.Task[None] | None = None
 _out_root = ROOT / "data" / "run"
 
 
+def _note_run_state(event: dict[str, Any]) -> None:
+    """Keep judge Q&A tools pointed at the current run only."""
+    et = event.get("type")
+    payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+    simulated = bool(event.get("simulated", False))
+    if et == "alert":
+        update_run_state(alert=payload, simulated=simulated)
+    elif et == "skymap":
+        update_run_state(skymap=payload, simulated=simulated)
+    elif et == "candidates":
+        cands = payload.get("candidates") if isinstance(payload.get("candidates"), list) else []
+        update_run_state(
+            alert_id=str(payload.get("alert_id") or "") or None,
+            candidates=[c for c in cands if isinstance(c, dict)],
+            simulated=simulated,
+        )
+
+
+def _build_actions_event(alert: Any, context: dict[str, Any]) -> dict[str, Any]:
+    """Run LCOGT / ToO / GCN builders after candidates (drafts only)."""
+    from backend.actions import build_actions_payload
+
+    payload = build_actions_payload(
+        context["alert"],
+        context["skymap"],
+        context["scores"],
+        run_dir=_out_root,
+    )
+    simulated = bool(payload.get("simulated", alert.simulated))
+    return {"type": "actions", "payload": payload, "simulated": simulated}
+
+
 async def _emit_pipeline_events(alert: Any) -> None:
+    """Process alert and push WS events; builders run after candidates."""
     events = await asyncio.to_thread(process_alert, alert, out_root=_out_root)
     for event in events:
+        if event.get("type") == "_actions_context":
+            # After candidates: build LCOGT / ToO / GCN drafts and push actions.
+            actions_event = await asyncio.to_thread(
+                _build_actions_event, alert, event["payload"]
+            )
+            await hub.broadcast(actions_event)
+            continue
+        _note_run_state(event)
         await hub.broadcast(event)
 
 
@@ -67,6 +135,8 @@ async def run_scenario(name: str, *, speed: float = 0.0) -> None:
     """Replay a cached scenario through the core loop (no live network)."""
     logger.info("scenario_start name=%s speed=%s", name, speed)
     reset_watchlist()
+    reset_run_state()
+    voice_announcer.reset_sequence(name)
     async for alert in replay_scenario(name, speed=speed):
         logger.info(
             "alert_received id=%s kind=%s simulated=%s",
@@ -124,6 +194,15 @@ async def _start_live_listeners() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # Grok Voice: live TTS pushes via this callback (background); never blocks pipeline.
+    async def _push_voice(event: dict[str, Any]) -> None:
+        await hub.broadcast(event)
+
+    voice_announcer.set_voice_pusher(_push_voice)
+    # Also subscribe so any future hub.broadcast of pipeline events is covered.
+    voice_announcer.attach_to_hub(hub)
+    logger.info("voice announcer attached mode=%s", settings.voice_mode)
+
     if settings.use_cached_stream:
         logger.info("startup USE_CACHED_STREAM=True scenario=%s", settings.scenario)
 
@@ -142,6 +221,7 @@ async def lifespan(_app: FastAPI):
     global _run_task
     if _run_task is not None and not _run_task.done():
         _run_task.cancel()
+    voice_announcer.set_voice_pusher(None)
 
 
 app = FastAPI(
@@ -179,10 +259,13 @@ async def start_scenario(name: str, speed: float = 0.0) -> dict[str, Any]:
 
 
 def _safe_alert_dir(alert_id: str) -> Path:
-    """Resolve data/run/<alert_id> without path traversal."""
+    """Resolve data/run/<alert_id> without path traversal.
+
+    Alert ids may include ``*`` (e.g. sim-presn-*_alf_Ori from Scenario A).
+    """
     import re
 
-    if not re.fullmatch(r"[A-Za-z0-9._\-+:]+", alert_id):
+    if not re.fullmatch(r"[A-Za-z0-9._\-+:*]+", alert_id):
         raise HTTPException(status_code=400, detail="Invalid alert_id")
     path = (_out_root / alert_id).resolve()
     root = _out_root.resolve()
@@ -259,9 +342,59 @@ def literature_raw(star_id: str) -> dict[str, Any]:
     }
 
 
+@app.get("/api/voice/{alert_id}/{seq}.mp3")
+def voice_clip(alert_id: str, seq: int) -> FileResponse:
+    """Serve announcer MP3 written under data/run/<alert_id>/voice/."""
+    path = _safe_alert_dir(alert_id) / "voice" / f"{seq}.mp3"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail=f"No voice clip {alert_id}/{seq}.mp3")
+    return FileResponse(path, media_type="audio/mpeg")
+
+
+@app.post("/voice/session")
+def voice_session() -> dict[str, Any]:
+    """Mint an ephemeral realtime token for the browser (key stays server-side)."""
+    from backend.voice.realtime_session import mint_client_secret
+
+    try:
+        body = mint_client_secret(expires_after_seconds=300)
+    except Exception as exc:
+        logger.exception("voice session mint failed")
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    # Never echo XAI_API_KEY.
+    key = (settings.xai_api_key or "").strip()
+    if key and key in json.dumps(body):
+        raise HTTPException(status_code=500, detail="Refusing to leak API key")
+    return body
+
+
+@app.get("/voice/tools/top_candidates")
+def voice_tool_top_candidates(limit: int = 5) -> dict[str, Any]:
+    """Read-only judge tool: top candidates from the current run."""
+    from backend.voice.tools import get_top_candidates
+
+    return get_top_candidates(limit=limit)
+
+
+@app.get("/voice/tools/skymap_summary")
+def voice_tool_skymap_summary() -> dict[str, Any]:
+    """Read-only judge tool: active skymap summary."""
+    from backend.voice.tools import get_skymap_summary
+
+    return get_skymap_summary()
+
+
+@app.get("/voice/tools/breakout_countdown")
+def voice_tool_breakout_countdown(star_id: str | None = None) -> dict[str, Any]:
+    """Read-only judge tool: breakout countdown for top or named star."""
+    from backend.voice.tools import get_breakout_countdown
+
+    return get_breakout_countdown(star_id=star_id)
+
+
 @app.websocket("/ws/events")
 async def ws_events(websocket: WebSocket) -> None:
-    """Stream pipeline events: alert | skymap | candidates | actions."""
+    """Stream pipeline events: alert | skymap | candidates | actions | voice."""
     await hub.connect(websocket)
     hello = WsHelloEvent(
         use_cached_stream=settings.use_cached_stream,

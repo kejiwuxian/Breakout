@@ -38,6 +38,24 @@ export type SkymapPayload = {
   simulated: boolean;
 };
 
+export type ActionsPayload = {
+  alert_id?: string;
+  lcogt_dry_run?: boolean;
+  top_star_id?: string | null;
+  lcogt?: {
+    path?: string;
+    dry_run?: boolean;
+    submitted?: boolean;
+    request_group?: Record<string, unknown>;
+    simulated?: boolean;
+  } | null;
+  too_hst_markdown?: string | null;
+  too_jwst_markdown?: string | null;
+  gcn_circular_markdown?: string | null;
+  simulated?: boolean;
+  note?: string;
+};
+
 export type DashState = {
   connected: boolean;
   scenario: string | null;
@@ -47,6 +65,8 @@ export type DashState = {
   candidates: CandidateRow[];
   candidatesSimulated: boolean;
   selectedStarId: string | null;
+  actions: ActionsPayload | null;
+  actionsSimulated: boolean;
 };
 
 type Listener = (state: DashState) => void;
@@ -60,6 +80,8 @@ const state: DashState = {
   candidates: [],
   candidatesSimulated: false,
   selectedStarId: null,
+  actions: null,
+  actionsSimulated: false,
 };
 
 const listeners = new Set<Listener>();
@@ -114,6 +136,11 @@ export function applyEvent(event: PipelineEvent): void {
     if (state.candidates.length && !state.selectedStarId) {
       state.selectedStarId = state.candidates[0].star_id;
     }
+  }
+
+  if (event.type === "actions" && event.payload) {
+    state.actions = event.payload as ActionsPayload;
+    state.actionsSimulated = Boolean(event.simulated || state.actions.simulated);
   }
 
   if (event.type === "scenario_done" && event.payload?.scenario) {

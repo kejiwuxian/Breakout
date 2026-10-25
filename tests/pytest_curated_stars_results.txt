@@ -1,0 +1,42 @@
+..F.                                                                     [100%]
+=================================== FAILURES ===================================
+______________________ test_every_evidence_has_a_bibcode _______________________
+
+    def test_every_evidence_has_a_bibcode():
+        errors = []
+        for index, star in enumerate(_read_stars()):
+            if not isinstance(star, dict) or not isinstance(star.get("lit"), dict):
+                continue
+            for evidence_index, item in enumerate(star["lit"].get("evidence", [])):
+                label = f"{_star_label(star, index)} lit.evidence[{evidence_index}]"
+                if not isinstance(item, dict):
+                    errors.append(f"{label}: evidence must be a JSON object")
+                elif not isinstance(item.get("bibcode"), str) or not item["bibcode"].strip():
+                    errors.append(f"{label}: missing bibcode (found {item.get('bibcode')!r})")
+                if isinstance(item, dict) and (
+                    not isinstance(item.get("claim"), str) or not item["claim"].strip()
+                ):
+                    errors.append(f"{label}: missing evidence claim")
+>       assert not errors, "\n" + "\n".join(errors)
+E       AssertionError: 
+E         star[0] (* alf Ori) lit.evidence[2]: missing bibcode (found None)
+E         star[1] (* alf Sco) lit.evidence[0]: missing bibcode (found None)
+E         star[33] (* bet Ori) lit.evidence[0]: missing bibcode (found None)
+E         star[34] (* eps Ori) lit.evidence[0]: missing bibcode (found None)
+E         star[35] (* kap Ori) lit.evidence[0]: missing bibcode (found None)
+E         star[36] (* alf Cyg) lit.evidence[0]: missing bibcode (found None)
+E         star[38] (V* V509 Cas) lit.evidence[0]: missing bibcode (found None)
+E       assert not ['star[0] (* alf Ori) lit.evidence[2]: missing bibcode (found None)', 'star[1] (* alf Sco) lit.evidence[0]: missing bi....evidence[0]: missing bibcode (found None)', 'star[36] (* alf Cyg) lit.evidence[0]: missing bibcode (found None)', ...]
+
+mnt/data/tests/test_curated_stars.py:144: AssertionError
+=========================== short test summary info ============================
+FAILED mnt/data/tests/test_curated_stars.py::test_every_evidence_has_a_bibcode - AssertionError: 
+  star[0] (* alf Ori) lit.evidence[2]: missing bibcode (found None)
+  star[1] (* alf Sco) lit.evidence[0]: missing bibcode (found None)
+  star[33] (* bet Ori) lit.evidence[0]: missing bibcode (found None)
+  star[34] (* eps Ori) lit.evidence[0]: missing bibcode (found None)
+  star[35] (* kap Ori) lit.evidence[0]: missing bibcode (found None)
+  star[36] (* alf Cyg) lit.evidence[0]: missing bibcode (found None)
+  star[38] (V* V509 Cas) lit.evidence[0]: missing bibcode (found None)
+assert not ['star[0] (* alf Ori) lit.evidence[2]: missing bibcode (found None)', 'star[1] (* alf Sco) lit.evidence[0]: missing bi....evidence[0]: missing bibcode (found None)', 'star[36] (* alf Cyg) lit.evidence[0]: missing bibcode (found None)', ...]
+1 failed, 3 passed in 0.06s
