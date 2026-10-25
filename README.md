@@ -44,7 +44,7 @@ models put that window from tens of seconds (compact WR) to about a day
 5. **Subscribe** — mint access + refresh tokens, open `/ws/subscribe`, watch
    the next candidate package land (also mirrored at `/alerts/latest`).
 
-Mission UI: `frontend-v2` on port **5174**. Classic dashboard remains on **5173**.
+Mission UI: `frontend/` on port **5173** (Project Supernova redesign). Optional parallel `frontend-v2/` remains on **5174**.
 
 ## Built for Cal Hacks & SpaceX
 

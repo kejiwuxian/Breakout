@@ -1,5 +1,5 @@
 /**
- * WebSocket client for /ws/events (proxied to ws://localhost:8000).
+ * WebSocket client for /ws/events (proxied to Light's FastAPI).
  */
 export type PipelineEvent = {
   type: string;

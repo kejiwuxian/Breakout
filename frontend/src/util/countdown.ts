@@ -1,8 +1,4 @@
-/**
- * Breakout countdown display from CandidateScore.breakout.
- * class_window is an estimate; UI must label it as such.
- * "n/a" / empty skips the clock (UNK field stars, non-stellar).
- */
+/** Breakout countdown display; "n/a" skips the clock for non-stellar sources. */
 export function isBreakoutSkipped(classWindow: string): boolean {
   return classWindow === "n/a" || classWindow === "";
 }

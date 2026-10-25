@@ -1,7 +1,14 @@
 /**
- * Minimal dashboard state fed by /ws/events.
+ * Dashboard state fed by /ws/events — same contract as frontend/.
  */
 import type { PipelineEvent } from "../ws/events";
+
+export type LifeExpectancyRow = {
+  optical_breakout_window: string;
+  stellar_stage_note?: string | null;
+  confidence: number;
+  basis: string;
+};
 
 export type CandidateRow = {
   star_id: string;
@@ -12,6 +19,7 @@ export type CandidateRow = {
   distance_kpc: number | null;
   extinction_av_mag: number | null;
   p_sky: number;
+  vmag?: number | null;
   lit: {
     mass_loss: number;
     variability: number;
@@ -24,6 +32,11 @@ export type CandidateRow = {
   breakout: { class_window: string; countdown_from: string };
   ir_followup: boolean;
   simulated: boolean;
+  /** v1.1 optional inventory / Grok rank fields */
+  rank_confidence?: number | null;
+  rank_reasoning?: string | null;
+  life_expectancy?: LifeExpectancyRow | null;
+  composition?: string | null;
 };
 
 export type SkymapPayload = {
@@ -38,31 +51,6 @@ export type SkymapPayload = {
   simulated: boolean;
 };
 
-export type ActionsPayload = {
-  alert_id?: string;
-  lcogt_dry_run?: boolean;
-  top_star_id?: string | null;
-  lcogt?: {
-    path?: string;
-    dry_run?: boolean;
-    submitted?: boolean;
-    request_group?: Record<string, unknown>;
-    simulated?: boolean;
-  } | null;
-  too_hst_markdown?: string | null;
-  too_jwst_markdown?: string | null;
-  gcn_circular_markdown?: string | null;
-  community_notify?: {
-    alert_id?: string;
-    n_candidates?: number;
-    n_subscribers?: number;
-    dry_run?: boolean;
-    simulated?: boolean;
-  } | null;
-  simulated?: boolean;
-  note?: string;
-};
-
 export type DashState = {
   connected: boolean;
   scenario: string | null;
@@ -72,8 +60,12 @@ export type DashState = {
   candidates: CandidateRow[];
   candidatesSimulated: boolean;
   selectedStarId: string | null;
-  actions: ActionsPayload | null;
-  actionsSimulated: boolean;
+  voiceCaption: string;
+  voiceSimulated: boolean;
+  /** When true, next skymap render shows full sky without replaying zoom. */
+  suppressSkyZoomOnce: boolean;
+  /** Bumped on Scenario Run so zoom replays even if alert_id is reused. */
+  skyZoomNonce: number;
 };
 
 type Listener = (state: DashState) => void;
@@ -87,8 +79,10 @@ const state: DashState = {
   candidates: [],
   candidatesSimulated: false,
   selectedStarId: null,
-  actions: null,
-  actionsSimulated: false,
+  voiceCaption: "",
+  voiceSimulated: false,
+  suppressSkyZoomOnce: false,
+  skyZoomNonce: 0,
 };
 
 const listeners = new Set<Listener>();
@@ -117,6 +111,52 @@ export function selectStar(starId: string | null): void {
   emit();
 }
 
+export function setVoiceCaption(text: string, simulated: boolean): void {
+  state.voiceCaption = text;
+  state.voiceSimulated = simulated;
+  emit();
+}
+
+/** Seed skymap + candidates without a live WS event (e.g. /alerts/latest hydrate). */
+export function hydrateMission(opts: {
+  skymap: SkymapPayload;
+  candidates?: CandidateRow[];
+  simulated?: boolean;
+  /**
+   * When true (default), next sky render stays full-sky (page-load hydrate).
+   * Pass false after Scenario Run so AOI zoom can play on the fresh package.
+   */
+  suppressZoom?: boolean;
+}): void {
+  state.skymap = opts.skymap;
+  state.suppressSkyZoomOnce = opts.suppressZoom !== false;
+  if (opts.candidates) {
+    state.candidates = [...opts.candidates].sort(
+      (a, b) => b.posterior - a.posterior,
+    );
+    if (typeof opts.simulated === "boolean") {
+      state.candidatesSimulated = opts.simulated;
+    }
+    // Do not auto-select (e.g. Betelgeuse) — wait for user hover/click.
+  }
+  if (typeof opts.simulated === "boolean") {
+    state.lastSimulated = opts.simulated;
+  }
+  emit();
+}
+
+/** Call when the user starts a scenario so the sky zoom sequence can replay. */
+export function requestSkyZoomReplay(): void {
+  state.suppressSkyZoomOnce = false;
+  state.skyZoomNonce += 1;
+  emit();
+}
+
+export function clearSkyZoomSuppress(): void {
+  if (!state.suppressSkyZoomOnce) return;
+  state.suppressSkyZoomOnce = false;
+}
+
 export function applyEvent(event: PipelineEvent): void {
   if (typeof event.simulated === "boolean") {
     state.lastSimulated = event.simulated;
@@ -125,7 +165,11 @@ export function applyEvent(event: PipelineEvent): void {
   if (event.type === "hello") {
     const flat = event as PipelineEvent & { scenario?: string };
     const scenario = flat.scenario ?? (event.payload?.scenario as string | undefined);
-    if (typeof scenario === "string") state.scenario = scenario;
+    if (typeof scenario === "string" && scenario !== "live_waiting") {
+      state.scenario = scenario;
+    } else if (scenario === "live_waiting") {
+      state.scenario = null;
+    }
   }
 
   if (event.type === "alert" && event.payload) {
@@ -140,14 +184,15 @@ export function applyEvent(event: PipelineEvent): void {
     const list = (event.payload.candidates as CandidateRow[]) || [];
     state.candidates = [...list].sort((a, b) => b.posterior - a.posterior);
     state.candidatesSimulated = Boolean(event.simulated);
-    if (state.candidates.length && !state.selectedStarId) {
-      // no auto-select
-    }
+    // Keep selection null until the user picks a star on the map or table.
   }
 
-  if (event.type === "actions" && event.payload) {
-    state.actions = event.payload as ActionsPayload;
-    state.actionsSimulated = Boolean(event.simulated || state.actions.simulated);
+  if (event.type === "voice" && event.payload) {
+    const text = String((event.payload as { text?: string }).text ?? "");
+    if (text) {
+      state.voiceCaption = text;
+      state.voiceSimulated = Boolean(event.simulated);
+    }
   }
 
   if (event.type === "scenario_done" && event.payload?.scenario) {

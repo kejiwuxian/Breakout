@@ -80,11 +80,11 @@ with code **4001** (`access_token_expired`).
 
 | UI | Port | Where |
 | --- | --- | --- |
-| **frontend-v2** (primary) | `5174` | Rail **Subscribe to events** |
-| Classic `frontend/` | `5173` | **Subscribe to events** panel |
+| **`frontend/`** (primary) | `5173` | Rail **Subscribe to events** |
+| Optional `frontend-v2/` | `5174` | Parallel copy of the same rail |
 
 1. Start the API (`uvicorn backend.app:app`, typically `:8000`).
-2. Open frontend-v2 at http://127.0.0.1:5174 (Vite proxies `/subscribe`, `/alerts`, `/ws`).
+2. Open the primary UI at http://127.0.0.1:5173 (Vite proxies `/subscribe`, `/alerts`, `/ws`).
 3. Optional label → **Get tokens & connect**. The panel documents the three
    endpoints inline, opens `/ws/subscribe`, and auto-refreshes before expiry.
 4. Browse [`GET /alerts/latest`](http://127.0.0.1:8000/alerts/latest).

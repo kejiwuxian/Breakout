@@ -14,9 +14,9 @@ cp .env.example .env
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 uvicorn backend.app:app --reload          # idle / listening — no auto scenario
+npm --prefix frontend install && npm --prefix frontend run dev         # :5173 primary
+# optional parallel copy:
 npm --prefix frontend-v2 install && npm --prefix frontend-v2 run dev   # :5174
-# optional classic UI:
-npm --prefix frontend install && npm --prefix frontend run dev         # :5173
 ```
 
 Typical local API env:
@@ -56,9 +56,9 @@ Pure SVG Mollweide:
 
 ## Subscribe to events (Phase 1)
 
-**UI:** frontend-v2 (`:5174`) rail **Subscribe to events**, or the classic
-dashboard (`:5173`) **Community alerts** panel — **access + refresh** tokens
-over WebSocket, honesty note, link to `/alerts/latest`.
+**UI:** primary `frontend/` (`:5173`) rail **Subscribe to events** —
+**access + refresh** tokens over WebSocket, honesty note, link to
+`/alerts/latest`. Optional parallel UI on `:5174`.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/subscribe \
@@ -92,9 +92,10 @@ DiffPointing / live channels, Apify behind flags.
 
 ## Layout
 
-Backend is FastAPI (`backend/`); classic dashboard is Vite + TypeScript
-(`frontend/`, port 5173). Redesigned mission UI lives in **`frontend-v2/`**
-(port 5174) — same APIs, separate app; see [`frontend-v2/README.md`](../frontend-v2/README.md).
+Backend is FastAPI (`backend/`); primary mission UI is Vite + TypeScript
+(`frontend/`, port **5173**) with the Project Supernova design language.
+Optional parallel copy: [`frontend-v2/README.md`](../frontend-v2/README.md)
+(port 5174).
 
 Env reference: [`.env.example`](../.env.example).
 
