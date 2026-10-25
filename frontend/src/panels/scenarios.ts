@@ -2,6 +2,7 @@
  * Event select cards — same POST /scenario/{id}/start as the mission UI.
  */
 import strings from "../copy/strings.json";
+import { getState, subscribe } from "../state/store";
 
 export type ScenarioHooks = {
   onScenario?: (id: string) => void;
@@ -75,6 +76,8 @@ export function mountScenarios(
     const runLabel = btn.querySelector<HTMLElement>("[data-role=run-label]")!;
     btn.addEventListener("click", async () => {
       hooks.onScenario?.(scen.id);
+      const epoch = getState().missionEpoch;
+      const isCurrent = () => getState().missionEpoch === epoch && getState().scenario === scen.id;
       setPressed(scen.id);
       btn.disabled = true;
       runLabel.textContent = strings.scenarioStarting;
@@ -88,11 +91,13 @@ export function mountScenarios(
           const body = await res.text();
           throw new Error(body || String(res.status));
         }
+        if (!isCurrent()) return;
         status.textContent = `${strings.scenarioStarted}: ${scen.id}`;
         // Zoom is triggered once by main (WS skymap or filtered hydrate) —
         // do not bump skyZoomNonce here (that caused a double zoom flash).
         await hooks.onStarted?.(scen.id);
       } catch (err) {
+        if (!isCurrent()) return;
         status.textContent = `${strings.scenarioFailed}: ${String(err)}`;
         btn.setAttribute("aria-pressed", "false");
       } finally {
@@ -104,7 +109,19 @@ export function mountScenarios(
     list.appendChild(btn);
   }
 
+  const unsubscribe = subscribe((state) => {
+    setPressed(state.scenario);
+    if (!state.scenario) {
+      status.textContent = "";
+      for (const btn of cards.values()) {
+        btn.disabled = false;
+        btn.querySelector<HTMLElement>("[data-role=run-label]")!.textContent = strings.scenarioStart;
+      }
+    }
+  });
+
   return () => {
+    unsubscribe();
     list.innerHTML = "";
   };
 }
