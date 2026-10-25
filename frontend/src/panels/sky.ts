@@ -481,6 +481,7 @@ function clampCam(c: Cam, contentW: number, contentH: number): Cam {
 export function mountSky(
   host: HTMLElement,
   resetBtn: HTMLButtonElement,
+  onReturnToLive?: () => void,
 ): () => void {
   host.innerHTML = `
     <div class="sky-stage" data-role="stage">
@@ -1112,7 +1113,11 @@ export function mountSky(
   svg.addEventListener("wheel", onWheel, { passive: false });
   svg.addEventListener("pointerdown", onPointerDown);
   svg.addEventListener("dblclick", onDblClick);
-  resetBtn.addEventListener("click", resetToFull);
+  const onResetClick = () => {
+    resetToFull();
+    onReturnToLive?.();
+  };
+  resetBtn.addEventListener("click", onResetClick);
 
   const render = async () => {
     // Avoid tearing down SVG nodes mid-pan (loses the gesture).
@@ -1246,7 +1251,7 @@ export function mountSky(
     svg.removeEventListener("wheel", onWheel);
     svg.removeEventListener("pointerdown", onPointerDown);
     svg.removeEventListener("dblclick", onDblClick);
-    resetBtn.removeEventListener("click", resetToFull);
+    resetBtn.removeEventListener("click", onResetClick);
     cancelCamAnim();
   };
 }
