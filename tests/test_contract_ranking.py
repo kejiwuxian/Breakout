@@ -87,10 +87,11 @@ def test_filter_plus_rerank_on_skymap_fixture_validates_candidate_score(
         assert "p_sky" in row
         assert row.get("simulated") is True  # skymap fixture is simulated
 
-    # rerank returns list[CandidateScore].
+    # rerank returns list[CandidateScore]. Empty offline index falls back to
+    # curated lit_json on catalog rows (bibcoded evidence only; no invented cites).
     scores = rerank(
         filtered,
-        {},  # empty literature index → lit zeros / empty evidence (no invented bibcodes)
+        {},
         set(),
         skymap=skymap,
         t0_utc=T0,
@@ -110,7 +111,9 @@ def test_filter_plus_rerank_on_skymap_fixture_validates_candidate_score(
         assert validated.simulated is True
         assert validated.breakout.countdown_from == T0
         assert 0.0 <= validated.lit.confidence <= 1.0
-        assert validated.lit.evidence == []  # empty index → no invented citations
+        for ev in validated.lit.evidence:
+            assert ev.bibcode.strip()  # never invent empty bibcodes
+            assert ev.claim.strip()
 
 
 def test_candidate_scores_fixture_still_validates() -> None:

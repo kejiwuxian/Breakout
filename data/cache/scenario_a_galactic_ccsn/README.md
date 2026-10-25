@@ -8,7 +8,7 @@ catalog data real; label every simulated neutrino number.
 | Artifact | Source |
 | --- | --- |
 | Star identity, ICRS RA/Dec, spectral type, class `RSG` | `data/stars/curated_stars.json` (SIMBAD main_id `* alf Ori`) |
-| Distance `0.168` kpc | Joyce et al. 2020, ADS bibcode `2020ApJ...902...63J` (168 pc) |
+| Distance `0.222` kpc | Vincent curated (Harper et al. 2017, ADS `2017AJ....154...11H`, ~222 pc; marked uncertain in curated) |
 | Literature evidence bibcodes | `backend/literature/index.parquet` — `2020ApJ...902...63J`, `2017AJ....154...11H`, `2016ApJ...819....7D` |
 | Detector WGS84 positions | Real lab coordinates (`backend.config.DETECTOR_TABLE`) |
 

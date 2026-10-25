@@ -57,7 +57,8 @@
       "lit.confidence",
       "distance_kpc"
     ],
-    "simulated": false
+    "simulated": false,
+    "common_name": "Betelgeuse"
   },
   {
     "star_id": "* alf Sco",
@@ -366,7 +367,7 @@
     "ra_deg": 35.528728462,
     "dec_deg": 56.604137125,
     "class": "RSG",
-    "spectral_type": "M3–4 I",
+    "spectral_type": "M3\u20134 I",
     "distance_kpc": null,
     "extinction_av_mag": 2.01,
     "lit": {
@@ -462,7 +463,7 @@
     "ra_deg": 305.341195541,
     "dec_deg": 36.932146863,
     "class": "RSG",
-    "spectral_type": "M3–4 I",
+    "spectral_type": "M3\u20134 I",
     "distance_kpc": null,
     "extinction_av_mag": 5.11,
     "lit": {
@@ -654,7 +655,7 @@
     "ra_deg": 306.491848095,
     "dec_deg": 38.352131059,
     "class": "RSG",
-    "spectral_type": "M3–4 I",
+    "spectral_type": "M3\u20134 I",
     "distance_kpc": null,
     "extinction_av_mag": 7.75,
     "lit": {
@@ -1957,5 +1958,58 @@
       "lit.confidence"
     ],
     "simulated": false
+  },
+  {
+    "star_id": "TXS 0506+056",
+    "common_name": "TXS 0506+056",
+    "ra_deg": 77.36,
+    "dec_deg": 5.69,
+    "class": "AGN",
+    "spectral_type": "BL Lac",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "Not applicable to a blazar AGN."
+      },
+      "variability": {
+        "value": "flaring",
+        "reason": "Observed in a flaring gamma-ray state coincident with IceCube-170922A."
+      },
+      "evolved_stage": {
+        "value": "blazar",
+        "reason": "Known gamma-ray blazar TXS 0506+056."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated CCSN progenitor confidence; association is multimessenger."
+      },
+      "evidence": [
+        {
+          "bibcode": "2018Sci...361.1378I",
+          "claim": "IceCube Collaboration et al. 2018 report IceCube-170922A in positional coincidence with the flaring blazar TXS 0506+056 at RA 77.36\u00b0, Dec +5.69\u00b0 (J2000)."
+        },
+        {
+          "bibcode": "2018Sci...361..147I",
+          "claim": "IceCube Collaboration et al. 2018 find a neutrino flare from the direction of TXS 0506+056 in archival data independent of IceCube-170922A."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://arxiv.org/abs/1807.08816",
+      "dec_deg": "https://arxiv.org/abs/1807.08816",
+      "class": "https://arxiv.org/abs/1807.08816",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TXS+0506%2B056",
+      "lit.evidence[0]": "https://ui.adsabs.harvard.edu/abs/2018Sci...361.1378I",
+      "lit.evidence[1]": "https://ui.adsabs.harvard.edu/abs/2018Sci...361..147I"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.confidence"
+    ],
+    "simulated": false,
+    "notes": "Added for Scenario B (IceCube-170922A). Coordinates and association from IceCube Collaboration et al. 2018 Science (ADS 2018Sci...361.1378I / arXiv:1807.08816). Class AGN is an additive CandidateScore enum for blazar multimessenger demos."
   }
 ]
