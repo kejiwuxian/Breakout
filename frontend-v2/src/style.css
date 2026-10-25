@@ -286,24 +286,13 @@ body::before {
   fill: #fff6d6;
 }
 
-/* Outer localization ellipse — semi-transparent pure red, no fill/glow. */
 .sky-outline {
   fill: none;
-  stroke: rgba(255, 0, 0, 0.4);
+  stroke: #ff0000;
   stroke-width: 2.25;
   stroke-linejoin: round;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
-  filter: none;
-}
-
-/* Peak ring — solid opaque pure red (IceCube-scale readability). */
-.sky-outline-peak {
-  fill: none;
-  stroke: #ff0000;
-  stroke-width: 2.5;
-  vector-effect: non-scaling-stroke;
-  filter: none;
 }
 
 .sky-star {
