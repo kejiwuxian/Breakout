@@ -76,8 +76,9 @@ def process_sn_burst(
     t0 = time.perf_counter()
     scores = rerank(
         rows,
-        skymap,
-        watchlist=_watchlist,
+        None,  # default index.parquet
+        _watchlist,
+        skymap=skymap,
         t0_utc=alert.t0_utc,
         prob=prob,
     )

@@ -137,6 +137,21 @@ AV_IR_THRESHOLD_SOURCE: str = (
     "null extinction_av_mag never invented"
 )
 
+# Ranking priors for literature/rerank.py (dimensionless; NOT observational rates).
+# Posterior ∝ p_sky × w_class × w_lit × w_watch, then normalized over candidates.
+# w_lit = RANKING_W_LIT_FLOOR + RANKING_W_LIT_SCALE * index.confidence
+# so zero-confidence stars stay alive but rank below high-confidence ones.
+RANKING_CLASS_WEIGHT: dict[str, float] = {
+    "RSG": 1.0,
+    "BSG": 0.9,
+    "YSG": 0.85,
+    "WR": 0.8,
+    "LBV": 0.75,
+}
+RANKING_WATCH_BOOST: float = 2.0  # w_watch for presn_watch / watchlist stars
+RANKING_W_LIT_FLOOR: float = 0.25
+RANKING_W_LIT_SCALE: float = 0.75
+
 
 class Settings(BaseModel):
     """Application settings read once at process start."""
@@ -187,7 +202,15 @@ class Settings(BaseModel):
         default=AV_IR_THRESHOLD_MAG,
         description="A_V (mag) at/above which ir_followup is recommended.",
     )
-    ranking_weights: dict[str, float] = Field(default_factory=dict)
+    ranking_weights: dict[str, float] = Field(
+        default_factory=lambda: {
+            "watch_boost": RANKING_WATCH_BOOST,
+            "w_lit_floor": RANKING_W_LIT_FLOOR,
+            "w_lit_scale": RANKING_W_LIT_SCALE,
+            **{f"class_{k}": v for k, v in RANKING_CLASS_WEIGHT.items()},
+        },
+        description="Dimensionless ranking priors for rerank (not rates).",
+    )
 
 
 def load_settings() -> Settings:
