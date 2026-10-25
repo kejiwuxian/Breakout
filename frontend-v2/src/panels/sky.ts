@@ -1,7 +1,7 @@
 /**
- * Full-sky Mollweide by default. On a neutrino event: draw a smooth red oval
- * from the localization ellipse, animate a zoom toward the peak, then settle
- * on the focus map for accurate star hover (rank / posterior / p_sky).
+ * Pure-SVG Mollweide skymap. Public catalog stars + galactic plane + HEALPix
+ * localization cells + smooth 90% oval. Zoom is a CSS transform on one SVG —
+ * no raster PNG swap.
  */
 import strings from "../copy/strings.json";
 import {
@@ -12,8 +12,14 @@ import {
   type CandidateRow,
   type SkymapPayload,
 } from "../state/store";
-import { raDecToFocusPx } from "../sky/projection";
 import { raDecToMollweide } from "../sky/mollweide";
+import {
+  createSvgEl,
+  drawEquatorialGrid,
+  mollweideLimbPath,
+  projectPolyline,
+  projectRing,
+} from "../sky/svgMap";
 
 export type EllipsePayload = {
   ra_deg: number;
@@ -24,6 +30,26 @@ export type EllipsePayload = {
   area_deg2: number;
 };
 
+export type FieldStar = {
+  star_id: string;
+  common_name?: string | null;
+  ra_deg: number;
+  dec_deg: number;
+  class?: string;
+};
+
+export type ProbCell = {
+  prob: number;
+  weight: number;
+  corners: number[][];
+};
+
+export type NestedEllipse = {
+  level: number;
+  ellipse: EllipsePayload;
+  outline: number[][];
+};
+
 export type RegionPayload = {
   alert_id: string;
   peak: { ra_deg: number; dec_deg: number };
@@ -31,8 +57,18 @@ export type RegionPayload = {
   credible_deg2: number;
   outline: number[][];
   ellipse?: EllipsePayload;
+  nested_ellipses?: NestedEllipse[];
+  prob_cells?: ProbCell[];
+  field_stars?: FieldStar[];
+  galactic_plane?: number[][];
   shape?: string;
+  render?: string;
   simulated: boolean;
+};
+
+type SkyBase = {
+  field_stars: FieldStar[];
+  galactic_plane: number[][];
 };
 
 type HoverInfo = {
@@ -46,7 +82,7 @@ type HoverInfo = {
   simulated: boolean;
 };
 
-type ViewMode = "full" | "zooming" | "focus";
+type ViewMode = "full" | "zooming" | "zoomed";
 
 async function fetchRegion(alertId: string): Promise<RegionPayload | null> {
   try {
@@ -58,6 +94,20 @@ async function fetchRegion(alertId: string): Promise<RegionPayload | null> {
     return (await res.json()) as RegionPayload;
   } catch {
     return null;
+  }
+}
+
+async function fetchSkyBase(): Promise<SkyBase> {
+  try {
+    const res = await fetch("/api/sky/base", { cache: "no-store" });
+    if (!res.ok) return { field_stars: [], galactic_plane: [] };
+    const body = (await res.json()) as SkyBase;
+    return {
+      field_stars: body.field_stars ?? [],
+      galactic_plane: body.galactic_plane ?? [],
+    };
+  } catch {
+    return { field_stars: [], galactic_plane: [] };
   }
 }
 
@@ -113,28 +163,13 @@ function outlineRing(reg: RegionPayload): number[][] {
   return [];
 }
 
-function loadImage(img: HTMLImageElement, src: string): Promise<void> {
-  return new Promise((resolve) => {
-    img.onload = () => resolve();
-    img.onerror = () => resolve();
-    if (img.getAttribute("src") !== src) {
-      img.src = src;
-    } else if (img.complete) {
-      resolve();
-    }
-  });
-}
-
 export function mountSky(host: HTMLElement): () => void {
   host.innerHTML = `
     <div class="sky-stage" data-role="stage">
-      <div class="sky-empty" data-role="empty">${strings.skyEmpty}</div>
-      <div class="sky-world" data-role="world" hidden>
+      <div class="sky-world" data-role="world">
         <div class="sky-zoomable" data-role="zoomable">
           <div class="sky-frame" data-role="frame">
-            <img class="sky-img sky-full" data-role="full-img" alt="${strings.skyTitle}" />
-            <img class="sky-img sky-focus" data-role="focus-img" alt="" hidden />
-            <svg class="sky-overlay" data-role="overlay" aria-hidden="true"></svg>
+            <svg class="sky-svg" data-role="svg" role="img" aria-label="${strings.skyTitle}"></svg>
           </div>
         </div>
       </div>
@@ -143,18 +178,14 @@ export function mountSky(host: HTMLElement): () => void {
     </div>
   `;
 
-  const empty = host.querySelector<HTMLElement>("[data-role=empty]")!;
   const world = host.querySelector<HTMLElement>("[data-role=world]")!;
-  const zoomable = host.querySelector<HTMLElement>("[data-role=zoomable]")!;
   const frame = host.querySelector<HTMLElement>("[data-role=frame]")!;
-  const full = host.querySelector<HTMLImageElement>("[data-role=full-img]")!;
-  const focus = host.querySelector<HTMLImageElement>("[data-role=focus-img]")!;
-  const overlay = host.querySelector<SVGSVGElement>("[data-role=overlay]")!;
+  const svg = host.querySelector<SVGSVGElement>("[data-role=svg]")!;
   const hoverEl = host.querySelector<HTMLElement>("[data-role=hover]")!;
   const meta = host.querySelector<HTMLElement>("[data-role=meta]")!;
 
   let region: RegionPayload | null = null;
-  /** Alert id we already played the zoom sequence for (survives render races). */
+  let skyBase: SkyBase = { field_stars: [], galactic_plane: [] };
   let animatedAlertId: string | null = null;
   let seenZoomNonce = 0;
   let renderSeq = 0;
@@ -162,12 +193,8 @@ export function mountSky(host: HTMLElement): () => void {
   let zoomTimer = 0;
   let settleTimer = 0;
 
-  /** Fit the map stack to the stage using the active image's intrinsic aspect. */
-  const fitFrame = (img: HTMLImageElement) => {
-    const ar =
-      img.naturalWidth > 0 && img.naturalHeight > 0
-        ? img.naturalWidth / img.naturalHeight
-        : 2;
+  const fitFrame = () => {
+    const ar = 2;
     const pw = world.clientWidth || host.clientWidth || 640;
     const ph = world.clientHeight || host.clientHeight || 360;
     let w = pw;
@@ -178,7 +205,7 @@ export function mountSky(host: HTMLElement): () => void {
     }
     frame.style.width = `${Math.max(1, Math.floor(w))}px`;
     frame.style.height = `${Math.max(1, Math.floor(h))}px`;
-    return { w: frame.clientWidth || w, h: frame.clientHeight || h, ar };
+    return { w: frame.clientWidth || w, h: frame.clientHeight || h };
   };
 
   const showHover = (info: HoverInfo | null, clientX?: number, clientY?: number) => {
@@ -204,8 +231,15 @@ export function mountSky(host: HTMLElement): () => void {
     return strings.skyModeFocus;
   };
 
-  const setMeta = (skymap: SkymapPayload, reg: RegionPayload | null) => {
+  const setMeta = (skymap: SkymapPayload | null, reg: RegionPayload | null) => {
     meta.hidden = false;
+    if (!skymap) {
+      meta.innerHTML = `
+        <span>${strings.skyModeFull}</span>
+        <span>${skyBase.field_stars.length} public catalog stars</span>
+      `;
+      return;
+    }
     const peak = reg?.peak ?? skymap.peak;
     const area = reg?.credible_deg2 ?? skymap.credible_90_deg2;
     const ell = reg?.ellipse;
@@ -234,98 +268,7 @@ export function mountSky(host: HTMLElement): () => void {
     g.addEventListener("click", () => selectStar(row.star_id));
   };
 
-  const sizeOverlay = (w: number, h: number) => {
-    overlay.setAttribute("viewBox", `0 0 ${w} ${h}`);
-    overlay.setAttribute("width", String(w));
-    overlay.setAttribute("height", String(h));
-    overlay.innerHTML = "";
-  };
-
-  const drawOval = (
-    pts: string[],
-    opts: { strokeWidth: number },
-  ) => {
-    if (pts.length < 3) return;
-    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    poly.setAttribute("points", pts.join(" "));
-    poly.setAttribute("class", "sky-outline");
-    poly.setAttribute("stroke-width", String(opts.strokeWidth));
-    overlay.appendChild(poly);
-  };
-
-  const drawFullOverlay = (reg: RegionPayload, candidates: CandidateRow[]) => {
-    const { w, h } = fitFrame(full);
-    sizeOverlay(w, h);
-
-    const pts: string[] = [];
-    for (const pair of outlineRing(reg)) {
-      const p = raDecToMollweide(Number(pair[0]), Number(pair[1]), w, h);
-      if (p) pts.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
-    }
-    drawOval(pts, { strokeWidth: 2.5 });
-
-    candidates.forEach((row, idx) => {
-      const p = raDecToMollweide(row.ra_deg, row.dec_deg, w, h);
-      if (!p) return;
-      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      g.setAttribute("class", "sky-star");
-      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      c.setAttribute("cx", String(p.x));
-      c.setAttribute("cy", String(p.y));
-      c.setAttribute("r", idx === 0 ? "6" : "4.5");
-      g.appendChild(c);
-      wireStar(g, row, idx + 1);
-      overlay.appendChild(g);
-    });
-    return { w, h };
-  };
-
-  const drawFocusOverlay = (reg: RegionPayload, candidates: CandidateRow[]) => {
-    const { w, h } = fitFrame(focus);
-    sizeOverlay(w, h);
-
-    const peak = reg.peak;
-    const fov = reg.fov_deg;
-    const pts: string[] = [];
-    for (const pair of outlineRing(reg)) {
-      const p = raDecToFocusPx(
-        Number(pair[0]),
-        Number(pair[1]),
-        peak.ra_deg,
-        peak.dec_deg,
-        fov,
-        w,
-        h,
-      );
-      if (p) pts.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
-    }
-    drawOval(pts, { strokeWidth: 3 });
-
-    candidates.forEach((row, idx) => {
-      const p = raDecToFocusPx(
-        row.ra_deg,
-        row.dec_deg,
-        peak.ra_deg,
-        peak.dec_deg,
-        fov,
-        w,
-        h,
-      );
-      if (!p) return;
-      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      g.setAttribute("class", "sky-star");
-      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      c.setAttribute("cx", String(p.x));
-      c.setAttribute("cy", String(p.y));
-      c.setAttribute("r", idx === 0 ? "7" : "5");
-      g.appendChild(c);
-      wireStar(g, row, idx + 1);
-      overlay.appendChild(g);
-    });
-  };
-
   const clearFrameZoom = () => {
-    // Drop scale without a reverse transition (otherwise settle animates back out).
     frame.style.transition = "none";
     frame.classList.remove("is-zoomed");
     frame.style.transform = "none";
@@ -334,30 +277,120 @@ export function mountSky(host: HTMLElement): () => void {
     frame.style.transition = "";
   };
 
-  const resetTransform = () => {
-    clearFrameZoom();
-    zoomable.classList.remove("is-focus");
-    full.hidden = false;
-    focus.hidden = true;
-    focus.classList.remove("is-in");
+  const paintSvg = (
+    reg: RegionPayload | null,
+    candidates: CandidateRow[],
+  ): { w: number; h: number } => {
+    const { w, h } = fitFrame();
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    svg.setAttribute("width", String(w));
+    svg.setAttribute("height", String(h));
+    svg.innerHTML = "";
+
+    const root = createSvgEl("g");
+    root.setAttribute("data-role", "scene");
+
+    // Limb + night fill
+    const limb = createSvgEl("path");
+    limb.setAttribute("d", mollweideLimbPath(w, h));
+    limb.setAttribute("class", "sky-limb");
+    root.appendChild(limb);
+
+    drawEquatorialGrid(root, w, h);
+
+    const plane = reg?.galactic_plane?.length
+      ? reg.galactic_plane
+      : skyBase.galactic_plane;
+    if (plane.length >= 2) {
+      const gp = createSvgEl("path");
+      gp.setAttribute("d", projectPolyline(plane, w, h));
+      gp.setAttribute("class", "sky-galactic");
+      root.appendChild(gp);
+    }
+
+    const field = reg?.field_stars?.length
+      ? reg.field_stars
+      : skyBase.field_stars;
+    const fieldG = createSvgEl("g");
+    fieldG.setAttribute("class", "sky-field");
+    for (const star of field) {
+      const p = raDecToMollweide(star.ra_deg, star.dec_deg, w, h);
+      if (!p) continue;
+      const c = createSvgEl("circle");
+      c.setAttribute("cx", String(p.x));
+      c.setAttribute("cy", String(p.y));
+      c.setAttribute("r", "1.6");
+      c.setAttribute("class", "sky-field-star");
+      c.setAttribute("data-id", star.star_id);
+      fieldG.appendChild(c);
+    }
+    root.appendChild(fieldG);
+
+    if (reg) {
+      const cellsG = createSvgEl("g");
+      cellsG.setAttribute("class", "sky-prob-cells");
+      for (const cell of reg.prob_cells ?? []) {
+        const pts = projectRing(cell.corners, w, h);
+        if (!pts) continue;
+        const poly = createSvgEl("polygon");
+        poly.setAttribute("points", pts);
+        poly.setAttribute("class", "sky-prob-cell");
+        poly.setAttribute(
+          "fill-opacity",
+          String(Math.min(0.75, 0.12 + 0.65 * (cell.weight || 0))),
+        );
+        cellsG.appendChild(poly);
+      }
+      root.appendChild(cellsG);
+
+      for (const nest of reg.nested_ellipses ?? []) {
+        const pts = projectRing(nest.outline, w, h);
+        if (!pts) continue;
+        const poly = createSvgEl("polygon");
+        poly.setAttribute("points", pts);
+        poly.setAttribute(
+          "class",
+          nest.level >= 0.85 ? "sky-nest-outer" : "sky-nest-inner",
+        );
+        root.appendChild(poly);
+      }
+
+      const ovalPts = projectRing(outlineRing(reg), w, h);
+      if (ovalPts) {
+        const oval = createSvgEl("polygon");
+        oval.setAttribute("points", ovalPts);
+        oval.setAttribute("class", "sky-outline");
+        root.appendChild(oval);
+      }
+    }
+
+    const rankedIds = new Set(candidates.map((c) => c.star_id));
+    candidates.forEach((row, idx) => {
+      const p = raDecToMollweide(row.ra_deg, row.dec_deg, w, h);
+      if (!p) return;
+      const g = createSvgEl("g");
+      g.setAttribute("class", "sky-star");
+      const c = createSvgEl("circle");
+      c.setAttribute("cx", String(p.x));
+      c.setAttribute("cy", String(p.y));
+      c.setAttribute("r", idx === 0 ? "6.5" : "5");
+      g.appendChild(c);
+      wireStar(g, row, idx + 1);
+      root.appendChild(g);
+      rankedIds.add(row.star_id);
+    });
+
+    svg.appendChild(root);
+    return { w, h };
   };
 
-  const settleOnFocus = async (
+  const settleZoomed = (
     skymap: SkymapPayload,
     reg: RegionPayload,
-    candidates: CandidateRow[],
+    _candidates: CandidateRow[],
   ) => {
-    const src = `/api/skymap/${encodeURIComponent(skymap.alert_id)}/focus.png?v=${encodeURIComponent(skymap.alert_id)}`;
-    await loadImage(focus, src);
-    viewMode = "focus";
-    clearFrameZoom();
-    zoomable.classList.add("is-focus");
-    full.hidden = true;
-    full.classList.remove("is-in");
-    focus.hidden = false;
-    focus.classList.add("is-in");
-    fitFrame(focus);
-    drawFocusOverlay(reg, candidates);
+    // Stay on the same SVG — only the mode label changes after the zoom eases.
+    viewMode = "zoomed";
     setMeta(skymap, reg);
   };
 
@@ -366,121 +399,99 @@ export function mountSky(host: HTMLElement): () => void {
     reg: RegionPayload,
     candidates: CandidateRow[],
   ) => {
-    const { w, h } = drawFullOverlay(reg, candidates);
+    const { w, h } = paintSvg(reg, candidates);
     const pt = raDecToMollweide(reg.peak.ra_deg, reg.peak.dec_deg, w, h);
     const major = reg.ellipse?.semi_major_deg ?? Math.sqrt(reg.credible_deg2 / Math.PI);
-    // Mollweide compresses longitude; use map width as ~360° across.
-    const pxPerDeg = w / 360;
-    const ovalPx = Math.max(major * pxPerDeg * 1.35, 10);
-    const target = Math.min(w, h) * 0.62;
-    const scale = Math.min(Math.max(target / ovalPx, 5), 20);
+    const ovalPx = Math.max(major * (w / 360) * 1.35, 10);
+    const scale = Math.min(
+      Math.max((Math.min(w, h) * 0.62) / ovalPx, 5),
+      20,
+    );
 
     viewMode = "full";
-    resetTransform();
-    full.classList.add("is-in");
-    if (pt) {
-      frame.style.transformOrigin = `${pt.x.toFixed(1)}px ${pt.y.toFixed(1)}px`;
-    }
+    clearFrameZoom();
+    if (pt) frame.style.transformOrigin = `${pt.x.toFixed(1)}px ${pt.y.toFixed(1)}px`;
     setMeta(skymap, reg);
 
     window.clearTimeout(zoomTimer);
     window.clearTimeout(settleTimer);
 
-    // Beat on full sky with oval visible, then zoom, then settle on focus map.
     zoomTimer = window.setTimeout(() => {
       viewMode = "zooming";
       setMeta(skymap, reg);
-      // Double rAF so the browser commits transform-origin before scale.
+      // Commit origin first, then scale on the next frame for a smooth CSS transition.
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          frame.classList.add("is-zoomed");
-          frame.style.transform = `scale(${scale.toFixed(3)})`;
-        });
+        frame.classList.add("is-zoomed");
+        frame.style.transform = `scale(${scale.toFixed(3)})`;
       });
       settleTimer = window.setTimeout(() => {
-        void settleOnFocus(skymap, reg, candidates);
-      }, 1800);
-    }, 800);
+        settleZoomed(skymap, reg, candidates);
+      }, 1700);
+    }, 650);
   };
 
-  const showEvent = async (
+  const showBaseSky = () => {
+    viewMode = "full";
+    clearFrameZoom();
+    paintSvg(null, []);
+    setMeta(null, null);
+  };
+
+  const showEvent = (
     skymap: SkymapPayload,
     reg: RegionPayload,
     candidates: CandidateRow[],
     animate: boolean,
   ) => {
-    empty.hidden = true;
-    world.hidden = false;
-
-    const fullSrc = `/api/skymap/${encodeURIComponent(skymap.alert_id)}/png?v=${encodeURIComponent(skymap.alert_id)}`;
-    if (animate) full.classList.remove("is-in");
-    await loadImage(full, fullSrc);
-    fitFrame(full);
-
     if (animate) {
-      // Wait one frame so the fitted frame has real layout boxes.
-      requestAnimationFrame(() => {
-        runZoomSequence(skymap, reg, candidates);
-      });
+      requestAnimationFrame(() => runZoomSequence(skymap, reg, candidates));
       return;
     }
-
-    // Candidate / store updates must not cancel an in-flight zoom sequence.
     if (viewMode === "zooming") return;
-    if (viewMode === "focus") {
-      await settleOnFocus(skymap, reg, candidates);
+    if (viewMode === "zoomed") {
+      settleZoomed(skymap, reg, candidates);
       return;
     }
-
-    // Hydrate / resume: show full-sky Mollweide + oval without replaying zoom.
     viewMode = "full";
-    resetTransform();
-    full.classList.add("is-in");
-    drawFullOverlay(reg, candidates);
+    clearFrameZoom();
+    paintSvg(reg, candidates);
     setMeta(skymap, reg);
   };
 
   const render = async () => {
     const seq = ++renderSeq;
     const { skymap, candidates, suppressSkyZoomOnce, skyZoomNonce } = getState();
+
+    if (!skyBase.field_stars.length) {
+      skyBase = await fetchSkyBase();
+      if (seq !== renderSeq) return;
+    }
+
     if (!skymap) {
-      empty.hidden = false;
-      world.hidden = true;
-      meta.hidden = true;
       showHover(null);
       window.clearTimeout(zoomTimer);
       window.clearTimeout(settleTimer);
-      resetTransform();
-      viewMode = "full";
       animatedAlertId = null;
       region = null;
+      showBaseSky();
       return;
     }
 
-    // Fetch region without claiming the alert as "shown" yet — otherwise a
-    // concurrent render can see a stale flag and skip the zoom animation.
     if (!region || region.alert_id !== skymap.alert_id) {
       const next = await fetchRegion(skymap.alert_id);
       if (seq !== renderSeq) return;
       region = next;
     }
+
     if (!region) {
-      empty.hidden = true;
-      world.hidden = false;
-      resetTransform();
-      await loadImage(
-        full,
-        `/api/skymap/${encodeURIComponent(skymap.alert_id)}/png?v=${encodeURIComponent(skymap.alert_id)}`,
-      );
-      fitFrame(full);
-      full.classList.add("is-in");
+      paintSvg(null, candidates);
       setMeta(skymap, null);
       return;
     }
 
     if (skyZoomNonce !== seenZoomNonce) {
       seenZoomNonce = skyZoomNonce;
-      animatedAlertId = null; // Scenario Run — replay zoom even if alert_id reused.
+      animatedAlertId = null;
     }
 
     let shouldAnimate = skymap.alert_id !== animatedAlertId;
@@ -491,16 +502,24 @@ export function mountSky(host: HTMLElement): () => void {
     } else if (shouldAnimate) {
       animatedAlertId = skymap.alert_id;
     }
-    await showEvent(skymap, region, candidates, shouldAnimate);
+    showEvent(skymap, region, candidates, shouldAnimate);
   };
 
   const unsub = subscribe(() => {
     void render();
   });
   const onResize = () => {
-    if (!region || world.hidden || !getState().skymap) return;
-    if (viewMode === "focus") drawFocusOverlay(region, getState().candidates);
-    else drawFullOverlay(region, getState().candidates);
+    const { skymap, candidates } = getState();
+    if (viewMode === "zooming") return;
+    if (skymap && region) {
+      if (viewMode === "zoomed") settleZoomed(skymap, region, candidates);
+      else {
+        paintSvg(region, candidates);
+        setMeta(skymap, region);
+      }
+    } else {
+      showBaseSky();
+    }
   };
   window.addEventListener("resize", onResize);
 

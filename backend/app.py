@@ -355,9 +355,17 @@ def skymap_png(alert_id: str) -> FileResponse:
     )
 
 
+@app.get("/api/sky/base")
+def sky_base_layers() -> dict[str, Any]:
+    """Public SVG sky layers (curated SIMBAD stars + galactic plane) with no alert."""
+    from backend.localize.region import public_sky_base
+
+    return public_sky_base()
+
+
 @app.get("/api/skymap/{alert_id}/region")
 def skymap_region(alert_id: str) -> dict[str, Any]:
-    """90% credible-region outline + FOV for interactive zoom / red contour.
+    """SVG sky layers: ellipse, HEALPix cells, public field stars, galactic plane.
 
     Regenerates ``region.json`` / ``skymap_focus.png`` when the fused FITS is
     newer so the UI always sees the latest localization.

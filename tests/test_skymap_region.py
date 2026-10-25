@@ -63,7 +63,11 @@ def test_outline_is_closed_and_near_true_position(tmp_path: Path) -> None:
     assert max(steps) < 25.0
     payload = build_region_payload(prob, alert_id=alert.alert_id, simulated=True)
     assert payload["shape"] == "ellipse"
+    assert payload["render"] == "svg_v1"
     assert "ellipse" in payload
+    assert payload["prob_cells"]
+    assert payload["field_stars"]
+    assert payload["nested_ellipses"]
     assert payload["fov_deg"] == pytest.approx(focus_fov_deg(payload["ellipse"]))
     assert (tmp_path / alert.alert_id / "region.json").is_file()
     assert (tmp_path / alert.alert_id / "skymap_focus.png").is_file()
@@ -90,8 +94,14 @@ def test_ensure_region_and_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         body = r.json()
         assert body["alert_id"] == alert.alert_id
         assert body["shape"] == "ellipse"
+        assert body["render"] == "svg_v1"
         assert body["ellipse"]["semi_major_deg"] >= body["ellipse"]["semi_minor_deg"]
         assert len(body["outline"]) >= 4
+        assert body["prob_cells"]
+        assert body["field_stars"]
+        base = client.get("/api/sky/base")
+        assert base.status_code == 200
+        assert base.json()["field_stars"]
         f = client.get(f"/api/skymap/{alert.alert_id}/focus.png")
         assert f.status_code == 200
         assert f.headers["content-type"].startswith("image/png")

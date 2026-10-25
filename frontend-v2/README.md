@@ -9,7 +9,7 @@ Redesigned mission UI for the same product and backend as `frontend/`.
 - Brand-first: **BREAKOUT** is the hero signal
 - Expressive type: Syne + IBM Plex Sans / Mono
 - Atmospheric night field (gradients + sparse star dust), not a flat fill
-- Interactive localization: full-sky Mollweide by default; on an event, a **smooth red oval** (localization ellipse) appears and the view **animates a zoom** into the region. Hover ranked stars for posterior / p_sky.
+- Interactive localization: **pure SVG** Mollweide (public catalog stars + galactic plane + HEALPix cells); on an event, a **smooth red oval** appears and the view **zooms the same SVG** (no raster swap). Hover ranked stars for posterior / p_sky.
 - Simulated / Real badges preserved; no invented numbers or citations
 - Motion: brand letter-spacing settle, rail rise, skymap fade-in (reduced-motion safe)
 

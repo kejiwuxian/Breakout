@@ -1,10 +1,12 @@
-"""Credible-region ellipse + zoomed focus PNG for interactive skymaps.
+"""SVG-first localization layers for interactive skymaps.
 
 Derives a **smooth oval** (probability-weighted covariance ellipse) for the
-90% credible region from the fused NESTED HEALPix map — not a jagged pixel
-boundary. Also writes ``region.json`` and ``skymap_focus.png``.
+90% credible region from the fused NESTED HEALPix map, plus public-catalog
+field stars and a galactic-plane guide. Also writes ``region.json`` (and a
+legacy focus PNG for classic UI).
 
-Never invents coordinates: everything comes from the fused map on disk.
+Never invents coordinates: localization from the fused map; star positions
+from the curated public SIMBAD/VizieR table on disk.
 """
 
 from __future__ import annotations
@@ -21,9 +23,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np
 
+from backend.config import ROOT
 from backend.localize.fuse import credible_region_area_deg2, credible_region_pixels, peak_ra_dec
 
 logger = logging.getLogger("breakout.localize.region")
+
+SVG_RENDER_VERSION = "svg_v1"
+CURATED_STARS_PATH = ROOT / "data" / "stars" / "curated_stars.json"
 
 
 def _unwrap_ra(ras: np.ndarray, *, center_deg: float) -> np.ndarray:
@@ -166,6 +172,117 @@ def focus_fov_deg(
     return float(np.clip(fov, min_fov, max_fov))
 
 
+def load_public_field_stars(
+    *,
+    path: Path = CURATED_STARS_PATH,
+    limit: int = 80,
+) -> list[dict[str, Any]]:
+    """Bright progenitor-catalog stars from the public curated SIMBAD table."""
+    path = Path(path)
+    if not path.is_file():
+        return []
+    try:
+        rows = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("failed_reading_curated_stars path=%s", path)
+        return []
+    out: list[dict[str, Any]] = []
+    if not isinstance(rows, list):
+        return out
+    for row in rows[:limit]:
+        if not isinstance(row, dict):
+            continue
+        try:
+            ra = float(row["ra_deg"])
+            dec = float(row["dec_deg"])
+        except Exception:
+            continue
+        out.append(
+            {
+                "star_id": str(row.get("star_id") or ""),
+                "common_name": row.get("common_name"),
+                "ra_deg": ra,
+                "dec_deg": dec,
+                "class": str(row.get("class") or ""),
+                "source": "curated_public_simbad",
+            }
+        )
+    return out
+
+
+def galactic_plane_icrs(n_points: int = 180) -> list[list[float]]:
+    """Sample the galactic plane (b=0) in ICRS using Astropy public frames."""
+    try:
+        from astropy import units as u
+        from astropy.coordinates import SkyCoord
+    except Exception:
+        logger.warning("astropy unavailable; skipping galactic plane guide")
+        return []
+    lon = np.linspace(0.0, 360.0, int(n_points), endpoint=False)
+    gal = SkyCoord(l=lon * u.deg, b=np.zeros_like(lon) * u.deg, frame="galactic")
+    icrs = gal.icrs
+    return [
+        [float(ra % 360.0), float(np.clip(dec, -90.0, 90.0))]
+        for ra, dec in zip(icrs.ra.deg, icrs.dec.deg, strict=False)
+    ]
+
+
+def healpix_prob_cells(
+    prob: np.ndarray,
+    *,
+    level: float = 0.9,
+    max_cells: int = 600,
+) -> list[dict[str, Any]]:
+    """HEALPix pixel polygons inside the credible region for SVG fills."""
+    prob = np.asarray(prob, dtype=float)
+    nside = hp.npix2nside(len(prob))
+    pix = np.asarray(credible_region_pixels(prob, level=level), dtype=int)
+    if pix.size == 0:
+        return []
+    if pix.size > max_cells:
+        order = np.argsort(prob[pix])[::-1][:max_cells]
+        pix = pix[order]
+    pmax = float(np.max(prob[pix])) if pix.size else 1.0
+    pmax = max(pmax, 1e-12)
+    cells: list[dict[str, Any]] = []
+    for ipix in pix.tolist():
+        ipix_i = int(ipix)
+        try:
+            corners_xyz = hp.boundaries(nside, ipix_i, step=1, nest=True)
+        except Exception:
+            continue
+        # corners_xyz: shape (3, 4)
+        theta, phi = hp.vec2ang(np.asarray(corners_xyz).T)
+        ra = np.rad2deg(phi) % 360.0
+        dec = 90.0 - np.rad2deg(theta)
+        corners = [
+            [float(ra[i]), float(np.clip(dec[i], -90.0, 90.0))]
+            for i in range(len(ra))
+        ]
+        if len(corners) < 3:
+            continue
+        corners.append(corners[0][:])
+        cells.append(
+            {
+                "prob": float(prob[ipix_i]),
+                "weight": float(prob[ipix_i] / pmax),
+                "corners": corners,
+            }
+        )
+    return cells
+
+
+def public_sky_base() -> dict[str, Any]:
+    """Layers that do not require an alert: public catalog + galactic plane."""
+    return {
+        "frame": "ICRS",
+        "render": SVG_RENDER_VERSION,
+        "field_stars": load_public_field_stars(),
+        "galactic_plane": galactic_plane_icrs(),
+        "source": "public_catalog+astropy_galactic",
+    }
+
+
 def build_region_payload(
     prob: np.ndarray,
     *,
@@ -173,11 +290,22 @@ def build_region_payload(
     simulated: bool,
     level: float = 0.9,
 ) -> dict[str, Any]:
-    """JSON-serializable region summary for the interactive skymap."""
+    """JSON-serializable SVG sky layers for the interactive skymap."""
     ellipse = credible_region_ellipse(prob, level=level)
     outline = sample_ellipse_outline(ellipse)
     peak = peak_ra_dec(prob)
     fov = focus_fov_deg(ellipse)
+    nested = []
+    for lvl in (0.5, 0.9):
+        ell = credible_region_ellipse(prob, level=lvl)
+        nested.append(
+            {
+                "level": lvl,
+                "ellipse": ell,
+                "outline": sample_ellipse_outline(ell, n_points=72),
+            }
+        )
+    base = public_sky_base()
     return {
         "alert_id": alert_id,
         "level": level,
@@ -190,8 +318,13 @@ def build_region_payload(
         "fov_deg": float(fov),
         "outline": outline,
         "shape": "ellipse",
+        "render": SVG_RENDER_VERSION,
+        "nested_ellipses": nested,
+        "prob_cells": healpix_prob_cells(prob, level=level),
+        "field_stars": base["field_stars"],
+        "galactic_plane": base["galactic_plane"],
         "simulated": bool(simulated),
-        "survey_hint": "P/DSS2/color",
+        "survey_hint": "public_catalog_svg",
     }
 
 
@@ -310,7 +443,13 @@ def ensure_region_artifacts(
     if not need and region_path.is_file():
         try:
             cached = json.loads(region_path.read_text(encoding="utf-8"))
-            if cached.get("shape") != "ellipse" or "ellipse" not in cached:
+            if (
+                cached.get("shape") != "ellipse"
+                or "ellipse" not in cached
+                or cached.get("render") != SVG_RENDER_VERSION
+                or "field_stars" not in cached
+                or "prob_cells" not in cached
+            ):
                 need = True
             else:
                 return cached

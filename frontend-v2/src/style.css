@@ -211,13 +211,12 @@ body::before {
   place-items: center;
 }
 
-/* Aspect-matched stack so Mollweide overlays + zoom origin align with pixels.
-   Zoom transform is applied here (not the full stage) so the scale is obvious. */
+/* Mollweide SVG frame — zoom scales this element; no raster swap. */
 .sky-frame {
   position: relative;
   flex-shrink: 0;
   overflow: visible;
-  background: #050b12;
+  background: transparent;
   transform-origin: 50% 50%;
   transition: transform 1.55s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
@@ -227,39 +226,66 @@ body::before {
   /* transform scale set inline from peak */
 }
 
-.sky-img {
+.sky-svg {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: fill;
-  opacity: 0;
-  transition: opacity 450ms ease;
-}
-
-.sky-img.is-in {
-  opacity: 1;
-}
-
-.sky-overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
   overflow: visible;
-}
-
-.sky-overlay .sky-star {
   pointer-events: auto;
 }
 
+.sky-limb {
+  fill: #0a1520;
+  stroke: rgba(158, 179, 196, 0.35);
+  stroke-width: 1.25;
+}
+
+.sky-grid-line {
+  fill: none;
+  stroke: rgba(158, 179, 196, 0.14);
+  stroke-width: 0.7;
+}
+
+.sky-galactic {
+  fill: none;
+  stroke: rgba(255, 196, 120, 0.45);
+  stroke-width: 1.1;
+  stroke-dasharray: 4 3;
+}
+
+.sky-field-star {
+  fill: rgba(238, 243, 247, 0.55);
+  stroke: none;
+}
+
+.sky-prob-cell {
+  fill: #3ecf8e;
+  stroke: none;
+}
+
+.sky-nest-inner {
+  fill: rgba(62, 207, 142, 0.12);
+  stroke: rgba(62, 207, 142, 0.45);
+  stroke-width: 1;
+}
+
+.sky-nest-outer {
+  fill: rgba(62, 207, 142, 0.06);
+  stroke: rgba(62, 207, 142, 0.35);
+  stroke-width: 1;
+}
+
 .sky-outline {
-  fill: rgba(226, 59, 59, 0.16);
+  fill: rgba(226, 59, 59, 0.14);
   stroke: #ff4d4d;
-  stroke-width: 2.75;
+  stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
   paint-order: stroke fill;
+}
+
+.sky-star {
+  pointer-events: auto;
 }
 
 .sky-star circle {
