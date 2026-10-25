@@ -1,0 +1,9 @@
+{
+  "stars": [
+    { "star_id": "* alf Ori", "aliases": ["Betelgeuse"] },
+    { "star_id": "* rho Cas", "aliases": ["Rho Cassiopeiae"] },
+    { "star_id": "V* VY CMa", "aliases": ["VY Canis Majoris"] }
+  ],
+  "sources": ["atel", "arxiv"],
+  "max_per_source": 5
+}

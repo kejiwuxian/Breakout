@@ -1,0 +1,14 @@
+{
+  "actorSpecification": 1,
+  "name": "breakout-star-literature",
+  "title": "BREAKOUT star literature (ATel + arXiv)",
+  "description": "Fetch public ATel and arXiv items for curated supernova-progenitor stars. Output is a discovery feed for BREAKOUT's offline literature index — not scored claims (ADS bibcodes still required for claims).",
+  "version": "0.1",
+  "buildTag": "latest",
+  "meta": {
+    "templateId": "python-start"
+  },
+  "dockerfile": "../Dockerfile",
+  "readme": "../README.md",
+  "input": "./input_schema.json"
+}

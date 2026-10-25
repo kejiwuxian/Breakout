@@ -1,0 +1,12 @@
+---
+description: BREAKOUT Phase 2 sponsor integrations (added after the MVP gate passed)
+alwaysApply: true
+---
+
+- Phase 2 code lives under `backend/agents/`, `backend/integrations/`, `actors/`, `db/tiger/`, `frontend/convex/`, and related panels. Each integration is behind its own flag that defaults to False.
+- With every Phase 2 flag off the MVP behaves exactly as before; `tests/test_flags_off.py` proves it.
+- Phase 2 work never blocks or fails the trigger-time path; background / offline tasks log errors and continue.
+- Droid writes only inside `data/run/<alert_id>/droid/` and never submits to LCO; LCOGT dry-run stays forced when Droid runs.
+- Apify runs only in the offline index build; a literature claim still needs an ADS bibcode (Apify items are discovery feeds, not claims).
+- Secrets come only from `.env` and `frontend/.env.local`; `XAI_API_KEY` never reaches the frontend.
+- Unfinished integrations at H15 keep their flag False and are not entered for prizes.

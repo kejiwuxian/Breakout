@@ -8,6 +8,9 @@ data/run/*
 !data/run/README.md
 data/subscribers/registry.json
 data/subscribers/alert_feed.jsonl
+data/index/apify/*
+!data/index/apify/README.md
+frontend/.env.local
 
 # Python
 __pycache__/

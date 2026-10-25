@@ -200,6 +200,18 @@ class Settings(BaseModel):
     notify_dry_run: bool = True
     smtp_host: str = ""
 
+    # Phase 2 sponsor flags — all default False; MVP never depends on them.
+    droid_enabled: bool = Field(default=False, description="Factory Droid action agent.")
+    convex_enabled: bool = Field(default=False, description="Convex live backend sync.")
+    apify_enabled: bool = Field(default=False, description="Apify literature actor (offline).")
+    tiger_enabled: bool = Field(default=False, description="Tiger Data neutrino event store.")
+    factory_api_key: str = ""
+    convex_url: str = ""
+    convex_deploy_key: str = ""
+    apify_token: str = ""
+    apify_actor_id: str = ""
+    tiger_database_url: str = ""
+
     detector_table: dict[str, dict[str, float]] = Field(
         default_factory=lambda: {k: dict(v) for k, v in DETECTOR_TABLE.items()}
     )
@@ -263,6 +275,17 @@ def load_settings() -> Settings:
         lcogt_proposal=_env_str("LCOGT_PROPOSAL", ""),
         notify_dry_run=_env_bool("NOTIFY_DRY_RUN", True),
         smtp_host=_env_str("SMTP_HOST", ""),
+        droid_enabled=_env_bool("DROID_ENABLED", False),
+        convex_enabled=_env_bool("CONVEX_ENABLED", False),
+        apify_enabled=_env_bool("APIFY_ENABLED", False),
+        tiger_enabled=_env_bool("TIGER_ENABLED", False),
+        factory_api_key=_env_str("FACTORY_API_KEY", ""),
+        convex_url=_env_str("CONVEX_URL", ""),
+        convex_deploy_key=_env_str("CONVEX_DEPLOY_KEY", ""),
+        apify_token=_env_str("APIFY_TOKEN", ""),
+        apify_actor_id=_env_str("APIFY_ACTOR_ID", ""),
+        tiger_database_url=_env_str("TIGER_DATABASE_URL", ""),
+
         healpix_nside=healpix_nside,
     )
 

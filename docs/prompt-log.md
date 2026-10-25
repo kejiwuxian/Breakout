@@ -34,8 +34,12 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sun 25 Oct 2026, ~3:25 AM PT | Light + Cursor agent | Pure SVG Mollweide skymap (public catalog + galactic plane + HEALPix cells); zoom without raster swap | `render=svg_v1`, `/api/sky/base`, frontend-v2 svgMap |
 | Sun 25 Oct 2026, ~3:40 AM PT | Light + Cursor agent | Grok progenitor inventory + publication monitor; AOI filter + offline/live rank with confidence; sorted list + sky hover details | `backend/progenitors/`, CandidateScore v1.1, frontend-v2 candidates/sky |
 
+| Sun 25 Oct 2026, ~4:00 AM PT | Vincent + Cursor agent | Phase 2 after MVP gate PASS: P2.0 flags + `test_flags_off`; P2.3 Apify actor `actors/breakout-star-literature/` + `backend/integrations/apify_literature.py` (flag default False, offline only) | gate PASS; Apify behind `APIFY_ENABLED` |
+
 Notes:
 
 - Plan Page: https://breakout-revised-hackathon-plan-and-7czo.pages.grok.bot/
-- Phase 2 (**sponsor** integrations) ignored until `scripts/mvp_gate.sh` prints PASS. Community subscribe is Phase 1.
+- Phase 2 Page: https://breakout-phase-2-sponsor-integrations-omyo.pages.grok.bot/
+- Phase 2 sponsor integrations ignored until `scripts/mvp_gate.sh` prints PASS. Community subscribe is Phase 1.
+
 - Never invent numbers or citations; simulated values use `simulated=true`.

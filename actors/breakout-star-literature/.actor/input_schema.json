@@ -1,0 +1,50 @@
+{
+  "title": "BREAKOUT star literature input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "stars": {
+      "title": "Stars",
+      "type": "array",
+      "description": "Stars to search. Each entry needs star_id; aliases are extra query strings (common names).",
+      "editor": "json",
+      "items": {
+        "type": "object",
+        "properties": {
+          "star_id": {
+            "type": "string",
+            "title": "Star id",
+            "description": "Catalog / SIMBAD-style id (e.g. '* alf Ori')."
+          },
+          "aliases": {
+            "type": "array",
+            "title": "Aliases",
+            "description": "Human names used in ATel/arXiv queries (e.g. 'Betelgeuse').",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["star_id"]
+      }
+    },
+    "sources": {
+      "title": "Sources",
+      "type": "array",
+      "description": "Which public sources to query.",
+      "editor": "json",
+      "default": ["atel", "arxiv"],
+      "items": {
+        "type": "string",
+        "enum": ["atel", "arxiv"]
+      }
+    },
+    "max_per_source": {
+      "title": "Max items per source per star",
+      "type": "integer",
+      "description": "Cap on results kept per source for each star (real fetched rows only; never invented).",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 50
+    }
+  },
+  "required": ["stars"]
+}

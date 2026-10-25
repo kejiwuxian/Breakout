@@ -11,11 +11,12 @@ When the next galactic supernova goes off, neutrinos reach Earth first. BREAKOUT
 - Planning and team coordination: Grok Bot (plan Page + check-ins).
 - **Grok Voice** announcer and spoken judge Q&A (required for Make it Legendary).
 
-## Phase 1 scope
+## Phase 1 / Phase 2
 
-Build what the Phase 1 plan Page specifies until `scripts/mvp_gate.sh` prints PASS. Phase 2 **sponsor** integrations (institute APIs, official notice brokers) stay out of scope until then.
+MVP gate: `bash scripts/mvp_gate.sh` must print PASS. Phase 2 sponsor integrations sit behind flags that default to **False** (`DROID_ENABLED`, `CONVEX_ENABLED`, `APIFY_ENABLED`, `TIGER_ENABLED`). With every flag off the core loop is unchanged (`tests/test_flags_off.py`).
 
 **Community alerts are in Phase 1.** Anyone with a telescope can subscribe today for ranked progenitor coordinates when BREAKOUT localizes a neutrino burst — so small instruments can chase a potential optical counterpart before large facilities respond. Packages are honest: `simulated=true` when applicable, ADS bibcodes only when already on the candidate, and they are not official GCN notices.
+
 
 ## Quick start
 
@@ -65,3 +66,13 @@ bash scripts/mvp_gate.sh
 | Tony | Ranking + dashboard + voice frontend |
 | Vincent | Literature index content |
 | Barron | Story + submission |
+
+## Apify: star literature actor
+
+Phase 2.3 (Vincent). Actor source: `actors/breakout-star-literature/`.
+
+- Offline only: set `APIFY_ENABLED=True` (and optionally `APIFY_TOKEN` + `APIFY_ACTOR_ID`) then run
+  `python -m backend.integrations.apify_literature --curated-only --local`.
+- Writes public ATel/arXiv discovery rows to `data/index/apify/<star>.json` with `simulated=false`.
+- Does **not** invent citations; ranked claims still require ADS bibcodes in the MVP index builder.
+- With `APIFY_ENABLED=False` (default) the MVP never imports or calls Apify.
