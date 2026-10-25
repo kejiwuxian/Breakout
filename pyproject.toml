@@ -33,6 +33,9 @@ dev = [
   "pytest",
   "httpx",
 ]
+hop = [
+  "hop-client",
+]
 
 [tool.setuptools.packages.find]
 include = ["backend*"]

@@ -14,6 +14,7 @@ import healpy as hp
 import numpy as np
 
 from backend.candidates.catalog import load_curated_stars
+from backend.candidates.epoch_position import current_icrs
 from backend.config import ROOT
 from backend.localize.fuse import credible_region_pixels, position_in_credible_region
 from backend.schemas import SkyMap
@@ -101,18 +102,21 @@ def filter_candidates(
     rows = _load_star_rows(Path(star_table_path))
     out: list[dict[str, Any]] = []
     for row in rows:
-        ra = row.get("ra_deg")
-        dec = row.get("dec_deg")
-        if ra is None or dec is None:
+        if row.get("ra_deg") is None or row.get("dec_deg") is None:
             continue
-        ra_f = float(ra)
-        dec_f = float(dec)
+        # Epoch-propagate when public PM fields exist; else catalog coords.
+        try:
+            ra_f, dec_f = current_icrs(row, at_utc=None)
+        except ValueError:
+            continue
         ipix = int(hp.ang2pix(nside, ra_f, dec_f, nest=True, lonlat=True))
         if ipix not in in_region:
             continue
         if not position_in_credible_region(prob_map, ra_f, dec_f, level=credible_level):
             continue
         hit = dict(row)
+        hit["ra_deg"] = ra_f
+        hit["dec_deg"] = dec_f
         hit["p_sky"] = _p_sky_at(prob_map, ra_f, dec_f)
         if skymap.simulated:
             hit["simulated"] = True
