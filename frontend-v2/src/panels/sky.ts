@@ -369,6 +369,8 @@ export function mountSky(host: HTMLElement): () => void {
   let lastPtrX = 0;
   let lastPtrY = 0;
   let skipStarClick = false;
+  /** Skip re-paints when only selection/voice chrome changed (hover must not tear down SVG). */
+  let lastSkyKey = "";
 
   const fitFrame = () => {
     const ar = 2;
@@ -777,7 +779,6 @@ export function mountSky(host: HTMLElement): () => void {
     const dy = (dyScreen / rect.height) * cam.h;
     lastPtrX = ev.clientX;
     lastPtrY = ev.clientY;
-    svg.dataset.pan = `${dx.toFixed(2)},${dy.toFixed(2)}`;
     applyCam({ x: cam.x - dx, y: cam.y - dy, w: cam.w, h: cam.h });
   };
 
@@ -786,7 +787,6 @@ export function mountSky(host: HTMLElement): () => void {
     pointerDragging = false;
     pointerId = null;
     svg.classList.remove("is-panning");
-    svg.dataset.pan = "up";
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerUp);
@@ -811,7 +811,6 @@ export function mountSky(host: HTMLElement): () => void {
     lastPtrX = ev.clientX;
     lastPtrY = ev.clientY;
     svg.classList.add("is-panning");
-    svg.dataset.pan = `down:${ev.pointerId}:${ev.button}:${ev.buttons}`;
     // Window-level move/up so pan keeps working if the cursor leaves the SVG.
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
@@ -835,6 +834,18 @@ export function mountSky(host: HTMLElement): () => void {
     const { skymap, candidates, suppressSkyZoomOnce, skyZoomNonce } =
       getState();
 
+    // Hover calls selectStar → store emit; ignore paints that only change selection.
+    const skyKey = [
+      skymap?.alert_id ?? "",
+      skyZoomNonce,
+      suppressSkyZoomOnce ? 1 : 0,
+      candidates.map((c) => c.star_id).join(","),
+      candidates.map((c) => c.posterior.toFixed(5)).join(","),
+    ].join("|");
+    if (skyKey === lastSkyKey && viewMode !== "zooming") {
+      return;
+    }
+
     if (!skyBase.field_stars.length) {
       skyBase = await fetchSkyBase();
       if (seq !== renderSeq) return;
@@ -846,6 +857,7 @@ export function mountSky(host: HTMLElement): () => void {
       animatedAlertId = null;
       region = null;
       showBaseSky();
+      lastSkyKey = skyKey;
       return;
     }
 
@@ -859,6 +871,7 @@ export function mountSky(host: HTMLElement): () => void {
       paintSvg(null, candidates);
       applyCam({ x: 0, y: 0, w: contentW, h: contentH });
       setMeta(skymap, null);
+      lastSkyKey = skyKey;
       return;
     }
 
@@ -877,12 +890,14 @@ export function mountSky(host: HTMLElement): () => void {
       paintSvg(region, candidates);
       applyCam({ x: 0, y: 0, w: contentW, h: contentH });
       setMeta(skymap, region);
+      lastSkyKey = skyKey;
       return;
     }
     if (shouldAnimate) {
       animatedAlertId = skymap.alert_id;
     }
     showEvent(skymap, region, candidates, shouldAnimate);
+    lastSkyKey = skyKey;
   };
 
   const unsub = subscribe(() => {
