@@ -497,6 +497,7 @@ export function mountSky(
     </div>
   `;
 
+  const stage = host.querySelector<HTMLElement>("[data-role=stage]")!;
   const world = host.querySelector<HTMLElement>("[data-role=world]")!;
   const frame = host.querySelector<HTMLElement>("[data-role=frame]")!;
   const svg = host.querySelector<SVGSVGElement>("[data-role=svg]")!;
@@ -561,6 +562,21 @@ export function mountSky(
     return { w: frame.clientWidth || w, h: frame.clientHeight || h };
   };
 
+  /** Position against `.sky-stage` (absolute containing block), not `.sky-host`
+   *  — the host letterboxes the 2:1 stage, so host-relative coords were offset. */
+  const placeHover = (clientX: number, clientY: number) => {
+    const rect = stage.getBoundingClientRect();
+    const pad = 8;
+    const ox = 12;
+    const oy = 12;
+    const maxW = Math.min(280, Math.max(pad, rect.width - pad));
+    const maxH = Math.min(160, Math.max(pad, rect.height - pad));
+    const x = Math.min(clientX - rect.left + ox, rect.width - maxW);
+    const y = Math.min(clientY - rect.top + oy, rect.height - maxH);
+    hoverEl.style.left = `${Math.max(pad, x)}px`;
+    hoverEl.style.top = `${Math.max(pad, y)}px`;
+  };
+
   const showHover = (
     info: HoverInfo | null,
     clientX?: number,
@@ -574,11 +590,7 @@ export function mountSky(
     hoverEl.hidden = false;
     hoverEl.textContent = formatHover(info);
     if (clientX != null && clientY != null) {
-      const rect = host.getBoundingClientRect();
-      const x = Math.min(clientX - rect.left + 12, rect.width - 280);
-      const y = Math.min(clientY - rect.top + 12, rect.height - 160);
-      hoverEl.style.left = `${Math.max(8, x)}px`;
-      hoverEl.style.top = `${Math.max(8, y)}px`;
+      placeHover(clientX, clientY);
     }
   };
 
@@ -704,11 +716,7 @@ export function mountSky(
     hoverEl.hidden = false;
     hoverEl.textContent = tip;
     if (clientX != null && clientY != null) {
-      const rect = host.getBoundingClientRect();
-      const x = Math.min(clientX - rect.left + 12, rect.width - 280);
-      const y = Math.min(clientY - rect.top + 12, rect.height - 120);
-      hoverEl.style.left = `${Math.max(8, x)}px`;
-      hoverEl.style.top = `${Math.max(8, y)}px`;
+      placeHover(clientX, clientY);
     }
   };
 
