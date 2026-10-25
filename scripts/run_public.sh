@@ -78,12 +78,20 @@ API_HOST="${BREAKOUT_API_HOST:-127.0.0.1}"
 API_PORT="${BREAKOUT_API_PORT:-8000}"
 
 DIST="$ROOT/frontend/dist/index.html"
+SPACEX_DIST="$ROOT/frontend-spacex/dist/index.html"
 if [[ "${BREAKOUT_SKIP_FRONTEND_BUILD:-0}" != "1" ]]; then
   if [[ ! -f "$DIST" ]] || [[ "${BREAKOUT_FORCE_FRONTEND_BUILD:-0}" == "1" ]]; then
     echo "Building frontend for single-origin static serve…"
     npm --prefix frontend run build
   else
     echo "Using existing frontend/dist (set BREAKOUT_FORCE_FRONTEND_BUILD=1 to rebuild)."
+  fi
+  if [[ ! -f "$SPACEX_DIST" ]] || [[ "${BREAKOUT_FORCE_FRONTEND_BUILD:-0}" == "1" ]]; then
+    echo "Building SpaceX-track frontend (/spacex)…"
+    npm --prefix frontend-spacex install
+    npm --prefix frontend-spacex run build
+  else
+    echo "Using existing frontend-spacex/dist."
   fi
 fi
 

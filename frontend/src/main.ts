@@ -182,6 +182,7 @@ app.innerHTML = `
       <div class="nav-left">
         <a class="brand" href="#/" id="brand-link">${strings.brand}</a>
         <a class="nav-about" href="#/about" id="nav-about">${strings.navAbout}</a>
+        <a class="nav-about" href="/spacex/">${strings.navSpaceX}</a>
       </div>
       <div class="nav-right">
         <div class="status-cluster">

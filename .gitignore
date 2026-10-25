@@ -38,6 +38,8 @@ frontend/dist/
 frontend/.vite/
 frontend-v2/node_modules/
 frontend-v2/dist/
+frontend-spacex/node_modules/
+frontend-spacex/dist/
 frontend-v2/.vite/
 frontend-v2/tsconfig.tsbuildinfo
 *.log

@@ -85,6 +85,8 @@ Install, ports, env flags, scenarios, `mvp_gate`, schemas, and Apify notes live 
 story stays scannable.
 
 **Public demo:** [`https://supernova.lylinks.com`](https://supernova.lylinks.com)
-(Cloudflare tunnel → local API + static UI). Local loopback still uses
-`127.0.0.1:8000` / Vite `:5173`. See `BREAKOUT_PUBLIC_BASE_URL` / `scripts/run_public.sh`
-in the developer doc.
+(Cloudflare tunnel → local API + static UI).  
+**SpaceX-track UI:** [`https://supernova.lylinks.com/spacex/`](https://supernova.lylinks.com/spacex/)
+(`frontend-spacex/` — launch-webcast chrome). Local loopback still uses
+`127.0.0.1:8000` / Vite `:5173` (SpaceX Vite `:5175`). See
+`BREAKOUT_PUBLIC_BASE_URL` / `scripts/run_public.sh` in the developer doc.

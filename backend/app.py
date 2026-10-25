@@ -773,14 +773,62 @@ async def ws_events(websocket: WebSocket) -> None:
         raise
 
 
-def _mount_frontend_static() -> None:
-    """Serve ``frontend/dist`` so one Cloudflare tunnel origin covers API + UI.
 
-    Enabled when ``BREAKOUT_SERVE_FRONTEND=1`` or production/tunnel mode, and
-    ``frontend/dist/index.html`` exists (run ``npm --prefix frontend run build``).
+def _html_response(path: Path) -> FileResponse:
+    """SPA shells must not be CDN-cached — hashed assets can be long-lived."""
+    return FileResponse(
+        path,
+        headers={
+            "Cache-Control": "no-store, must-revalidate",
+            "CDN-Cache-Control": "no-store",
+            "Cloudflare-CDN-Cache-Control": "no-store",
+        },
+    )
+
+
+def _mount_frontend_static() -> None:
+    """Serve primary ``frontend/dist`` and SpaceX-track ``frontend-spacex/dist``.
+
+    Enabled when ``BREAKOUT_SERVE_FRONTEND=1`` or production/tunnel mode.
+    SpaceX UI is mounted at ``/spacex`` before the primary SPA catch-all.
     """
     if not settings.serve_frontend:
         return
+
+    spacex_dist = ROOT / "frontend-spacex" / "dist"
+    spacex_index = spacex_dist / "index.html"
+    if spacex_index.is_file():
+        spacex_assets = spacex_dist / "assets"
+        if spacex_assets.is_dir():
+            app.mount(
+                "/spacex/assets",
+                StaticFiles(directory=spacex_assets),
+                name="spacex-frontend-assets",
+            )
+
+        @app.get("/spacex")
+        @app.get("/spacex/")
+        async def spacex_spa_index() -> FileResponse:
+            return _html_response(spacex_index)
+
+        @app.get("/spacex/{full_path:path}")
+        async def spacex_spa_fallback(full_path: str) -> FileResponse:
+            candidate = spacex_dist / full_path
+            try:
+                resolved = candidate.resolve()
+            except OSError:
+                return _html_response(spacex_index)
+            if candidate.is_file() and spacex_dist.resolve() in resolved.parents:
+                return FileResponse(candidate)
+            return _html_response(spacex_index)
+
+        logger.info("serving SpaceX-track frontend from %s at /spacex", spacex_dist)
+    else:
+        logger.warning(
+            "BREAKOUT_SERVE_FRONTEND set but %s missing — build frontend-spacex for /spacex",
+            spacex_index,
+        )
+
     dist = ROOT / "frontend" / "dist"
     index = dist / "index.html"
     if not index.is_file():
@@ -795,15 +843,18 @@ def _mount_frontend_static() -> None:
 
     @app.get("/")
     async def spa_index() -> FileResponse:
-        return FileResponse(index)
+        return _html_response(index)
 
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str) -> FileResponse:
-        # Prefer real files under dist (favicon, etc.); otherwise SPA shell.
+        # SpaceX routes are registered above; never hijack /spacex here.
+        if full_path == "spacex" or full_path.startswith("spacex/"):
+            if spacex_index.is_file():
+                return FileResponse(spacex_index)
         candidate = dist / full_path
         if candidate.is_file() and dist in candidate.resolve().parents:
             return FileResponse(candidate)
-        return FileResponse(index)
+        return _html_response(index)
 
     logger.info("serving frontend static from %s", dist)
 
