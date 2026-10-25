@@ -1,0 +1,16 @@
+---
+description: BREAKOUT astronomy conventions
+alwaysApply: true
+---
+- Coordinates are ICRS degrees; times are astropy Time in UTC.
+- Detector positions are WGS84 (lat, lon, height) converted with astropy EarthLocation.
+- HEALPix maps use healpy, NESTED ordering, and always sum to 1.
+- Every module reads and writes the JSON schemas in docs/schemas.md.
+- Any value from a simulation carries simulated=true and the UI labels it.
+- The trigger-time path never calls an LLM or the network when USE_CACHED_STREAM=True. The only exception is the Grok Voice announcer with VOICE_MODE=live; it runs after the pipeline, never blocks it, and VOICE_MODE=cached or off makes no call.
+- Every literature claim stores an ADS bibcode; no bibcode, no claim.
+- Describe triangulation as light-travel time across Earth (at most about 42 ms).
+- Spoken lines come from data/voice/announcer_lines.json filled only with real payload fields; say "simulated" when the payload is simulated.
+- LCOGT_DRY_RUN stays True by default; nothing is submitted to LCO, HST, JWST or GCN without a person.
+- Build only what this Page specifies; scripts/mvp_gate.sh printing PASS is the definition of done.
+- Secrets come only from .env; XAI_API_KEY never reaches the browser.

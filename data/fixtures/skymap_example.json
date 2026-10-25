@@ -1,0 +1,15 @@
+{
+  "_note": "Fixture only — not observational data. All numeric fields are placeholders and must be labeled Simulated in the UI.",
+  "simulated": true,
+  "skymap": {
+    "alert_id": "fixture-skymap-v1",
+    "nside": 64,
+    "ordering": "NESTED",
+    "frame": "ICRS",
+    "prob_path": "data/run/fixture-skymap-v1/skymap.fits",
+    "components": ["superk_pointing", "timing:Super-K-SNO+", "timing:Super-K-IceCube"],
+    "credible_90_deg2": 0.0,
+    "peak": { "ra_deg": 0.0, "dec_deg": 0.0 },
+    "simulated": true
+  }
+}

@@ -1,0 +1,193 @@
+{
+  "$defs": {
+    "Breakout": {
+      "description": "Per-class breakout countdown window (estimate; label as such in UI).",
+      "properties": {
+        "class_window": {
+          "enum": [
+            "minutes",
+            "hours",
+            "about 1 day"
+          ],
+          "title": "Class Window",
+          "type": "string"
+        },
+        "countdown_from": {
+          "description": "ISO-8601 UTC",
+          "title": "Countdown From",
+          "type": "string"
+        }
+      },
+      "required": [
+        "class_window",
+        "countdown_from"
+      ],
+      "title": "Breakout",
+      "type": "object"
+    },
+    "Evidence": {
+      "description": "One literature claim; bibcode is required (no bibcode, no claim).",
+      "properties": {
+        "bibcode": {
+          "description": "ADS bibcode",
+          "minLength": 1,
+          "title": "Bibcode",
+          "type": "string"
+        },
+        "claim": {
+          "minLength": 1,
+          "title": "Claim",
+          "type": "string"
+        }
+      },
+      "required": [
+        "bibcode",
+        "claim"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Literature": {
+      "description": "Precomputed offline literature scores (each 0..1) plus evidence.",
+      "properties": {
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "evolved_stage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Evolved Stage",
+          "type": "number"
+        },
+        "mass_loss": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Mass Loss",
+          "type": "number"
+        },
+        "variability": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Variability",
+          "type": "number"
+        }
+      },
+      "required": [
+        "mass_loss",
+        "variability",
+        "evolved_stage",
+        "confidence"
+      ],
+      "title": "Literature",
+      "type": "object"
+    }
+  },
+  "$id": "https://breakout.local/schemas/CandidateScore.schema.json",
+  "description": "One row per star; output of literature/rerank.py (CandidateScore v1).",
+  "properties": {
+    "breakout": {
+      "$ref": "#/$defs/Breakout"
+    },
+    "class": {
+      "enum": [
+        "RSG",
+        "BSG",
+        "YSG",
+        "WR",
+        "LBV"
+      ],
+      "title": "Class",
+      "type": "string"
+    },
+    "dec_deg": {
+      "title": "Dec Deg",
+      "type": "number"
+    },
+    "distance_kpc": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Distance Kpc"
+    },
+    "extinction_av_mag": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extinction Av Mag"
+    },
+    "ir_followup": {
+      "default": false,
+      "title": "Ir Followup",
+      "type": "boolean"
+    },
+    "lit": {
+      "$ref": "#/$defs/Literature"
+    },
+    "p_sky": {
+      "title": "P Sky",
+      "type": "number"
+    },
+    "posterior": {
+      "title": "Posterior",
+      "type": "number"
+    },
+    "presn_watch": {
+      "default": false,
+      "title": "Presn Watch",
+      "type": "boolean"
+    },
+    "ra_deg": {
+      "title": "Ra Deg",
+      "type": "number"
+    },
+    "simulated": {
+      "default": false,
+      "description": "True when scores/values are simulated; UI must label it.",
+      "title": "Simulated",
+      "type": "boolean"
+    },
+    "spectral_type": {
+      "title": "Spectral Type",
+      "type": "string"
+    },
+    "star_id": {
+      "title": "Star Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "star_id",
+    "ra_deg",
+    "dec_deg",
+    "class",
+    "spectral_type",
+    "p_sky",
+    "lit",
+    "posterior",
+    "breakout"
+  ],
+  "title": "BREAKOUT CandidateScore (v1)",
+  "type": "object"
+}

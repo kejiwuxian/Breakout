@@ -1,0 +1,15 @@
+{
+  "id": "recorded-fixture-betelgeuse",
+  "object": "chat.completion",
+  "model": "grok-2-latest",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"mass_loss\": 0.85,\n  \"variability\": 0.9,\n  \"evolved_stage\": 0.95,\n  \"confidence\": 0.9,\n  \"evidence\": [\n    {\n      \"bibcode\": \"2020ApJ...902...63J\",\n      \"claim\": \"Joyce et al. 2020 derive an independent distance of 168 pc (+27/\\u221215 pc) and present-day mass 16.5\\u201319 M\\u2609 for Betelgeuse, placing it in early core helium-burning on the RSG branch.\"\n    },\n    {\n      \"bibcode\": \"2017AJ....154...11H\",\n      \"claim\": \"Harper et al. 2017 report a combined radio+Hipparcos parallax solution of 4.51 \\u00b1 0.80 mas, corresponding to a nominal distance of 222 pc (+48/\\u221234 pc).\"\n    },\n    {\n      \"bibcode\": \"2016ApJ...819....7D\",\n      \"claim\": \"Dolan et al. 2016 evolutionary tracks suggest a best progenitor mass estimate of 20 (+5/\\u22123) M\\u2609 and age 8.0\\u20138.5 Myr for Betelgeuse.\"\n    },\n    {\n      \"bibcode\": \"2099ApJ...999...99Z\",\n      \"claim\": \"This bibcode was never retrieved and must be dropped.\"\n    }\n  ],\n  \"reasoning\": \"Retrieved ADS/arXiv papers for Betelgeuse (* alf Ori). Joyce et al. 2020 (2020ApJ...902...63J) combine MESA evolutionary/asteroseismic/hydro models with SMEI photometry and report radius 764 R_sun, distance 168^{+27}_{-15} pc, and present-day mass 16.5\\u201319 M_sun in early core He burning \\u2014 strong evolved_stage and mass-loss context for an RSG progenitor. Harper et al. 2017 (2017AJ....154...11H) give an alternate astrometric parallax 4.51\\u00b10.80 mas (~222 pc), documenting distance tension rather than a new evolutionary claim. Dolan et al. 2016 (2016ApJ...819....7D) fit evolutionary tracks with mass-loss constraints and quote progenitor mass 20^{+5}_{-3} M_sun and age 8.0\\u20138.5 Myr, supporting high evolved_stage and mass_loss scores. Photometric/asteroseismic periods in Joyce+2020 support a high variability score. Confidence is high because multiple independent ADS bibcodes discuss the same star with quantitative mass, distance, and evolutionary-stage statements. I do not invent additional citations beyond the retrieved set.\"\n}"
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}

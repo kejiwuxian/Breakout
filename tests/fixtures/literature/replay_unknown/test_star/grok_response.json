@@ -1,0 +1,10 @@
+{
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "{\"mass_loss\": 0.7, \"variability\": 0.7, \"evolved_stage\": 0.7, \"confidence\": 0.7, \"evidence\": [{\"bibcode\": \"NOT_IN_RETRIEVAL\", \"claim\": \"should be dropped\"}, {\"bibcode\": \"ALSO_FAKE\", \"claim\": \"also dropped\"}], \"reasoning\": \"Only unknown bibcodes were cited; after filtering there is insufficient evidence.\"}"
+      }
+    }
+  ]
+}

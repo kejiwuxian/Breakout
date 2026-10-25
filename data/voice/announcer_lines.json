@@ -1,0 +1,7 @@
+{
+  "alert": "Mission control. {kind} alert from {detectors}. {simulated_note}",
+  "localization": "Sky map update. Ninety percent region {credible_90_deg2} square degrees. Peak right ascension {peak_ra}, declination {peak_dec}.",
+  "top_candidate": "Leading candidate {star_id}, class {class}, posterior {posterior}. {evidence_summary} Citations {bibcodes_spoken}.",
+  "countdown": "Breakout clock for class {class_window}. Counting down from {countdown_from}.",
+  "handoff": "Follow-up packet is drafted for human review. Nothing is submitted without an operator."
+}

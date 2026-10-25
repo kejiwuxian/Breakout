@@ -1,0 +1,31 @@
+{
+  "_note": "Fixture only — not observational data. Scores and evidence lists are empty placeholders; never treat as real literature. Label Simulated in the UI. No invented bibcodes.",
+  "simulated": true,
+  "candidates": [
+    {
+      "star_id": "FIXTURE STAR",
+      "ra_deg": 0.0,
+      "dec_deg": 0.0,
+      "class": "RSG",
+      "spectral_type": "M2I",
+      "distance_kpc": null,
+      "extinction_av_mag": null,
+      "p_sky": 0.0,
+      "lit": {
+        "mass_loss": 0.0,
+        "variability": 0.0,
+        "evolved_stage": 0.0,
+        "confidence": 0.0,
+        "evidence": []
+      },
+      "presn_watch": false,
+      "posterior": 0.0,
+      "breakout": {
+        "class_window": "about 1 day",
+        "countdown_from": "1970-01-01T00:00:00Z"
+      },
+      "ir_followup": false,
+      "simulated": true
+    }
+  ]
+}

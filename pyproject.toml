@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "breakout"
+version = "0.1.0"
+description = "BREAKOUT: neutrino-first supernova interceptor (Cal Hacks 13.0 / SpaceXAI)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "BREAKOUT team" }]
+dependencies = [
+  "astropy",
+  "healpy",
+  "astroquery",
+  "snewpy",
+  "gcn-kafka",
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic",
+  "pandas",
+  "pyarrow",
+  "numpy",
+  "httpx",
+  "jinja2",
+  "python-dotenv",
+  "websockets",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "httpx",
+]
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
