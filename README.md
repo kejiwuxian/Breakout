@@ -30,7 +30,7 @@ Offline demo defaults (`USE_CACHED_STREAM=True`): replay `data/cache/`, no netwo
 
 ## Layout
 
-See the plan Page **Repo layout** section. Backend is FastAPI (`backend/`); frontend is Vite + TypeScript + Three.js (`frontend/`).
+See the plan Page **Repo layout** section. Backend is FastAPI (`backend/`); classic dashboard is Vite + TypeScript (`frontend/`, port 5173). Redesigned mission UI lives in **`frontend-v2/`** (port 5174) — same APIs, separate app; see `frontend-v2/README.md`.
 
 ## Tests / gate
 
