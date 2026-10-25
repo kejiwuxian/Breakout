@@ -5,6 +5,7 @@
 import "./style.css";
 import strings from "./copy/strings.json";
 import { mountCandidatesPanel } from "./panels/candidates";
+import { mountScenariosPanel } from "./panels/scenarios";
 import { mountSkyMapPanel } from "./panels/skyMap";
 import { applyEvent, setConnected } from "./state/store";
 import { connectEvents } from "./ws/events";
@@ -42,6 +43,7 @@ const simBadge = document.querySelector<HTMLElement>("#sim-badge")!;
 const realBadge = document.querySelector<HTMLElement>("#real-badge")!;
 
 mountSkyMapPanel(document.querySelector("#panel-sky")!);
+mountScenariosPanel(document.querySelector("#panel-scenarios")!);
 mountCandidatesPanel(document.querySelector("#panel-candidates")!);
 
 connectEvents(

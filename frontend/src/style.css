@@ -281,3 +281,52 @@ body {
 .evidence-list a {
   color: var(--accent);
 }
+
+.scenario-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.scenario-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.scenario-label {
+  flex: 1 1 12rem;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.scenario-btn {
+  appearance: none;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.scenario-btn:hover:not(:disabled) {
+  background: rgba(61, 214, 198, 0.12);
+}
+
+.scenario-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.scenario-status {
+  margin: 0.65rem 0 0;
+  min-height: 1.2em;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
