@@ -193,21 +193,106 @@ body::before {
   color: var(--fog);
   padding: 1.5rem;
   text-align: center;
+  z-index: 1;
+}
+
+.sky-world {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background: #050b12;
+}
+
+.sky-zoomable {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* Aspect-matched stack so Mollweide overlays + zoom origin align with pixels.
+   Zoom transform is applied here (not the full stage) so the scale is obvious. */
+.sky-frame {
+  position: relative;
+  flex-shrink: 0;
+  overflow: visible;
+  background: #050b12;
+  transform-origin: 50% 50%;
+  transition: transform 1.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.sky-frame.is-zoomed {
+  /* transform scale set inline from peak */
 }
 
 .sky-img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   opacity: 0;
-  transform: scale(1.02);
-  transition: opacity 700ms ease, transform 900ms ease;
+  transition: opacity 450ms ease;
 }
 
 .sky-img.is-in {
   opacity: 1;
-  transform: scale(1);
+}
+
+.sky-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.sky-overlay .sky-star {
+  pointer-events: auto;
+}
+
+.sky-outline {
+  fill: rgba(226, 59, 59, 0.16);
+  stroke: #ff4d4d;
+  stroke-width: 2.75;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+}
+
+.sky-star circle {
+  fill: var(--signal);
+  stroke: #071018;
+  stroke-width: 1.5;
+  opacity: 0.95;
+}
+
+.sky-star:hover circle {
+  fill: #ffd166;
+  stroke: #e23b3b;
+}
+
+.sky-hover {
+  position: absolute;
+  z-index: 5;
+  max-width: 16rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(226, 59, 59, 0.55);
+  background: rgba(7, 16, 24, 0.92);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-frame {
+    transition: none;
+  }
 }
 
 .sky-meta {
@@ -215,6 +300,7 @@ body::before {
   left: 0.85rem;
   right: 0.85rem;
   bottom: 0.85rem;
+  z-index: 4;
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem 1rem;
@@ -226,6 +312,10 @@ body::before {
   border: 1px solid var(--line);
   padding: 0.55rem 0.7rem;
   backdrop-filter: blur(6px);
+}
+
+.sky-mode {
+  color: var(--signal);
 }
 
 .stage-foot {
