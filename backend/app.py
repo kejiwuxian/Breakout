@@ -773,6 +773,19 @@ async def ws_events(websocket: WebSocket) -> None:
         raise
 
 
+
+def _html_response(path: Path) -> FileResponse:
+    """SPA shells must not be CDN-cached — hashed assets can be long-lived."""
+    return FileResponse(
+        path,
+        headers={
+            "Cache-Control": "no-store, must-revalidate",
+            "CDN-Cache-Control": "no-store",
+            "Cloudflare-CDN-Cache-Control": "no-store",
+        },
+    )
+
+
 def _mount_frontend_static() -> None:
     """Serve primary ``frontend/dist`` and SpaceX-track ``frontend-spacex/dist``.
 
@@ -796,7 +809,7 @@ def _mount_frontend_static() -> None:
         @app.get("/spacex")
         @app.get("/spacex/")
         async def spacex_spa_index() -> FileResponse:
-            return FileResponse(spacex_index)
+            return _html_response(spacex_index)
 
         @app.get("/spacex/{full_path:path}")
         async def spacex_spa_fallback(full_path: str) -> FileResponse:
@@ -804,10 +817,10 @@ def _mount_frontend_static() -> None:
             try:
                 resolved = candidate.resolve()
             except OSError:
-                return FileResponse(spacex_index)
+                return _html_response(spacex_index)
             if candidate.is_file() and spacex_dist.resolve() in resolved.parents:
                 return FileResponse(candidate)
-            return FileResponse(spacex_index)
+            return _html_response(spacex_index)
 
         logger.info("serving SpaceX-track frontend from %s at /spacex", spacex_dist)
     else:
@@ -830,7 +843,7 @@ def _mount_frontend_static() -> None:
 
     @app.get("/")
     async def spa_index() -> FileResponse:
-        return FileResponse(index)
+        return _html_response(index)
 
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str) -> FileResponse:
@@ -841,7 +854,7 @@ def _mount_frontend_static() -> None:
         candidate = dist / full_path
         if candidate.is_file() and dist in candidate.resolve().parents:
             return FileResponse(candidate)
-        return FileResponse(index)
+        return _html_response(index)
 
     logger.info("serving frontend static from %s", dist)
 
