@@ -1,6 +1,7 @@
 {
-  "presn_watchlist": "Pre-supernova alert received. Nearby massive stars moved to the watchlist. Values are {simulated_label}.",
-  "burst_localized": "Burst detected. Localization fused. Peak at right ascension {ra_deg} degrees, declination {dec_deg} degrees. {simulated_label}.",
-  "top_candidate": "Top candidate {star_id}. Citations: {bibcodes}. {simulated_label}.",
-  "breakout_countdown": "Breakout window for class {class}: {class_window}. Countdown from {countdown_from}. {simulated_label}."
+  "alert": "Mission control. {kind} alert from {detectors}. {simulated_note}",
+  "localization": "Sky map update. Ninety percent region {credible_90_deg2} square degrees. Peak right ascension {peak_ra}, declination {peak_dec}.",
+  "top_candidate": "Leading candidate {star_id}, class {class}, posterior {posterior}. {evidence_summary} Citations {bibcodes_spoken}.",
+  "countdown": "Breakout clock for class {class_window}. Counting down from {countdown_from}.",
+  "handoff": "Follow-up packet is drafted for human review. Nothing is submitted without an operator."
 }
