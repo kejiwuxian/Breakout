@@ -176,8 +176,23 @@ def prob_map(
     return _normalize(np.exp(log_l))
 
 
+def has_independent_arrival_times(alert: Alert) -> bool:
+    """False when the notice explicitly lacks per-detector timing (classic SNEWS).
+
+    SNEWS2 JSON coincidence notices carry ``event_times_utc`` (may be equal
+    within ms). Classic GCN text shares one EVENT_TIME across EXPT — those
+    set ``raw.has_timing_deltas=False`` so we do not invent Δt geometry.
+    """
+    raw = alert.raw if isinstance(alert.raw, dict) else {}
+    if raw.get("has_timing_deltas") is False:
+        return False
+    return len(alert.detectors) >= 2
+
+
 def can_use_diffpointing(alert: Alert, *, min_baseline_m: float = _MIN_BASELINE_M) -> bool:
     """True when ≥2 long baselines to the reference exist (joint χ² beats a ring)."""
+    if not has_independent_arrival_times(alert):
+        return False
     try:
         _ref, others = usable_others(alert, min_baseline_m=min_baseline_m)
     except ValueError:

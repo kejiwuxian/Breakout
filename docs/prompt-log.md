@@ -25,6 +25,7 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~8:16 PM PT | Light + Cursor agent | Review SNEWS2/SNEWS_Coincidence_System for direction finding; adopt snewpdag DiffPointing joint-χ² (Coincidence System has no skymap) into localize/fuse | `backend/localize/snews_diffpointing.py` |
 | Sat 24 Oct 2026, ~8:35 PM PT | Light + Cursor agent | Confirm real-data validation still PASS after DiffPointing; add IceCube historical alert catalog + Scenario C (GCN IceCube-230416A example); document SN1987A clock limits | `data/cache/icecube_alert_catalog/`, `scenario_c_icecube_230416a/` |
 | Sat 24 Oct 2026, ~8:40 PM PT | Light + Cursor agent | Add Scenario D IceCube-191001A from GCN Circular 25913 + AMON archive; re-run real-data suite | `scenario_d_icecube_191001a/`, tests green |
+| Sat 24 Oct 2026, ~8:50 PM PT | Light + Cursor agent | Subscribe all public realtime channels (SNEWS2 GCN + classic SNEWS + IceCube + pre-SN + optional Hopskotch); self-localize via DiffPointing; epoch PM only when catalog has published values (no ranking impact at nside=64) | `live_channels`, `snews_classic`, `epoch_position` |
 
 Notes:
 
