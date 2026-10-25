@@ -651,8 +651,9 @@ export function mountSky(host: HTMLElement): () => void {
     root.appendChild(fieldG);
 
     if (reg) {
-      // Single pure-red AOI boundary only — no HEALPix fills, nested ovals,
-      // or peak ring (those produced double red outlines + green/white clutter).
+      // Two intentional red AOI marks only — no HEALPix fills or nested light
+      // ellipses (those were the green/white clutter). Outer localization
+      // ellipse + readable peak ring for tiny IceCube-scale regions.
       const ring = outlineRing(reg);
       const ovalPts = projectRing(ring, w, h);
       if (ovalPts) {
@@ -661,6 +662,23 @@ export function mountSky(host: HTMLElement): () => void {
         oval.setAttribute("class", "sky-outline");
         oval.setAttribute("vector-effect", "non-scaling-stroke");
         root.appendChild(oval);
+      }
+      // Tiny IceCube-scale ellipses (~few px on full-sky) get a readable red ring
+      // at the peak so the AOI is visible before / without zoom.
+      const major = Number(reg.ellipse?.semi_major_deg ?? reg.fov_deg ?? 0);
+      const needsPeakRing = !ovalPts || !(major > 0) || major < 8;
+      if (reg.peak && needsPeakRing) {
+        const peak = raDecToMollweide(reg.peak.ra_deg, reg.peak.dec_deg, w, h);
+        if (peak) {
+          const rPx = Math.max(10, Math.min(w, h) * 0.022);
+          const ringEl = createSvgEl("circle");
+          ringEl.setAttribute("cx", String(peak.x));
+          ringEl.setAttribute("cy", String(peak.y));
+          ringEl.setAttribute("r", String(rPx));
+          ringEl.setAttribute("class", "sky-outline-peak");
+          ringEl.setAttribute("vector-effect", "non-scaling-stroke");
+          root.appendChild(ringEl);
+        }
       }
     }
 
