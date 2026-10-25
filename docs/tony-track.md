@@ -12,9 +12,9 @@ Ignore Phase 2 until `scripts/mvp_gate.sh` prints PASS.
 | H4–H6 | Sat 6:46–8:46 PM | literature/build_index.py | **Done** |
 | H4–H6 / H7 | Sat ~5:14 PM onward | rerank + breakout_window + extinction | **Done** |
 | H6–H8 | Sat 8:46–10:46 PM | Dashboard: skymap + candidate list + Simulated badges | **Done** |
-| H8–H10 | Sat 10:46 PM–12:46 AM | Grok Voice frontend + judge Q&A wiring | Queued |
-| H10–H11 | Sun 12:46–1:46 AM | MVP gate rehearsal; fix FAIL items only | Queued |
-| H11+ | after gate PASS | Phase 2 Page only | Blocked on gate |
+| H8–H10 | Sat 10:46 PM–12:46 AM | Grok Voice frontend + judge Q&A wiring | **Done** |
+| H10–H11 | Sun 12:46–1:46 AM | MVP gate rehearsal; fix FAIL items only | **Done** (`mvp_gate.sh` PASS) |
+| H11+ | after gate PASS | Phase 2 Page only | Unblocked (code freeze on main) |
 
 ## Implementation checklist
 
@@ -26,7 +26,7 @@ Ignore Phase 2 until `scripts/mvp_gate.sh` prints PASS.
 | Index for curated stars (`* alf Ori`) | **Done** (replay; live with keys) |
 | `breakout_window` / `extinction` / `rerank` config weights | **Done** |
 | Dashboard Simulated badges + skymap/candidates UI | **Done** (H8) |
-| Voice frontend / judge Q&A | Pending |
+| Voice frontend / judge Q&A | **Done** (announcer panel + PTT judge Q&A) |
 
 ## Grok Bot / Cursor usage log
 
