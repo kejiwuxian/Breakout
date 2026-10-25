@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Local tool installs (e.g. cloudflared binary)
+.local/
+
 # Runtime outputs
 data/run/*
 !data/run/README.md

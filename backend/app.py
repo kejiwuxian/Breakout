@@ -13,10 +13,12 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from backend.config import ROOT, settings
+from backend.config import ROOT, cors_allow_origins, public_ws_base_url, settings
 from backend.ingest.cache import replay_scenario
 from backend.notify.dispatch import latest_feed_packages
 from backend.notify.subscribers import (
@@ -282,6 +284,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_allow_origins(settings.public_base_url),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/health")
 def health() -> dict[str, Any]:
@@ -296,6 +306,9 @@ def health() -> dict[str, Any]:
         "lcogt_dry_run": settings.lcogt_dry_run,
         "notify_dry_run": settings.notify_dry_run,
         "n_subscribers": len(list_subscribers(public=True, active_only=True)),
+        "public_base_url": settings.public_base_url,
+        "public_ws_base_url": public_ws_base_url(settings.public_base_url),
+        "serve_frontend": settings.serve_frontend,
     }
 
 
@@ -749,3 +762,41 @@ async def ws_events(websocket: WebSocket) -> None:
     except Exception:
         await hub.disconnect(websocket)
         raise
+
+
+def _mount_frontend_static() -> None:
+    """Serve ``frontend/dist`` so one Cloudflare tunnel origin covers API + UI.
+
+    Enabled when ``BREAKOUT_SERVE_FRONTEND=1`` or production/tunnel mode, and
+    ``frontend/dist/index.html`` exists (run ``npm --prefix frontend run build``).
+    """
+    if not settings.serve_frontend:
+        return
+    dist = ROOT / "frontend" / "dist"
+    index = dist / "index.html"
+    if not index.is_file():
+        logger.warning(
+            "BREAKOUT_SERVE_FRONTEND set but %s missing — build frontend first",
+            index,
+        )
+        return
+    assets = dist / "assets"
+    if assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets), name="frontend-assets")
+
+    @app.get("/")
+    async def spa_index() -> FileResponse:
+        return FileResponse(index)
+
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str) -> FileResponse:
+        # Prefer real files under dist (favicon, etc.); otherwise SPA shell.
+        candidate = dist / full_path
+        if candidate.is_file() and dist in candidate.resolve().parents:
+            return FileResponse(candidate)
+        return FileResponse(index)
+
+    logger.info("serving frontend static from %s", dist)
+
+
+_mount_frontend_static()

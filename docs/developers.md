@@ -14,9 +14,9 @@ cp .env.example .env
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 uvicorn backend.app:app --reload          # idle / listening — no auto scenario
+npm --prefix frontend install && npm --prefix frontend run dev         # :5173 primary
+# optional parallel copy:
 npm --prefix frontend-v2 install && npm --prefix frontend-v2 run dev   # :5174
-# optional classic UI:
-npm --prefix frontend install && npm --prefix frontend run dev         # :5173
 ```
 
 Typical local API env:
@@ -24,6 +24,25 @@ Typical local API env:
 ```bash
 USE_CACHED_STREAM=True VOICE_MODE=off uvicorn backend.app:app --host 127.0.0.1 --port 8000
 ```
+
+## Public URL + Cloudflare tunnel
+
+Production public origin: **`https://supernova.lylinks.com`**.
+
+| Mode | How | `public_base_url` |
+| --- | --- | --- |
+| Local dev (default) | `uvicorn` / Vite on loopback | `http://127.0.0.1:8000` |
+| Production / tunnel | `ENV=production` or `BREAKOUT_PUBLIC=1`, or explicit `BREAKOUT_PUBLIC_BASE_URL` | `https://supernova.lylinks.com` |
+
+Put `CLOUDFLARE_TUNNEL_TOKEN` only in gitignored `.env` (see `.env.example` placeholders — never commit the real token). Then:
+
+```bash
+bash scripts/run_public.sh
+# builds frontend/dist if needed, serves it from FastAPI, starts cloudflared
+curl -fsS https://supernova.lylinks.com/health
+```
+
+`GET /health` includes `public_base_url` and `public_ws_base_url`. Subscribe Endpoints copy in the UI uses the browser origin (so tunnel HTTPS/WSS examples are correct when you open the public host).
 
 ## Offline / scenarios
 
@@ -34,7 +53,8 @@ the UI **Replay** rail or `POST /scenario/{name}/start` to inject simulated
 events. Opt-in auto-replay only with `BREAKOUT_AUTOSTART=1`. Keys may stay empty.
 
 ```bash
-# Manual simulated scenario
+# Manual simulated scenario (local). Production: replace origin with
+# https://supernova.lylinks.com (or $BREAKOUT_PUBLIC_BASE_URL).
 curl -X POST 'http://127.0.0.1:8000/scenario/scenario_a_galactic_ccsn/start?speed=0'
 
 # Opt-in auto-replay (not default)
@@ -56,17 +76,20 @@ Pure SVG Mollweide:
 
 ## Subscribe to events (Phase 1)
 
-**UI:** frontend-v2 (`:5174`) rail **Subscribe to events**, or the classic
-dashboard (`:5173`) **Community alerts** panel — **access + refresh** tokens
-over WebSocket, honesty note, link to `/alerts/latest`.
+**UI:** primary `frontend/` (`:5173`) rail **Subscribe to events** —
+**access + refresh** tokens over WebSocket, honesty note, link to
+`/alerts/latest`. Optional parallel UI on `:5174`.
 
 ```bash
-curl -X POST http://127.0.0.1:8000/subscribe \
+# Local origin shown; for the public demo use https://supernova.lylinks.com
+# and wss://supernova.lylinks.com/ws/subscribe?access_token=…
+BASE_URL="${BREAKOUT_PUBLIC_BASE_URL:-http://127.0.0.1:8000}"
+curl -X POST "$BASE_URL/subscribe" \
   -H 'Content-Type: application/json' \
   -d '{"email":"you@observatory.edu","label":"campus-0.3m"}'
-# → access_token + refresh_token; open ws://127.0.0.1:8000/ws/subscribe?access_token=…
+# → access_token + refresh_token; open WS …/ws/subscribe?access_token=…
 # Refresh: POST /subscribe/refresh {"refresh_token":"…"} then send the new access_token on the live WS.
-curl http://127.0.0.1:8000/alerts/latest
+curl "$BASE_URL/alerts/latest"
 ```
 
 Default live push is WebSocket (`/ws/subscribe`) with access + refresh tokens.
@@ -92,9 +115,10 @@ DiffPointing / live channels, Apify behind flags.
 
 ## Layout
 
-Backend is FastAPI (`backend/`); classic dashboard is Vite + TypeScript
-(`frontend/`, port 5173). Redesigned mission UI lives in **`frontend-v2/`**
-(port 5174) — same APIs, separate app; see [`frontend-v2/README.md`](../frontend-v2/README.md).
+Backend is FastAPI (`backend/`); primary mission UI is Vite + TypeScript
+(`frontend/`, port **5173**) with the Project Supernova design language.
+Optional parallel copy: [`frontend-v2/README.md`](../frontend-v2/README.md)
+(port 5174).
 
 Env reference: [`.env.example`](../.env.example).
 

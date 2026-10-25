@@ -44,7 +44,7 @@ models put that window from tens of seconds (compact WR) to about a day
 5. **Subscribe** — mint access + refresh tokens, open `/ws/subscribe`, watch
    the next candidate package land (also mirrored at `/alerts/latest`).
 
-Mission UI: `frontend-v2` on port **5174**. Classic dashboard remains on **5173**.
+Mission UI: `frontend/` on port **5173** (Project Supernova redesign). Optional parallel `frontend-v2/` remains on **5174**.
 
 ## Built for Cal Hacks & SpaceX
 
@@ -83,3 +83,8 @@ Science judge sheet: [`docs/BREAKOUT_judge_science_QA.md`](docs/BREAKOUT_judge_s
 Install, ports, env flags, scenarios, `mvp_gate`, schemas, and Apify notes live in
 **[`docs/developers.md`](docs/developers.md)** — kept out of this page so the
 story stays scannable.
+
+**Public demo:** [`https://supernova.lylinks.com`](https://supernova.lylinks.com)
+(Cloudflare tunnel → local API + static UI). Local loopback still uses
+`127.0.0.1:8000` / Vite `:5173`. See `BREAKOUT_PUBLIC_BASE_URL` / `scripts/run_public.sh`
+in the developer doc.

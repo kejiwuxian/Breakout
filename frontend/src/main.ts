@@ -1,106 +1,416 @@
 /**
- * BREAKOUT dashboard — Vite + TypeScript.
- * Panels subscribe to /ws/events (proxied to ws://localhost:8000).
+ * Project Supernova — primary mission UI (`frontend/`, port 5173).
+ * Product IA from frontend-v2; visual system from the Supernova design guide.
  */
 import "./style.css";
 import strings from "./copy/strings.json";
-import { mountActionsPanel } from "./panels/actions";
-import { applyBadgeFromEvent, mountBadgeHosts, noteScenario } from "./panels/badges";
-import { mountCandidatesPanel } from "./panels/candidates";
-import { mountScenariosPanel } from "./panels/scenarios";
-import { mountSkyMapPanel } from "./panels/skyMap";
-import { mountSubscribePanel } from "./panels/subscribe";
-import { applyEvent, setConnected } from "./state/store";
-import { handleVoiceEvent, mountAnnouncerPanel } from "./voice/announcer";
-import { mountJudgeQa } from "./voice/judge_qa";
+import { mountAbout } from "./panels/about";
+import { mountCandidates } from "./panels/candidates";
+import { mountScenarios } from "./panels/scenarios";
+import { mountSky } from "./panels/sky";
+import { mountSubscribe } from "./panels/subscribe";
+import { handleVoiceEvent, mountVoice } from "./panels/voice";
+import {
+  applyEvent,
+  beginScenarioSwitch,
+  getState,
+  hydrateMission,
+  packageMatchesScenario,
+  setConnected,
+  subscribe,
+  type CandidateRow,
+  type SkymapPayload,
+} from "./state/store";
 import { connectEvents } from "./ws/events";
 
-const app = document.querySelector<HTMLDivElement>("#app");
-if (!app) {
-  throw new Error("#app missing");
+type CommunityCandidate = CandidateRow & {
+  evidence?: { bibcode: string; claim: string }[];
+};
+
+type LatestPackage = {
+  alert_id?: string;
+  simulated?: boolean;
+  skymap?: {
+    peak_ra_deg?: number;
+    peak_dec_deg?: number;
+    credible_90_deg2?: number;
+    components?: string[];
+    simulated?: boolean;
+  };
+  candidates?: CommunityCandidate[];
+};
+
+/** Normalize community-alert rows into CandidateRow (lit + v1.1 fields). */
+function normalizeCandidates(rows: CommunityCandidate[] | undefined): CandidateRow[] {
+  if (!rows?.length) return [];
+  return rows.map((row) => {
+    const evidence =
+      row.lit?.evidence?.length
+        ? row.lit.evidence
+        : (row.evidence ?? []).filter((e) => e?.bibcode && e?.claim);
+    const lit = row.lit ?? {
+      mass_loss: 0,
+      variability: 0,
+      evolved_stage: 0,
+      confidence:
+        typeof row.rank_confidence === "number" ? row.rank_confidence : 0,
+      evidence,
+    };
+    return {
+      ...row,
+      lit: {
+        ...lit,
+        evidence,
+      },
+    };
+  });
 }
 
+/** True when URL asks to seed UI from a prior /alerts/latest package. */
+function wantsHydrateFromLatest(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get("hydrate") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function packageToSkymap(pkg: LatestPackage): SkymapPayload | null {
+  if (!pkg?.alert_id || !pkg.skymap) return null;
+  const sky = pkg.skymap;
+  return {
+    alert_id: pkg.alert_id,
+    nside: 64,
+    ordering: "NESTED",
+    frame: "ICRS",
+    prob_path: `data/run/${pkg.alert_id}/skymap.fits`,
+    components: sky.components ?? [],
+    credible_90_deg2: Number(sky.credible_90_deg2 ?? 0),
+    peak: {
+      ra_deg: Number(sky.peak_ra_deg ?? 0),
+      dec_deg: Number(sky.peak_dec_deg ?? 0),
+    },
+    simulated: Boolean(sky.simulated ?? pkg.simulated),
+  };
+}
+
+/**
+ * Optionally seed skymap + candidates from /alerts/latest.
+ * Default cold start stays empty (listening) — only hydrate with ?hydrate=1
+ * or after a manual Replay start (onStarted).
+ */
+async function hydrateFromLatest(opts?: {
+  /** Default true for page-load hydrate; false after Scenario Run so AOI zoom plays. */
+  suppressZoom?: boolean;
+  /** Only accept a package that belongs to this scenario (avoids stale flash). */
+  scenarioId?: string;
+  /** Reject if the user already started another scenario. */
+  expectEpoch?: number;
+}): Promise<boolean> {
+  try {
+    const res = await fetch("/alerts/latest", { cache: "no-store" });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { packages?: LatestPackage[] };
+    const packages = body.packages ?? [];
+    const pkg = opts?.scenarioId
+      ? packages.find((p) => packageMatchesScenario(p, opts.scenarioId!))
+      : packages[0];
+    if (!pkg) return false;
+    const skymap = packageToSkymap(pkg);
+    if (!skymap) return false;
+    // WS may have already applied this alert — skip a redundant emit/zoom bump.
+    const current = getState();
+    if (
+      current.skymap?.alert_id === skymap.alert_id &&
+      current.candidates.length > 0
+    ) {
+      return true;
+    }
+    return hydrateMission({
+      skymap,
+      candidates: normalizeCandidates(pkg.candidates),
+      simulated: Boolean(pkg.simulated ?? pkg.skymap?.simulated),
+      suppressZoom: opts?.suppressZoom,
+      expectEpoch: opts?.expectEpoch,
+    });
+  } catch {
+    // Offline / empty feed — sky stays on waiting/empty until a live alert or Replay.
+    return false;
+  }
+}
+
+/** Poll until WS or a matching /alerts/latest package fills the mission. */
+async function settleScenarioMission(
+  scenarioId: string,
+  expectEpoch: number,
+): Promise<void> {
+  for (let i = 0; i < 25; i++) {
+    if (getState().missionEpoch !== expectEpoch) return;
+    const { skymap, candidates } = getState();
+    if (
+      skymap &&
+      packageMatchesScenario(
+        { alert_id: skymap.alert_id, simulated: skymap.simulated },
+        scenarioId,
+      ) &&
+      (candidates.length > 0 || i >= 8)
+    ) {
+      return;
+    }
+    const ok = await hydrateFromLatest({
+      suppressZoom: false,
+      scenarioId,
+      expectEpoch,
+    });
+    if (ok) return;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
+function isIdleScenario(scen: string | null | undefined): boolean {
+  return !scen || scen === "live_waiting";
+}
+
+function statusListening(): string {
+  return strings.listening ?? strings.connected;
+}
+
+const app = document.querySelector<HTMLDivElement>("#app");
+if (!app) throw new Error("#app missing");
+
 app.innerHTML = `
-  <div class="dash">
-    <header class="dash-hero">
-      <div>
-        <p class="brand">${strings.brand}</p>
-        <p class="tagline">${strings.tagline}</p>
+  <div class="app-shell">
+    <header class="top-nav">
+      <div class="nav-left">
+        <a class="brand" href="#/" id="brand-link">${strings.brand}</a>
+        <a class="nav-about" href="#/about" id="nav-about">${strings.navAbout}</a>
       </div>
-      <div class="hero-status">
-        <p class="status" id="status">${strings.connecting}</p>
-        <span class="badge simulated" id="sim-badge" hidden>${strings.simulatedBadge}</span>
-        <span class="badge real" id="real-badge" hidden>${strings.realBadge}</span>
+      <div class="nav-right">
+        <div class="status-cluster">
+          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+          <p class="status-text" id="status">${strings.connecting}</p>
+          <span class="badge sim" id="sim-badge" hidden>${strings.simulatedBadge}</span>
+          <span class="badge hist" id="real-badge" hidden>${strings.realBadge}</span>
+          <span class="badge live" id="live-badge" hidden>${strings.liveBadge}</span>
+        </div>
       </div>
     </header>
-    <div class="dash-grid">
-      <div id="panel-sky" class="dash-sky"></div>
-      <aside class="dash-side">
-        <div id="voice-panel" class="slot-voice"></div>
-        <div id="panel-scenarios" class="slot-scenarios"></div>
-        <div id="panel-candidates" class="slot-candidates"></div>
-        <div id="panel-actions" class="slot-actions"></div>
-        <div id="panel-subscribe" class="slot-subscribe"></div>
+    <div class="workspace" id="mission-view">
+      <main class="main">
+        <div class="page-chrome">
+          <p class="page-category">${strings.pageCategory}</p>
+          <h2 class="page-title">${strings.pageTitle}</h2>
+          <p class="page-purpose">${strings.pagePurpose}</p>
+        </div>
+        <section class="sky-host" id="panel-sky" aria-label="${strings.skyTitle}"></section>
+        <section class="event-select-host" id="panel-scenarios" aria-label="${strings.scenariosTitle}"></section>
+        <p class="stage-foot">${strings.legacyNote}</p>
+      </main>
+      <aside class="rail" aria-label="Mission detail">
+        <div id="panel-event-summary"></div>
+        <div id="panel-candidates"></div>
+        <div id="panel-subscribe"></div>
+        <div id="panel-voice"></div>
       </aside>
     </div>
+    <section
+      class="about-view"
+      id="about-view"
+      hidden
+      tabindex="-1"
+      aria-label="${strings.aboutAria}"
+    ></section>
   </div>
 `;
 
 const statusEl = document.querySelector<HTMLElement>("#status")!;
-const badges = mountBadgeHosts();
+const statusDot = document.querySelector<HTMLElement>("#status-dot")!;
+const simBadge = document.querySelector<HTMLElement>("#sim-badge")!;
+const realBadge = document.querySelector<HTMLElement>("#real-badge")!;
+const liveBadge = document.querySelector<HTMLElement>("#live-badge")!;
+const summaryHost = document.querySelector<HTMLElement>("#panel-event-summary")!;
+const missionView = document.querySelector<HTMLElement>("#mission-view")!;
+const aboutView = document.querySelector<HTMLElement>("#about-view")!;
+const brandLink = document.querySelector<HTMLAnchorElement>("#brand-link")!;
+const aboutNav = document.querySelector<HTMLAnchorElement>("#nav-about")!;
 
-mountSkyMapPanel(document.querySelector("#panel-sky")!);
-mountScenariosPanel(document.querySelector("#panel-scenarios")!);
-mountCandidatesPanel(document.querySelector("#panel-candidates")!);
-mountActionsPanel(document.querySelector("#panel-actions")!);
-mountSubscribePanel(document.querySelector("#panel-subscribe")!);
+mountAbout(aboutView);
 
-const voiceSlot = document.querySelector<HTMLElement>("#voice-panel");
-const judgeSlot = mountAnnouncerPanel(voiceSlot);
-mountJudgeQa(judgeSlot);
+/** Hash route: `#/about` shows About; anything else keeps the mission workspace. */
+function routeFromHash(): "mission" | "about" {
+  const raw = (window.location.hash || "").replace(/^#/, "").replace(/^\//, "");
+  const path = raw.split("?")[0]?.toLowerCase() ?? "";
+  return path === "about" ? "about" : "mission";
+}
 
-// Scenario buttons also note which path was requested (for Real vs Simulated).
-document.querySelector("#panel-scenarios")?.addEventListener(
-  "click",
-  (ev) => {
-    const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>("button[data-scenario]");
-    if (btn?.dataset.scenario) noteScenario(btn.dataset.scenario);
+function applyRoute(route: "mission" | "about") {
+  const onAbout = route === "about";
+  missionView.hidden = onAbout;
+  aboutView.hidden = !onAbout;
+  aboutNav.setAttribute("aria-current", onAbout ? "page" : "false");
+  brandLink.setAttribute("aria-current", onAbout ? "false" : "page");
+  document.body.classList.toggle("view-about", onAbout);
+  if (onAbout) {
+    aboutView.focus({ preventScroll: true });
+    aboutView.scrollTop = 0;
+  }
+}
+
+function onHashChange() {
+  applyRoute(routeFromHash());
+}
+
+window.addEventListener("hashchange", onHashChange);
+applyRoute(routeFromHash());
+
+aboutView.addEventListener("click", (ev) => {
+  const target = ev.target as HTMLElement | null;
+  if (target?.closest?.("[data-role='about-back']")) {
+    // Let the hash link navigate; hashchange applies the route.
+  }
+});
+
+let activeScenario: string | null = null;
+let activeEpoch = 0;
+
+function natureLabel(simulated: boolean | undefined, scenarioHint?: string | null): "sim" | "hist" | "live" | "unknown" {
+  const scen = scenarioHint ?? activeScenario;
+  if (simulated === true) return "sim";
+  if (simulated === false) {
+    const isB =
+      scen === "scenario_b_icecube_170922a" ||
+      (typeof scen === "string" && scen.toLowerCase().includes("icecube"));
+    return isB ? "hist" : "live";
+  }
+  return "unknown";
+}
+
+function applyBadges(simulated: boolean | undefined, scenarioHint?: string | null) {
+  const kind = natureLabel(simulated, scenarioHint);
+  simBadge.hidden = kind !== "sim";
+  realBadge.hidden = kind !== "hist";
+  liveBadge.hidden = kind !== "live";
+}
+
+function paintEventSummary() {
+  const { skymap, candidates, lastSimulated, scenario } = getState();
+  // Prefer the live skymap honesty bit over a possibly-stale lastSimulated
+  // left by a prior scenario's WS frames.
+  const simulatedBit =
+    typeof skymap?.simulated === "boolean"
+      ? skymap.simulated
+      : typeof lastSimulated === "boolean"
+        ? lastSimulated
+        : undefined;
+  const nature = natureLabel(simulatedBit, scenario ?? activeScenario);
+  const natureText =
+    nature === "sim"
+      ? strings.simulatedBadge
+      : nature === "hist"
+        ? strings.realBadge
+        : nature === "live"
+          ? strings.liveBadge
+          : strings.unknownNature;
+
+  summaryHost.innerHTML = `
+    <div class="rail-block event-summary-block">
+      <h2 class="rail-title">${strings.eventSummaryTitle}</h2>
+      <div class="event-summary">
+        <div class="event-summary-row">
+          <span class="label">${strings.summaryAlert}</span>
+          <span class="value">${skymap?.alert_id ?? strings.noData}</span>
+        </div>
+        <div class="event-summary-row">
+          <span class="label">${strings.summaryNature}</span>
+          <span class="value">${natureText}</span>
+        </div>
+        <div class="event-summary-row">
+          <span class="label">${strings.summaryArea}</span>
+          <span class="value">${
+            skymap
+              ? `${skymap.credible_90_deg2.toFixed(1)} deg²`
+              : strings.noData
+          }</span>
+        </div>
+        <div class="event-summary-row">
+          <span class="label">${strings.summaryPeak}</span>
+          <span class="value">${
+            skymap
+              ? `RA ${skymap.peak.ra_deg.toFixed(2)}° · Dec ${skymap.peak.dec_deg.toFixed(2)}°`
+              : strings.noData
+          }</span>
+        </div>
+        <div class="event-summary-row">
+          <span class="label">${strings.summaryCandidates}</span>
+          <span class="value">${candidates.length ? String(candidates.length) : strings.noData}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+mountSky(document.querySelector("#panel-sky")!);
+mountScenarios(document.querySelector("#panel-scenarios")!, {
+  onScenario: (id) => {
+    activeScenario = id;
+    activeEpoch = beginScenarioSwitch(id);
   },
-  true,
-);
+  onStarted: async (id) => {
+    await settleScenarioMission(id, activeEpoch);
+  },
+});
+mountCandidates(document.querySelector("#panel-candidates")!);
+mountSubscribe(document.querySelector("#panel-subscribe")!);
+mountVoice(document.querySelector("#panel-voice")!);
+paintEventSummary();
+subscribe(() => paintEventSummary());
+
+if (wantsHydrateFromLatest()) {
+  void hydrateFromLatest();
+}
 
 connectEvents(
   (event) => {
     applyEvent(event);
-    applyBadgeFromEvent(badges, event);
+    if (event.type === "voice") handleVoiceEvent(event);
 
     if (event.type === "hello") {
       const scen = (event as { scenario?: string }).scenario;
-      statusEl.textContent =
-        !scen || scen === "live_waiting"
-          ? (strings.listening ?? strings.connected)
-          : strings.connected;
+      if (!isIdleScenario(scen)) {
+        activeScenario = scen ?? null;
+        statusEl.textContent = strings.connected;
+      } else {
+        activeScenario = null;
+        statusEl.textContent = statusListening();
+      }
     } else if (event.type === "alert") {
-      statusEl.textContent = `${strings.statusAlert}: ${String((event.payload as { kind?: string })?.kind ?? "")}`;
+      statusEl.textContent = `${strings.statusAlert}: ${String(
+        (event.payload as { kind?: string })?.kind ?? "",
+      )}`;
+      applyBadges(event.simulated);
     } else if (event.type === "skymap") {
       statusEl.textContent = strings.statusSkymap;
+      applyBadges(event.simulated);
     } else if (event.type === "candidates") {
       statusEl.textContent = strings.statusCandidates;
-    } else if (event.type === "actions") {
-      statusEl.textContent = strings.statusActions;
+      applyBadges(event.simulated);
     } else if (event.type === "voice") {
-      handleVoiceEvent(event);
       const text = String((event.payload as { text?: string } | undefined)?.text ?? "");
       if (text) statusEl.textContent = text;
-    } else if (event.type === "scenario_done") {
-      statusEl.textContent = `${strings.scenarioStarted}: ${String(event.payload?.scenario ?? "")}`;
+      applyBadges(event.simulated);
+    } else if (event.type === "scenario_done" && event.payload?.scenario) {
+      activeScenario = String(event.payload.scenario);
+      statusEl.textContent = `${strings.scenarioStarted}: ${activeScenario}`;
     }
   },
   (state) => {
     setConnected(state === "open");
+    statusDot.classList.toggle("is-live", state === "open");
     if (state === "connecting") statusEl.textContent = strings.connecting;
     if (state === "open") {
-      statusEl.textContent = strings.listening ?? strings.connected;
+      statusEl.textContent = isIdleScenario(activeScenario)
+        ? statusListening()
+        : strings.connected;
     }
     if (state === "closed") statusEl.textContent = strings.disconnected;
   },

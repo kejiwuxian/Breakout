@@ -1,51 +1,17 @@
-# Project Supernova — frontend-v2
+# Project Supernova — frontend-v2 (parallel copy)
 
-Redesigned mission UI for the same product and backend as `frontend/`.
-**Does not replace the classic dashboard** — run both side by side if you want.
-Public brand: **Project Supernova** (internal packages remain `breakout`).
+Optional parallel mission UI on port **5174**. The **primary** product entry is
+now [`frontend/`](../frontend/) on **5173** (same product IA + Supernova design
+language).
 
 Setup details: [`docs/developers.md`](../docs/developers.md).
 
-## Design intent
-
-- One composition: skymap as the dominant visual plane; controls on a side rail
-- Brand-first: **Project Supernova** is the hero signal
-- Expressive type: Syne + IBM Plex Sans / Mono
-- Atmospheric night field (gradients + sparse star dust), not a flat fill
-- Interactive localization: **pure SVG** Mollweide with Yale BSC5 all-sky field
-  stars (V≤6.5) plus a curated-inventory ranked overlay; on an event, **dual
-  size-based red AOI** outlines appear (outer translucent) and the view **zooms
-  the same SVG** (no raster swap). **Wheel zoom**, **drag pan**, double-click /
-  Full sky reset. Hover ranked stars for posterior, confidence, life window,
-  composition. No galactic-plane polyline; no default top-candidate auto-select.
-- Simulated / Real badges preserved; no invented numbers or citations
-- Motion: brand letter-spacing settle, rail rise, skymap fade-in (reduced-motion safe)
-
 ## Run
-
-Backend (same as classic):
 
 ```bash
 USE_CACHED_STREAM=True VOICE_MODE=off python3 -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
-```
-
-Cold start is **idle / listening** (no auto Scenario A). The stream shows live + waiting for neutrino alerts; empty ranked list and BSC5 full sky until a live alert arrives or you click **Run** on Replay. Cached mode is offline capability, not auto-play. Optional: open with `?hydrate=1` to seed from a prior `/alerts/latest` package.
-
-This UI (port **5174**):
-
-```bash
 npm --prefix frontend-v2 install
 npm --prefix frontend-v2 run dev
 ```
 
-Open http://127.0.0.1:5174 — classic UI remains on http://127.0.0.1:5173.
-
-## Subscribe to events
-
-The rail **Subscribe to events** block is an open access + refresh flow
-(`POST /subscribe` → access + refresh → `/ws/subscribe`). No account or prior
-credentials — empty body is enough. Access tokens expire; refresh and send the
-new access token on the live wire to extend. Default `NOTIFY_DRY_RUN=True` logs
-optional tokens in the API response for local demos (no invented SMTP). Packages
-carry `simulated=true` when applicable and are not official GCN notices. Details:
-[`docs/community-subscribe.md`](../docs/community-subscribe.md).
+Open http://127.0.0.1:5174 — prefer http://127.0.0.1:5173 for demos.
