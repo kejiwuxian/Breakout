@@ -40,6 +40,7 @@ Inventory `life_expectancy.optical_breakout_window` is a **class** optical-break
 ```bash
 # Idle API (no auto scenario)
 uvicorn backend.app:app --host 127.0.0.1 --port 8000
+# Public demo: bash scripts/run_public.sh → https://supernova.lylinks.com
 
 # Mission UI (primary)
 npm --prefix frontend run dev      # :5173

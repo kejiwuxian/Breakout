@@ -75,10 +75,11 @@ Implementation notes:
 - Use websocket-client or websockets + requests/httpx
 - Store refresh_token securely (file mode 0600 or OS keychain); never log full tokens
 - Robust reconnect with backoff; re-auth after 4001
-- Default BASE_URL for local dry-run: ${apiOrigin}
-- Default WS for local dry-run: ${wsUrl}
+- Default BASE_URL (this page's origin): ${apiOrigin}
+- Default WS (this page's origin): ${wsUrl}
+- Production public host when tunneled: https://supernova.lylinks.com (wss://…/ws/subscribe)
 
-Ask me which RELAY_CHANNEL to implement first and which credentials/env vars to expect, then produce the full script with a short README of how to run a dry-run against a local Breakout API.`;
+Ask me which RELAY_CHANNEL to implement first and which credentials/env vars to expect, then produce the full script with a short README of how to run against the Project Supernova API (local or https://supernova.lylinks.com).`;
 }
 
 export function mountSubscribe(host: HTMLElement): () => void {

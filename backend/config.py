@@ -49,6 +49,67 @@ def _env_str(name: str, default: str = "") -> str:
 VoiceMode = Literal["live", "cached", "off"]
 DetectorName = Literal["Super-K", "SNO+", "IceCube", "KamLAND", "JUNO"]
 
+# Public HTTPS hostname for Cloudflare tunnel / production demos.
+PRODUCTION_PUBLIC_BASE_URL = "https://supernova.lylinks.com"
+# Default when developing against local uvicorn only.
+LOCAL_PUBLIC_BASE_URL = "http://127.0.0.1:8000"
+
+
+def _is_production_mode() -> bool:
+    """True when ENV/BREAKOUT_ENV is production-like or BREAKOUT_PUBLIC is set."""
+    if _env_bool("BREAKOUT_PUBLIC", False):
+        return True
+    env = (_env_str("ENV") or _env_str("BREAKOUT_ENV") or "").strip().lower()
+    return env in {"production", "prod", "public", "tunnel"}
+
+
+def resolve_public_base_url() -> str:
+    """User-facing absolute origin for curl/docs/CORS.
+
+    Precedence:
+    1. ``BREAKOUT_PUBLIC_BASE_URL`` / ``PUBLIC_BASE_URL`` / ``BREAKOUT_PUBLIC_URL``
+    2. Production URL when ``ENV=production`` / ``BREAKOUT_PUBLIC=1`` / tunnel mode
+    3. Local uvicorn default ``http://127.0.0.1:8000``
+    """
+    for key in (
+        "BREAKOUT_PUBLIC_BASE_URL",
+        "PUBLIC_BASE_URL",
+        "BREAKOUT_PUBLIC_URL",
+    ):
+        raw = _env_str(key, "")
+        if raw:
+            return raw.rstrip("/")
+    if _is_production_mode():
+        return PRODUCTION_PUBLIC_BASE_URL
+    return LOCAL_PUBLIC_BASE_URL
+
+
+def public_ws_base_url(http_base: str | None = None) -> str:
+    """Convert an http(s) public base URL to ws(s) for WebSocket examples."""
+    base = (http_base or resolve_public_base_url()).rstrip("/")
+    if base.startswith("https://"):
+        return "wss://" + base[len("https://") :]
+    if base.startswith("http://"):
+        return "ws://" + base[len("http://") :]
+    return base
+
+
+def cors_allow_origins(public_base: str | None = None) -> list[str]:
+    """Browser origins allowed to call the API (Vite dev + public host)."""
+    base = (public_base or resolve_public_base_url()).rstrip("/")
+    origins = {
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:5174",
+        "http://localhost:5174",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        LOCAL_PUBLIC_BASE_URL,
+        PRODUCTION_PUBLIC_BASE_URL,
+        base,
+    }
+    return sorted(o for o in origins if o)
+
 
 # WGS84 lab positions for light-travel triangulation (astropy EarthLocation).
 # Underground depth shifts arrival times by only ~µs and is neglected where noted.
@@ -204,6 +265,18 @@ class Settings(BaseModel):
     lcogt_proposal: str = ""
     notify_dry_run: bool = True
     smtp_host: str = ""
+    public_base_url: str = Field(
+        default=LOCAL_PUBLIC_BASE_URL,
+        description=(
+            "Absolute public origin for user-facing curl/WS examples and CORS. "
+            "Defaults to local uvicorn; set ENV=production or "
+            "BREAKOUT_PUBLIC_BASE_URL for https://supernova.lylinks.com."
+        ),
+    )
+    serve_frontend: bool = Field(
+        default=False,
+        description="Serve frontend/dist from FastAPI (single-origin tunnel).",
+    )
 
     # Phase 2 sponsor flags — all default False; MVP never depends on them.
     droid_enabled: bool = Field(default=False, description="Factory Droid action agent.")
@@ -280,6 +353,8 @@ def load_settings() -> Settings:
         lcogt_proposal=_env_str("LCOGT_PROPOSAL", ""),
         notify_dry_run=_env_bool("NOTIFY_DRY_RUN", True),
         smtp_host=_env_str("SMTP_HOST", ""),
+        public_base_url=resolve_public_base_url(),
+        serve_frontend=_env_bool("BREAKOUT_SERVE_FRONTEND", _is_production_mode()),
         droid_enabled=_env_bool("DROID_ENABLED", False),
         convex_enabled=_env_bool("CONVEX_ENABLED", False),
         apify_enabled=_env_bool("APIFY_ENABLED", False),

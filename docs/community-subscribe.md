@@ -10,10 +10,15 @@ supernova detection service.
 **Two-token auth** = **access token** + **refresh token**. Live delivery is
 over **WebSocket** (`/ws/subscribe`).
 
+Public demo origin: **`https://supernova.lylinks.com`**. Local uvicorn stays on
+`http://127.0.0.1:8000`. Set `BASE_URL` accordingly (or `BREAKOUT_PUBLIC_BASE_URL`).
+
 ## 1. Issue tokens
 
 ```bash
-curl -X POST http://127.0.0.1:8000/subscribe \
+BASE_URL="${BREAKOUT_PUBLIC_BASE_URL:-https://supernova.lylinks.com}"
+# Local dry-run: BASE_URL=http://127.0.0.1:8000
+curl -X POST "$BASE_URL/subscribe" \
   -H 'Content-Type: application/json' \
   -d '{}'
 # optional label: {"label":"campus-0.3m"}
@@ -33,7 +38,7 @@ Tokens are **hashed at rest**. Empty body is enough — email is optional and no
 ## 2. Refresh access
 
 ```bash
-curl -X POST http://127.0.0.1:8000/subscribe/refresh \
+curl -X POST "$BASE_URL/subscribe/refresh" \
   -H 'Content-Type: application/json' \
   -d '{"refresh_token":"…"}'
 ```
@@ -44,6 +49,9 @@ tokens cannot be reused.
 ## 3. WebSocket
 
 ```text
+# Production (Cloudflare tunnel)
+wss://supernova.lylinks.com/ws/subscribe?access_token=<access_token>
+# Local
 ws://127.0.0.1:8000/ws/subscribe?access_token=<access_token>
 ```
 
@@ -83,11 +91,14 @@ with code **4001** (`access_token_expired`).
 | **`frontend/`** (primary) | `5173` | Rail **Subscribe to events** |
 | Optional `frontend-v2/` | `5174` | Parallel copy of the same rail |
 
-1. Start the API (`uvicorn backend.app:app`, typically `:8000`).
-2. Open the primary UI at http://127.0.0.1:5173 (Vite proxies `/subscribe`, `/alerts`, `/ws`).
+1. Start the API (`uvicorn backend.app:app`, typically `:8000`) — or
+   `bash scripts/run_public.sh` for the tunnel at https://supernova.lylinks.com.
+2. Open the primary UI at http://127.0.0.1:5173 (Vite proxies `/subscribe`,
+   `/alerts`, `/ws`), or the public host when tunneling (API serves `frontend/dist`).
 3. Optional label → **Get tokens & connect**. The panel documents the three
    endpoints inline, opens `/ws/subscribe`, and auto-refreshes before expiry.
-4. Browse [`GET /alerts/latest`](http://127.0.0.1:8000/alerts/latest).
+4. Browse `GET /alerts/latest` on the same origin (local `:8000` or
+   https://supernova.lylinks.com/alerts/latest).
 5. Exercise a push with a manual Replay scenario (`simulated=true` when applicable).
 
 ## What gets pushed

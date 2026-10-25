@@ -83,3 +83,8 @@ Science judge sheet: [`docs/BREAKOUT_judge_science_QA.md`](docs/BREAKOUT_judge_s
 Install, ports, env flags, scenarios, `mvp_gate`, schemas, and Apify notes live in
 **[`docs/developers.md`](docs/developers.md)** — kept out of this page so the
 story stays scannable.
+
+**Public demo:** [`https://supernova.lylinks.com`](https://supernova.lylinks.com)
+(Cloudflare tunnel → local API + static UI). Local loopback still uses
+`127.0.0.1:8000` / Vite `:5173`. See `BREAKOUT_PUBLIC_BASE_URL` / `scripts/run_public.sh`
+in the developer doc.
