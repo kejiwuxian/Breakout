@@ -64,12 +64,71 @@ body {
   color: var(--muted);
 }
 
+.voice-panel {
+  margin-bottom: 0;
+}
+
 .voice-caption {
-  margin: 0 0 1rem;
+  margin: 0 0 0.75rem;
   min-height: 1.35em;
   color: var(--accent);
   font-size: 0.95rem;
   line-height: 1.45;
+}
+
+.voice-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.voice-mute,
+.judge-ptt {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg);
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.voice-mute[aria-pressed="true"] {
+  border-color: var(--sim);
+  color: var(--sim);
+}
+
+.judge-qa {
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+
+.judge-ptt.is-talking {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.judge-hint {
+  margin: 0.45rem 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.judge-transcript {
+  margin: 0.35rem 0 0;
+  min-height: 1.2em;
+  color: var(--fg);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.judge-error {
+  margin: 0.45rem 0 0;
+  color: var(--sim);
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 .dash-grid {
