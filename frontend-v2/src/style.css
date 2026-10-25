@@ -582,7 +582,8 @@ body::before {
 }
 
 /* —— Community subscribe —— */
-.subscribe-honesty {
+.subscribe-honesty,
+.subscribe-dry {
   margin-top: -0.35rem;
   color: rgba(158, 179, 196, 0.78);
   font-size: 0.78rem;
