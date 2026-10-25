@@ -13,9 +13,12 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
 from backend.config import ROOT, settings
 from backend.ingest.cache import replay_scenario
+from backend.notify.dispatch import latest_feed_packages
+from backend.notify.subscribers import add_subscriber, list_subscribers, remove_subscriber
 from backend.pipeline import process_alert, reset_watchlist
 from backend.schemas import WsHelloEvent
 from backend.voice import announcer as voice_announcer
@@ -250,6 +253,63 @@ def health() -> dict[str, Any]:
         "scenario": settings.scenario,
         "voice_mode": settings.voice_mode,
         "lcogt_dry_run": settings.lcogt_dry_run,
+        "notify_dry_run": settings.notify_dry_run,
+        "n_subscribers": len(list_subscribers(public=True)),
+    }
+
+
+class SubscribeRequest(BaseModel):
+    """Community opt-in for ranked-candidate alerts (webhook and/or email)."""
+
+    webhook_url: str | None = Field(default=None, description="HTTPS endpoint for JSON POST")
+    email: str | None = Field(default=None, description="Contact email (dry-run unless SMTP set)")
+    label: str | None = Field(default=None, description="Optional human label")
+
+
+@app.post("/subscribe")
+def subscribe(body: SubscribeRequest) -> dict[str, Any]:
+    """Register a scientist/enthusiast webhook or email for ranked-star alerts."""
+    try:
+        row = add_subscriber(
+            webhook_url=body.webhook_url,
+            email=body.email,
+            label=body.label,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "subscribed", "subscriber": row, "notify_dry_run": settings.notify_dry_run}
+
+
+@app.get("/subscribe")
+def subscribe_list() -> dict[str, Any]:
+    """List public subscriber metadata (hosts only; no secrets)."""
+    return {
+        "subscribers": list_subscribers(public=True),
+        "notify_dry_run": settings.notify_dry_run,
+        "feed": "/alerts/latest",
+    }
+
+
+@app.delete("/subscribe/{subscriber_id}")
+def subscribe_delete(subscriber_id: str) -> dict[str, Any]:
+    """Remove a subscriber by id."""
+    if not remove_subscriber(subscriber_id):
+        raise HTTPException(status_code=404, detail="subscriber not found")
+    return {"status": "removed", "id": subscriber_id}
+
+
+@app.get("/alerts/latest")
+def alerts_latest(limit: int = 10) -> dict[str, Any]:
+    """Recent community alert packages (ranked candidates + coords)."""
+    lim = max(1, min(int(limit), 50))
+    packages = latest_feed_packages(limit=lim)
+    return {
+        "count": len(packages),
+        "packages": packages,
+        "note": (
+            "BREAKOUT community feed for local/instrument follow-up. "
+            "simulated=true fields are not real observations."
+        ),
     }
 
 

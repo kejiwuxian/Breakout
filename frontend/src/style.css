@@ -452,3 +452,59 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.subscribe-panel {
+  margin-top: 0.85rem;
+}
+
+.subscribe-form {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.75rem 0;
+}
+
+.subscribe-form label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.subscribe-form input {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--fg);
+  font: inherit;
+}
+
+.subscribe-form button {
+  appearance: none;
+  justify-self: start;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.subscribe-status {
+  margin: 0.35rem 0;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.subscribe-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.subscribe-list .muted {
+  list-style: none;
+  margin-left: -1.1rem;
+}

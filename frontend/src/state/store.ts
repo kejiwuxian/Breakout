@@ -52,6 +52,13 @@ export type ActionsPayload = {
   too_hst_markdown?: string | null;
   too_jwst_markdown?: string | null;
   gcn_circular_markdown?: string | null;
+  community_notify?: {
+    alert_id?: string;
+    n_candidates?: number;
+    n_subscribers?: number;
+    dry_run?: boolean;
+    simulated?: boolean;
+  } | null;
   simulated?: boolean;
   note?: string;
 };

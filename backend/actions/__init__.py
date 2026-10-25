@@ -10,6 +10,7 @@ from backend.actions.gcn_circular import draft_circular
 from backend.actions.lcogt import build_and_maybe_submit
 from backend.actions.too_drafts import draft_hst_too, draft_jwst_too
 from backend import config as config_mod
+from backend.notify.dispatch import dispatch_ranked_alert
 from backend.schemas import Alert, CandidateScore, SkyMap
 
 logger = logging.getLogger("breakout.actions")
@@ -39,8 +40,12 @@ def build_actions_payload(
         "too_hst_markdown": None,
         "too_jwst_markdown": None,
         "gcn_circular_markdown": None,
+        "community_notify": None,
         "simulated": simulated,
-        "note": "Drafts only — human approval required before any LCO/HST/JWST/GCN submit.",
+        "note": (
+            "Drafts only — human approval required before any LCO/HST/JWST/GCN submit. "
+            "Community webhooks receive ranked-candidate JSON for local telescopes."
+        ),
     }
 
     if top is None:
@@ -56,6 +61,7 @@ def build_actions_payload(
     hst = draft_hst_too(top, skymap)
     jwst = draft_jwst_too(top, skymap)
     gcn = draft_circular(alert, skymap, candidates)
+    notify = dispatch_ranked_alert(alert, skymap, candidates, run_dir=run_dir)
 
     # Persist Markdown drafts next to the LCO JSON for the run directory.
     alert_dir = Path(run_dir) / alert.alert_id
@@ -74,10 +80,12 @@ def build_actions_payload(
     payload["too_hst_markdown"] = hst
     payload["too_jwst_markdown"] = jwst
     payload["gcn_circular_markdown"] = gcn
+    payload["community_notify"] = notify.get("dispatch")
     logger.info(
-        "actions_built alert_id=%s top=%s dry_run=%s",
+        "actions_built alert_id=%s top=%s dry_run=%s notify_subs=%s",
         alert.alert_id,
         top.star_id,
         config_mod.settings.lcogt_dry_run,
+        (notify.get("dispatch") or {}).get("n_subscribers"),
     )
     return payload

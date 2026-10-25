@@ -28,6 +28,19 @@ npm --prefix frontend run dev
 
 Offline demo defaults (`USE_CACHED_STREAM=True`): replay `data/cache/`, no network on the trigger path. Keys may stay empty. Label every simulated number (`simulated=true` in JSON; Simulated badge in the UI).
 
+## Community alerts (Phase 1)
+
+Anyone with a telescope can subscribe for ranked progenitor coordinates as soon as BREAKOUT localizes a burst:
+
+```bash
+curl -X POST http://127.0.0.1:8000/subscribe \
+  -H 'Content-Type: application/json' \
+  -d '{"webhook_url":"https://your.site/hook","label":"campus-0.3m"}'
+curl http://127.0.0.1:8000/alerts/latest
+```
+
+Default `NOTIFY_DRY_RUN=True` logs deliveries; set `NOTIFY_DRY_RUN=False` to POST live webhook JSON. Packages mark `simulated` honestly and only include ADS bibcodes already on each candidate.
+
 ## Layout
 
 See the plan Page **Repo layout** section. Backend is FastAPI (`backend/`); frontend is Vite + TypeScript + Three.js (`frontend/`).

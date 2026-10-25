@@ -9,6 +9,7 @@ import { applyBadgeFromEvent, mountBadgeHosts, noteScenario } from "./panels/bad
 import { mountCandidatesPanel } from "./panels/candidates";
 import { mountScenariosPanel } from "./panels/scenarios";
 import { mountSkyMapPanel } from "./panels/skyMap";
+import { mountSubscribePanel } from "./panels/subscribe";
 import { applyEvent, setConnected } from "./state/store";
 import { handleVoiceEvent, mountAnnouncerPanel } from "./voice/announcer";
 import { mountJudgeQa } from "./voice/judge_qa";
@@ -39,6 +40,7 @@ app.innerHTML = `
         <div id="panel-scenarios" class="slot-scenarios"></div>
         <div id="panel-candidates" class="slot-candidates"></div>
         <div id="panel-actions" class="slot-actions"></div>
+        <div id="panel-subscribe" class="slot-subscribe"></div>
       </aside>
     </div>
   </div>
@@ -51,6 +53,7 @@ mountSkyMapPanel(document.querySelector("#panel-sky")!);
 mountScenariosPanel(document.querySelector("#panel-scenarios")!);
 mountCandidatesPanel(document.querySelector("#panel-candidates")!);
 mountActionsPanel(document.querySelector("#panel-actions")!);
+mountSubscribePanel(document.querySelector("#panel-subscribe")!);
 
 const voiceSlot = document.querySelector<HTMLElement>("#voice-panel");
 const judgeSlot = mountAnnouncerPanel(voiceSlot);

@@ -6,6 +6,8 @@
 # Runtime outputs
 data/run/*
 !data/run/README.md
+data/subscribers/registry.json
+data/subscribers/alert_feed.jsonl
 
 # Python
 __pycache__/

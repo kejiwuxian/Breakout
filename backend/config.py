@@ -193,6 +193,8 @@ class Settings(BaseModel):
     subscribe_icecube_test: bool = False
     lcogt_api_token: str = ""
     lcogt_proposal: str = ""
+    notify_dry_run: bool = True
+    smtp_host: str = ""
 
     detector_table: dict[str, dict[str, float]] = Field(
         default_factory=lambda: {k: dict(v) for k, v in DETECTOR_TABLE.items()}
@@ -255,6 +257,8 @@ def load_settings() -> Settings:
         subscribe_icecube_test=_env_bool("SUBSCRIBE_ICECUBE_TEST", False),
         lcogt_api_token=_env_str("LCOGT_API_TOKEN", ""),
         lcogt_proposal=_env_str("LCOGT_PROPOSAL", ""),
+        notify_dry_run=_env_bool("NOTIFY_DRY_RUN", True),
+        smtp_host=_env_str("SMTP_HOST", ""),
         healpix_nside=healpix_nside,
     )
 
