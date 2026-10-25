@@ -6,6 +6,7 @@ Ranking: P ∝ p_sky × w_class × w_lit × w_watch. No network / LLM.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +45,40 @@ def _p_sky_at(skymap: SkyMap, ra_deg: float, dec_deg: float, prob: np.ndarray | 
     return float(prob[ipix])
 
 
+def _parse_evidence(src: dict[str, Any]) -> list[Evidence]:
+    """Parse evidence list or evidence_json string; skip empty bibcodes."""
+    evidence_raw = src.get("evidence") or []
+    if not evidence_raw and src.get("evidence_json"):
+        raw = src["evidence_json"]
+        if isinstance(raw, str) and raw.strip():
+            evidence_raw = json.loads(raw)
+        elif isinstance(raw, list):
+            evidence_raw = raw
+    evidence: list[Evidence] = []
+    for item in evidence_raw or []:
+        if not isinstance(item, dict):
+            continue
+        bib = str(item.get("bibcode", "")).strip()
+        claim = str(item.get("claim", "")).strip()
+        if bib and claim:
+            evidence.append(Evidence(bibcode=bib, claim=claim))
+    return evidence
+
+
+def _float_or_zero(value: Any) -> float:
+    if value is None:
+        return 0.0
+    try:
+        if isinstance(value, float) and np.isnan(value):
+            return 0.0
+    except (TypeError, ValueError):
+        pass
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _lit_from_row(row: dict[str, Any], index_rows: dict[str, dict[str, Any]]) -> Literature:
     """Build Literature from curated row or offline index; never invent bibcodes."""
     star_id = str(row.get("star_id", ""))
@@ -52,19 +87,12 @@ def _lit_from_row(row: dict[str, Any], index_rows: dict[str, dict[str, Any]]) ->
     if isinstance(src, Literature):
         return src
     if isinstance(src, dict):
-        evidence_raw = src.get("evidence") or []
-        evidence: list[Evidence] = []
-        for item in evidence_raw:
-            bib = str(item.get("bibcode", "")).strip()
-            claim = str(item.get("claim", "")).strip()
-            if bib and claim:
-                evidence.append(Evidence(bibcode=bib, claim=claim))
         return Literature(
-            mass_loss=float(src.get("mass_loss", 0.0) or 0.0),
-            variability=float(src.get("variability", 0.0) or 0.0),
-            evolved_stage=float(src.get("evolved_stage", 0.0) or 0.0),
-            confidence=float(src.get("confidence", 0.0) or 0.0),
-            evidence=evidence,
+            mass_loss=_float_or_zero(src.get("mass_loss", 0.0)),
+            variability=_float_or_zero(src.get("variability", 0.0)),
+            evolved_stage=_float_or_zero(src.get("evolved_stage", 0.0)),
+            confidence=_float_or_zero(src.get("confidence", 0.0)),
+            evidence=_parse_evidence(src),
         )
     return Literature(
         mass_loss=0.0,

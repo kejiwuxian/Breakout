@@ -5,6 +5,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/health": "http://127.0.0.1:8000",
+      "/scenario": "http://127.0.0.1:8000",
       "/ws": {
         target: "ws://127.0.0.1:8000",
         ws: true,
@@ -12,3 +13,4 @@ export default defineConfig({
     },
   },
 });
+

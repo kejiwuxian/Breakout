@@ -12,12 +12,14 @@ from astropy.time import Time
 
 from backend.config import DETECTOR_TABLE
 from backend.ingest.snewpy_sim import (
+    build_scenario_alerts_from_curated,
     detector_position_m,
     geocenter_delay_s,
     max_pair_delay_s,
     pair_delay_s,
     save_alerts_jsonl,
     simulate_burst,
+    simulate_presn,
     source_unit_vector,
 )
 from backend.schemas import Alert
@@ -132,3 +134,30 @@ def test_source_unit_vector_normalized() -> None:
     v = source_unit_vector(12.3, -45.6)
     assert v.shape == (3,)
     assert float(np.linalg.norm(v)) == pytest.approx(1.0)
+
+
+def test_simulate_presn_simulated_true() -> None:
+    alert = simulate_presn(
+        star_id="* alf Ori",
+        alert_id="sim-presn-test",
+        extras={"t0_utc": "2026-10-24T20:46:00", "false_alarm_rate_per_century": 0.5},
+    )
+    assert alert.simulated is True
+    assert alert.kind == "PRESN"
+    assert alert.source == "snewpy_sim"
+    assert alert.raw["star_id"] == "* alf Ori"
+    assert {d.name for d in alert.detectors} == {"KamLAND", "Super-K"}
+
+
+def test_build_scenario_from_curated_betelgeuse() -> None:
+    alerts = build_scenario_alerts_from_curated(
+        "Betelgeuse",
+        event_count_fn=_fake_counts,
+        presn_lead_s=60.0,
+    )
+    assert len(alerts) == 2
+    assert alerts[0].kind == "PRESN" and alerts[0].simulated is True
+    assert alerts[1].kind == "SN_BURST" and alerts[1].simulated is True
+    assert alerts[1].raw["ra_deg"] == pytest.approx(88.792939)
+    assert alerts[1].raw["distance_kpc"] == pytest.approx(0.168)
+

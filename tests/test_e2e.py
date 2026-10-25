@@ -66,17 +66,17 @@ def test_e2e_scenario_a_emits_alert_skymap_candidates(
                 if found >= deadline_types:
                     break
 
-    types_in_order = [m["type"] for m in seen if m["type"] in deadline_types]
-    assert types_in_order[:3] == ["alert", "skymap", "candidates"]
+    # Scenario A starts with PRESN then SN_BURST; skymap/candidates follow the burst.
+    alert_events = [m for m in seen if m.get("type") == "alert"]
+    assert alert_events, "expected at least one alert event"
+    assert alert_events[0]["simulated"] is True
+    assert alert_events[0]["payload"]["simulated"] is True
+    burst_alerts = [m for m in alert_events if m["payload"]["kind"] == "SN_BURST"]
+    assert burst_alerts, "expected an SN_BURST alert in the scenario"
+    assert burst_alerts[0]["payload"]["simulated"] is True
 
-    by_type = {m["type"]: m for m in seen if m["type"] in deadline_types}
-    alert_evt = by_type["alert"]
-    skymap_evt = by_type["skymap"]
-    cand_evt = by_type["candidates"]
-
-    assert alert_evt["simulated"] is True
-    assert alert_evt["payload"]["kind"] == "SN_BURST"
-    assert alert_evt["payload"]["simulated"] is True
+    skymap_evt = next(m for m in seen if m.get("type") == "skymap")
+    cand_evt = next(m for m in seen if m.get("type") == "candidates")
 
     assert skymap_evt["simulated"] is True
     assert skymap_evt["payload"]["ordering"] == "NESTED"

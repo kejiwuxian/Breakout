@@ -290,8 +290,129 @@ def simulate_presn(
     alert_id: str,
     extras: dict[str, Any] | None = None,
 ) -> Alert:
-    """Build a simulated PRESN Alert (Stage 0). Filled further in a later prompt."""
-    raise NotImplementedError("simulate_presn is filled in a later prompt.")
+    """Build a simulated PRESN Alert (Stage 0; KamLAND + Super-K combined).
+
+    All numeric fields are simulated. Pre-SN combined alerts have no direction
+    (arXiv:2404.09920); ``star_id`` is recorded in ``raw`` for watchlist demos.
+    """
+    from backend.ingest.gcn_common import detector_hit
+
+    meta = dict(extras or {})
+    t0_utc = str(meta.get("t0_utc") or meta.get("timestamp_utc") or "2026-10-24T20:46:00")
+    search_code = str(meta.get("search_code") or "combined")
+    far = meta.get("false_alarm_rate_per_century", 0.5)
+    n_kl = int(meta.get("n_events_kamland", 0) or 0)
+    n_sk = int(meta.get("n_events_sk", 0) or 0)
+    if "significance" in meta and meta["significance"] is not None:
+        significance = float(meta["significance"])
+    elif far is not None and float(far) > 0:
+        significance = float(1.0 / float(far))
+    else:
+        significance = 0.0
+
+    hits = [
+        detector_hit("KamLAND", t_arrival_utc=t0_utc, n_events=n_kl, pointing=None),
+        detector_hit("Super-K", t_arrival_utc=t0_utc, n_events=n_sk, pointing=None),
+    ]
+    raw = {
+        "star_id": star_id,
+        "search_code": search_code,
+        "false_alarm_rate_per_century": float(far) if far is not None else None,
+        "n_events_kamland": n_kl,
+        "n_events_sk": n_sk,
+        "note": "Simulated Stage 0 PRESN (KamLAND+Super-K); no directional info.",
+        **{k: v for k, v in meta.items() if k not in {"t0_utc", "timestamp_utc"}},
+    }
+    return Alert(
+        alert_id=alert_id,
+        kind="PRESN",
+        source="snewpy_sim",
+        simulated=True,
+        t0_utc=t0_utc,
+        detectors=hits,
+        significance=significance,
+        raw=raw,
+    )
+
+
+def load_curated_star(common_name: str) -> dict[str, Any]:
+    """Load one curated star by common_name (real catalog fields only)."""
+    from backend.candidates.catalog import load_curated_stars
+
+    name = common_name.strip().lower()
+    for row in load_curated_stars():
+        if str(row.get("common_name", "")).strip().lower() == name:
+            return dict(row)
+        if str(row.get("star_id", "")).strip().lower() == name:
+            return dict(row)
+    raise KeyError(f"Star {common_name!r} not found in curated_stars.json")
+
+
+def build_scenario_alerts_from_curated(
+    common_name: str,
+    *,
+    model: str = "Nakazato_2013",
+    burst_t0_utc: str = "2026-10-24T21:46:00",
+    presn_lead_s: float = 3600.0,
+    transformation: str = "AdiabaticMSW_NMO",
+    event_counts: dict[str, int] | None = None,
+    event_count_fn: EventCountFn | None = None,
+) -> list[Alert]:
+    """PRESN then SN_BURST aimed at a curated star (position/distance from JSON).
+
+    Reads ra/dec/distance/class from ``data/stars/curated_stars.json`` only —
+    does not invent coordinates or distance. Both alerts have ``simulated=True``.
+    """
+    star = load_curated_star(common_name)
+    ra = star.get("ra_deg")
+    dec = star.get("dec_deg")
+    distance_kpc = star.get("distance_kpc")
+    if ra is None or dec is None:
+        raise ValueError(f"{common_name}: curated ra_deg/dec_deg required")
+    if distance_kpc is None:
+        raise ValueError(
+            f"{common_name}: curated distance_kpc is null; set a cited distance "
+            "in data/stars/curated_stars.json before simulating"
+        )
+
+    burst_t0 = Time(burst_t0_utc, scale="utc")
+    presn_t0 = burst_t0 - float(presn_lead_s) * u.s
+    star_id = str(star["star_id"])
+
+    presn = simulate_presn(
+        star_id=star_id,
+        alert_id=f"sim-presn-{star_id.replace(' ', '_')}",
+        extras={
+            "t0_utc": presn_t0.utc.isot,
+            "search_code": "combined",
+            "false_alarm_rate_per_century": 0.5,
+            "common_name": star.get("common_name"),
+            "class": star.get("class"),
+        },
+    )
+    bursts = simulate_burst(
+        float(ra),
+        float(dec),
+        float(distance_kpc),
+        model,
+        burst_t0.utc.isot,
+        transformation=transformation,
+        event_counts=event_counts,
+        event_count_fn=event_count_fn,
+    )
+    # Stamp curated star_id into burst raw for scenario provenance (not invented).
+    burst = bursts[0].model_copy(
+        update={
+            "raw": {
+                **bursts[0].raw,
+                "star_id": star_id,
+                "common_name": star.get("common_name"),
+                "class": star.get("class"),
+                "distance_source": star.get("notes"),
+            }
+        }
+    )
+    return [presn, burst]
 
 
 def save_alerts_jsonl(alerts: list[Alert], out_path: Path) -> Path:
@@ -307,14 +428,18 @@ def save_alerts_jsonl(alerts: list[Alert], out_path: Path) -> Path:
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m backend.ingest.snewpy_sim",
-        description="Simulate a galactic CCSN burst with snewpy and write alerts.jsonl.",
+        description="Simulate galactic CCSN alerts with snewpy and write alerts.jsonl.",
     )
-    parser.add_argument("--ra", type=float, required=True, help="Source RA (ICRS degrees)")
-    parser.add_argument("--dec", type=float, required=True, help="Source Dec (ICRS degrees)")
+    parser.add_argument(
+        "--from-curated",
+        metavar="NAME",
+        help="Build PRESN+SN_BURST from curated_stars.json common_name (e.g. Betelgeuse)",
+    )
+    parser.add_argument("--ra", type=float, help="Source RA (ICRS degrees)")
+    parser.add_argument("--dec", type=float, help="Source Dec (ICRS degrees)")
     parser.add_argument(
         "--distance-kpc",
         type=float,
-        required=True,
         help="Distance in kpc for snewpy event rates",
     )
     parser.add_argument(
@@ -334,6 +459,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Burst geocenter time UTC (ISO-8601)",
     )
     parser.add_argument(
+        "--presn-lead-s",
+        type=float,
+        default=3600.0,
+        help="Simulated seconds before burst for PRESN (only with --from-curated)",
+    )
+    parser.add_argument(
         "--transformation",
         default="AdiabaticMSW_NMO",
         help="snewpy flavor transformation name",
@@ -343,14 +474,25 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
-    alerts = simulate_burst(
-        args.ra,
-        args.dec,
-        args.distance_kpc,
-        args.model,
-        args.t0_utc,
-        transformation=args.transformation,
-    )
+    if args.from_curated:
+        alerts = build_scenario_alerts_from_curated(
+            args.from_curated,
+            model=args.model,
+            burst_t0_utc=args.t0_utc,
+            presn_lead_s=args.presn_lead_s,
+            transformation=args.transformation,
+        )
+    else:
+        if args.ra is None or args.dec is None or args.distance_kpc is None:
+            raise SystemExit("Provide --ra --dec --distance-kpc, or --from-curated NAME")
+        alerts = simulate_burst(
+            args.ra,
+            args.dec,
+            args.distance_kpc,
+            args.model,
+            args.t0_utc,
+            transformation=args.transformation,
+        )
     out = Path(args.out)
     if out.suffix != ".jsonl":
         out = out / "alerts.jsonl"
