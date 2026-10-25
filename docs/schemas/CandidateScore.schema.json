@@ -104,7 +104,8 @@
         "BSG",
         "YSG",
         "WR",
-        "LBV"
+        "LBV",
+        "AGN"
       ],
       "title": "Class",
       "type": "string"

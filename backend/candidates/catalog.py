@@ -132,10 +132,55 @@ def _empty_sources() -> dict[str, str]:
     return {}
 
 
+def _normalize_lit(raw_lit: Any) -> dict[str, Any] | None:
+    """Normalize Vincent curated ``lit`` blocks; drop evidence without bibcodes.
+
+    Qualitative ``{value, reason}`` fields are not 0..1 scores — they become 0.0
+    for CandidateScore numerics; claims with ADS bibcodes are kept.
+    """
+    if not isinstance(raw_lit, dict):
+        return None
+
+    def _score(key: str) -> float:
+        val = raw_lit.get(key)
+        if isinstance(val, dict):
+            inner = val.get("value")
+            if isinstance(inner, (int, float)) and not isinstance(inner, bool):
+                return float(inner)
+            return 0.0
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
+            return float(val)
+        return 0.0
+
+    evidence: list[dict[str, str]] = []
+    for item in raw_lit.get("evidence") or []:
+        if not isinstance(item, dict):
+            continue
+        bib = item.get("bibcode")
+        claim = item.get("claim")
+        if bib is None or claim is None:
+            continue
+        bib_s = str(bib).strip()
+        claim_s = str(claim).strip()
+        if bib_s and claim_s and bib_s.lower() != "null":
+            evidence.append({"bibcode": bib_s, "claim": claim_s})
+
+    return {
+        "mass_loss": _score("mass_loss"),
+        "variability": _score("variability"),
+        "evolved_stage": _score("evolved_stage"),
+        "confidence": _score("confidence"),
+        "evidence": evidence,
+    }
+
+
 def _normalize_row(raw: dict[str, Any], *, default_source: str | None = None) -> dict[str, Any]:
     """Normalize a star dict; missing values stay null (never guessed)."""
     sources: dict[str, str] = {}
+    # Vincent uses ``sources`` (URL map); older seed used ``field_sources``.
     raw_sources = raw.get("field_sources")
+    if raw_sources is None:
+        raw_sources = raw.get("sources")
     if isinstance(raw_sources, dict):
         sources = {str(k): str(v) for k, v in raw_sources.items() if v}
     elif isinstance(raw_sources, str) and raw_sources.strip():
@@ -153,6 +198,8 @@ def _normalize_row(raw: dict[str, Any], *, default_source: str | None = None) ->
     if luminosity_class is None:
         luminosity_class = _parse_luminosity_class(spectral_type)
 
+    lit = _normalize_lit(raw.get("lit"))
+
     row: dict[str, Any] = {
         "star_id": _as_str(raw.get("star_id")) or "",
         "common_name": _as_str(raw.get("common_name")),
@@ -168,6 +215,7 @@ def _normalize_row(raw: dict[str, Any], *, default_source: str | None = None) ->
         "simulated": bool(raw.get("simulated", False)),
         "field_sources": sources,
         "catalog_refs": list(raw.get("catalog_refs") or []),
+        "lit": lit,
     }
 
     if single_source:
@@ -591,6 +639,8 @@ def _rows_to_dataframe(rows: list[dict[str, Any]]) -> pd.DataFrame:
         item = dict(row)
         item["field_sources"] = json.dumps(row.get("field_sources") or {}, sort_keys=True)
         item["catalog_refs"] = json.dumps(row.get("catalog_refs") or [])
+        lit = row.get("lit")
+        item["lit_json"] = json.dumps(lit) if lit is not None else ""
         serializable.append(item)
     columns = [
         "star_id",
@@ -605,6 +655,7 @@ def _rows_to_dataframe(rows: list[dict[str, Any]]) -> pd.DataFrame:
         "extinction_av_mag",
         "field_sources",
         "catalog_refs",
+        "lit_json",
         "notes",
         "simulated",
     ]
@@ -635,6 +686,12 @@ def load_star_table(path: Path | None = None) -> list[dict[str, Any]]:
                 record["catalog_refs"] = json.loads(refs)
             except json.JSONDecodeError:
                 record["catalog_refs"] = []
+        lit_json = record.pop("lit_json", None)
+        if isinstance(lit_json, str) and lit_json.strip():
+            try:
+                record["lit"] = json.loads(lit_json)
+            except json.JSONDecodeError:
+                pass
         rows.append(_normalize_row(record))
     return rows
 

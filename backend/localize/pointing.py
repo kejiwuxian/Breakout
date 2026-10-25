@@ -61,3 +61,18 @@ def extract_superk_pointing(alert: Alert) -> Pointing | None:
         if det.name == "Super-K" and det.pointing is not None:
             return det.pointing
     return None
+
+
+def extract_detector_pointing(alert: Alert) -> tuple[str, Pointing] | None:
+    """Return the first detector pointing on an Alert (Super-K preferred).
+
+    IceCube HE_NEUTRINO notices carry RA/Dec on the IceCube hit; Scenario B
+    fusion uses that when no Super-K pointing is present.
+    """
+    preferred = extract_superk_pointing(alert)
+    if preferred is not None:
+        return ("Super-K", preferred)
+    for det in alert.detectors:
+        if det.pointing is not None:
+            return (str(det.name), det.pointing)
+    return None

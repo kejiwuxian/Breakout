@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np
 
 from backend.config import HEALPIX_NSIDE, ROOT, settings
-from backend.localize.pointing import extract_superk_pointing, pointing_map
+from backend.localize.pointing import extract_detector_pointing, pointing_map
 from backend.localize.triangulate import pairwise_baselines, ring_map
 from backend.schemas import Alert, SkyMap, SkyPeak
 
@@ -168,8 +168,9 @@ def build_component_maps(
         components.append(f"timing:{pair['det_a']}-{pair['det_b']}")
 
     if include_pointing:
-        pointing = extract_superk_pointing(alert)
-        if pointing is not None:
+        hit = extract_detector_pointing(alert)
+        if hit is not None:
+            det_name, pointing = hit
             maps.append(
                 pointing_map(
                     pointing.ra_deg,
@@ -178,7 +179,8 @@ def build_component_maps(
                     nside=nside,
                 )
             )
-            components.append("superk_pointing")
+            label = "superk_pointing" if det_name == "Super-K" else f"pointing:{det_name}"
+            components.append(label)
 
     if not maps:
         raise ValueError("No localization components available for this Alert")

@@ -19,7 +19,8 @@ CONTRACT_VERSION = "v1"
 AlertKind = Literal["PRESN", "SN_BURST", "HE_NEUTRINO"]
 AlertSource = Literal["presn", "snews2", "gcn_kafka", "snewpy_sim", "cache"]
 DetectorName = Literal["Super-K", "SNO+", "IceCube", "KamLAND", "JUNO"]
-StarClass = Literal["RSG", "BSG", "YSG", "WR", "LBV"]
+# AGN added for Scenario B (IceCube-170922A / TXS 0506+056); additive enum.
+StarClass = Literal["RSG", "BSG", "YSG", "WR", "LBV", "AGN"]
 BreakoutClassWindow = Literal["minutes", "hours", "about 1 day"]
 
 
