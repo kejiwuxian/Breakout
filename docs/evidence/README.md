@@ -12,6 +12,7 @@ Screenshots and clips for Devpost / demo-day tab (Barron owns capture):
 - [x] IceCube-230416A GCN schema example (`test_scenario_icecube_230416a`)
 - [x] IceCube-191001A GCN 25913 archive (`test_scenario_icecube_191001a`)
 - [x] Action tab: LCOGT dry-run JSON, ToO drafts, GCN Circular draft (`test_actions`)
+- [x] Community subscribe + `/alerts/latest` ranked-candidate feed (`test_notify`)
 - [x] `scripts/mvp_gate.sh` printing PASS
 
 Do not invent evidence. Label every simulated number in UI captures.

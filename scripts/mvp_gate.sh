@@ -51,6 +51,7 @@ run_pytest() {
 run_pytest "tests/test_e2e.py" tests/test_e2e.py
 run_pytest "scenario tests" tests/test_scenario_betelgeuse.py tests/test_scenario_icecube.py
 run_pytest "tests/test_actions.py" tests/test_actions.py
+run_pytest "tests/test_notify.py" tests/test_notify.py
 run_pytest "tests/test_voice.py" tests/test_voice.py
 run_pytest "tests/test_offline.py" tests/test_offline.py
 

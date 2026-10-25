@@ -80,6 +80,10 @@ JWST's documented Target-of-Opportunity proposal rules require response times of
 Core collapse can, in some models, lead to black-hole formation without a normal luminous supernova, so an optical non-detection does not automatically invalidate a credible neutrino burst. Follow-up plans should preserve uncertainty and consider dust, visibility, and the possibility of a failed supernova.  
 **Source:** [Adams et al.](https://arxiv.org/abs/1306.0559).
 
+### 18b. Can community telescopes help catch a potential counterpart today?
+Yes as a follow-up strategy: published Galactic-supernova plans emphasize searching a localization region quickly, and small optical/NIR instruments can cover ranked progenitor coordinates while large facilities ramp up. BREAKOUT's Phase 1 community alerts deliver those ranked ICRS targets via webhook/feed; they are **not** official GCN notices and do not confirm a supernova by themselves.  
+**Source:** [Adams et al.](https://arxiv.org/abs/1306.0559); [Walter, Scolnic & Slosar](https://arxiv.org/abs/1901.01599).
+
 ## Demonstration integrity
 
 ### 19. Why replay IceCube-170922A, and should TXS 0506+056 come out first?
