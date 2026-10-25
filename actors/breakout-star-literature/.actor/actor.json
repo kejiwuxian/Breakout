@@ -1,14 +1,19 @@
 {
+  "$schema": "https://apify.com/schemas/v1/actor.ide.json",
   "actorSpecification": 1,
   "name": "breakout-star-literature",
   "title": "BREAKOUT star literature (ATel + arXiv)",
-  "description": "Fetch public ATel and arXiv items for curated supernova-progenitor stars. Output is a discovery feed for BREAKOUT's offline literature index — not scored claims (ADS bibcodes still required for claims).",
+  "description": "Fetch public Astronomer's Telegram and arXiv items for curated supernova-progenitor stars. Built at Cal Hacks 13.0 for BREAKOUT.",
   "version": "0.1",
   "buildTag": "latest",
   "meta": {
-    "templateId": "python-start"
+    "templateId": "python-start",
+    "generatedBy": "cursor-agent"
   },
-  "dockerfile": "../Dockerfile",
-  "readme": "../README.md",
-  "input": "./input_schema.json"
+  "inputSchema": "./input_schema.json",
+  "outputSchema": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "dockerfile": "../Dockerfile"
 }

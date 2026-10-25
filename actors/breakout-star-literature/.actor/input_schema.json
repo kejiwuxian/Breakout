@@ -1,4 +1,5 @@
 {
+  "$schema": "https://apify.com/schemas/v1/input.ide.json",
   "title": "BREAKOUT star literature input",
   "type": "object",
   "schemaVersion": 1,
@@ -29,7 +30,7 @@
     "sources": {
       "title": "Sources",
       "type": "array",
-      "description": "Which public sources to query.",
+      "description": "Which public sources to query: atel and/or arxiv.",
       "editor": "json",
       "default": ["atel", "arxiv"],
       "items": {
@@ -37,13 +38,13 @@
         "enum": ["atel", "arxiv"]
       }
     },
-    "max_per_source": {
-      "title": "Max items per source per star",
+    "max_items_per_star": {
+      "title": "Max items per star",
       "type": "integer",
-      "description": "Cap on results kept per source for each star (real fetched rows only; never invented).",
-      "default": 10,
+      "description": "Maximum kept items (across sources) per star. Only real fetched rows that mention the star are kept.",
+      "default": 20,
       "minimum": 1,
-      "maximum": 50
+      "maximum": 100
     }
   },
   "required": ["stars"]

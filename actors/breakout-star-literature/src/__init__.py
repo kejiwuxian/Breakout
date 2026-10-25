@@ -1,1 +1,1 @@
-"""BREAKOUT Apify actor package (star literature discovery feed)."""
+"""BREAKOUT Apify actor: star literature discovery (ATel + arXiv)."""

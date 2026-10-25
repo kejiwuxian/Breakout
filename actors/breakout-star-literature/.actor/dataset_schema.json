@@ -1,0 +1,32 @@
+{
+  "actorSpecification": 1,
+  "fields": {},
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": [
+          "star_id",
+          "source",
+          "item_id",
+          "title",
+          "date",
+          "url",
+          "abstract_or_summary"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "star_id": { "label": "Star", "format": "text" },
+          "source": { "label": "Source", "format": "text" },
+          "item_id": { "label": "Id", "format": "text" },
+          "title": { "label": "Title", "format": "text" },
+          "date": { "label": "Date", "format": "text" },
+          "url": { "label": "URL", "format": "link" },
+          "abstract_or_summary": { "label": "Summary", "format": "text" }
+        }
+      }
+    }
+  }
+}
