@@ -34,8 +34,8 @@ def test_load_curated_stars_has_betelgeuse() -> None:
     assert betel["ra_deg"] == pytest.approx(88.792939, abs=1e-5)
     assert betel["dec_deg"] == pytest.approx(7.407064, abs=1e-5)
     assert betel["class"] == "RSG"
-    # Joyce et al. 2020 (ADS 2020ApJ...902...63J): 168 pc — cited in curated notes.
-    assert betel.get("distance_kpc") == pytest.approx(0.168)
+    # Vincent curated: Harper et al. 2017 nominal ~222 pc (ADS 2017AJ....154...11H).
+    assert betel.get("distance_kpc") == pytest.approx(0.222)
 
 
 def test_build_star_table_offline_writes_parquet(
@@ -60,12 +60,15 @@ def test_build_star_table_offline_writes_parquet(
     rows = load_star_table(out)
     betel = next(r for r in rows if "alf Ori" in r["star_id"])
     assert betel["ra_deg"] == pytest.approx(88.792939, abs=1e-5)
-    assert betel["distance_kpc"] == pytest.approx(0.168)
+    assert betel["distance_kpc"] == pytest.approx(0.222)
     assert betel["teff_k"] is None
     assert betel["simulated"] is False
     sources = betel["field_sources"]
     assert isinstance(sources, dict)
-    assert sources.get("ra_deg") in {"SIMBAD", "curated_stars.json"}
+    ra_src = str(sources.get("ra_deg") or "")
+    assert ra_src and (
+        ra_src in {"SIMBAD", "curated_stars.json"} or "simbad" in ra_src.lower()
+    )
     # catalog_refs must not invent bibcodes
     for ref in betel.get("catalog_refs") or []:
         assert ref.get("bibcode")

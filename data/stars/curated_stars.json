@@ -1,23 +1,2015 @@
 [
   {
     "star_id": "* alf Ori",
-    "common_name": "Betelgeuse",
     "ra_deg": 88.792939,
     "dec_deg": 7.407064,
     "class": "RSG",
-    "spectral_type": "M1-M2Ia-Iab",
-    "distance_kpc": 0.168,
+    "spectral_type": "M2 I",
+    "distance_kpc": 0.222,
+    "extinction_av_mag": 0.62,
+    "lit": {
+      "mass_loss": {
+        "value": "observed episodic ejection",
+        "reason": "The Great Dimming study attributes atmospheric changes to an observed surface mass ejection."
+      },
+      "variability": {
+        "value": "documented",
+        "reason": "Published time-series observations show historic dimming and changes in pulsations."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        },
+        {
+          "bibcode": "2017AJ....154...11H",
+          "claim": "The nominal 2017 astrometric solution gives a distance of 222 pc and highlights substantial measurement uncertainty."
+        },
+        {
+          "bibcode": null,
+          "claim": "Photometric and spectroscopic evidence supports a surface mass ejection and changed pulsations after the Great Dimming."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Betelgeuse",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Betelgeuse",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Betelgeuse",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "distance_kpc": "https://arxiv.org/abs/1706.06020",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[1]": "https://arxiv.org/abs/1706.06020",
+      "lit.evidence[2]": "https://arxiv.org/abs/2208.01676",
+      "lit.mass_loss": "https://arxiv.org/abs/2208.01676",
+      "lit.variability": "https://arxiv.org/abs/2208.01676"
+    },
+    "uncertain": [
+      "lit.evidence[2].bibcode",
+      "lit.confidence",
+      "distance_kpc"
+    ],
+    "simulated": false,
+    "common_name": "Betelgeuse"
+  },
+  {
+    "star_id": "* alf Sco",
+    "ra_deg": 247.351915417,
+    "dec_deg": -26.432002611,
+    "class": "RSG",
+    "spectral_type": "M1.5Iab+B2Vn",
+    "distance_kpc": null,
     "extinction_av_mag": null,
-    "notes": "SIMBAD main_id * alf Ori; ICRS coords from public SIMBAD catalog. distance_kpc=0.168 from Joyce et al. 2020 (ADS 2020ApJ...902...63J; 168 pc). Alternate Harper et al. 2017 astrometric solution ~222 pc (ADS 2017AJ....154...11H) is cited in the literature index but not used as the scenario distance.",
-    "source": "SIMBAD",
-    "field_sources": {
-      "star_id": "SIMBAD",
-      "common_name": "SIMBAD",
-      "ra_deg": "SIMBAD",
-      "dec_deg": "SIMBAD",
-      "class": "SIMBAD",
-      "spectral_type": "SIMBAD",
-      "distance_kpc": "2020ApJ...902...63J"
-    }
+    "lit": {
+      "mass_loss": {
+        "value": "wind observed",
+        "reason": "ALMA and VLA measurements reveal a wind-dominated radio-emission component."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD lists Antares among variable stars."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": null,
+          "claim": "Radio and millimeter spectral indices distinguish chromospheric and wind-dominated emission from Antares."
+        },
+        {
+          "bibcode": "2013A&A...555A..24O",
+          "claim": "VLTI imaging resolves turbulent molecular gas motions in the extended atmosphere of Antares."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Antares",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Antares",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Antares",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Antares",
+      "lit.evidence[0]": "https://arxiv.org/abs/2006.08023",
+      "lit.mass_loss": "https://arxiv.org/abs/2006.08023",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Antares",
+      "lit.evidence[1]": "https://doi.org/10.1051/0004-6361/201321063"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.evidence[0].bibcode",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* mu. Cep",
+    "ra_deg": 325.876914816,
+    "dec_deg": 58.780046094,
+    "class": "RSG",
+    "spectral_type": "M1 I",
+    "distance_kpc": 0.87,
+    "extinction_av_mag": 2.01,
+    "lit": {
+      "mass_loss": {
+        "value": "observed and modeled",
+        "reason": "SOFIA infrared observations and dust modeling establish circumstellar mass loss."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        },
+        {
+          "bibcode": "2016AJ....151...51S",
+          "claim": "Infrared dust imaging models the object-specific circumstellar mass-loss history."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=mu%20Cep",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=mu%20Cep",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=mu%20Cep",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "distance_kpc": "https://arxiv.org/abs/1512.01529",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[1]": "https://arxiv.org/abs/1512.01529",
+      "lit.mass_loss": "https://arxiv.org/abs/1512.01529"
+    },
+    "uncertain": [
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* VY CMa",
+    "ra_deg": 110.743025563,
+    "dec_deg": -25.767553997,
+    "class": "RSG",
+    "spectral_type": "M5Iae",
+    "distance_kpc": 1.2,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": "observed and modeled",
+        "reason": "SOFIA infrared observations and dust modeling establish circumstellar mass loss."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2016AJ....151...51S",
+          "claim": "Infrared dust imaging models the object-specific circumstellar mass-loss history."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VY%20CMa",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VY%20CMa",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VY%20CMa",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VY%20CMa",
+      "distance_kpc": "https://arxiv.org/abs/1512.01529",
+      "lit.evidence[0]": "https://arxiv.org/abs/1512.01529",
+      "lit.mass_loss": "https://arxiv.org/abs/1512.01529",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VY%20CMa"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "NML Cyg",
+    "ra_deg": 311.606413675,
+    "dec_deg": 40.116517858,
+    "class": "RSG",
+    "spectral_type": "M7/8",
+    "distance_kpc": 1.6,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": "observed and modeled",
+        "reason": "NOEMA dust and CO observations constrain an ongoing extended outflow."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2025A&A...698A.179D",
+          "claim": "NOEMA observations reveal a dense asymmetric circumstellar envelope consistent with strong mass loss."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=NML%20Cyg",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=NML%20Cyg",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=NML%20Cyg",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=NML%20Cyg",
+      "distance_kpc": "https://arxiv.org/abs/2505.02643",
+      "lit.evidence[0]": "https://arxiv.org/abs/2505.02643",
+      "lit.mass_loss": "https://arxiv.org/abs/2505.02643"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* VX Sgr",
+    "ra_deg": 272.016851163,
+    "dec_deg": -22.224055805,
+    "class": "RSG",
+    "spectral_type": "M8.5Ia",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "disputed RSG / high-mass AGB",
+        "reason": "SIMBAD labels an RSG, but published spectroscopy favors an extreme AGB interpretation."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2021A&A...646A..98T",
+          "claim": "Spectroscopic analysis considers both red-supergiant and extreme AGB interpretations."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VX%20Sgr",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VX%20Sgr",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VX%20Sgr",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VX%20Sgr",
+      "lit.evidence[0]": "https://arxiv.org/abs/2011.09184",
+      "lit.evolved_stage": "https://arxiv.org/abs/2011.09184",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=VX%20Sgr"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "class",
+      "lit.evolved_stage",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* S Per",
+    "ra_deg": 35.715463805,
+    "dec_deg": 58.586506326,
+    "class": "RSG",
+    "spectral_type": "M4.5 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 4.18,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=S%20Per",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=S%20Per",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=S%20Per",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=S%20Per"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* SU Per",
+    "ra_deg": 35.528728462,
+    "dec_deg": 56.604137125,
+    "class": "RSG",
+    "spectral_type": "M3\u20134 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 2.01,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=SU%20Per",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=SU%20Per",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=SU%20Per",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=SU%20Per"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* RS Per",
+    "ra_deg": 35.601231524,
+    "dec_deg": 57.109473037,
+    "class": "RSG",
+    "spectral_type": "M4 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 2.63,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=RS%20Per",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=RS%20Per",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=RS%20Per",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=RS%20Per"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* BI Cyg",
+    "ra_deg": 305.341195541,
+    "dec_deg": 36.932146863,
+    "class": "RSG",
+    "spectral_type": "M3\u20134 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 5.11,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=BI%20Cyg",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=BI%20Cyg",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=BI%20Cyg",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=BI%20Cyg"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* BC Cyg",
+    "ra_deg": 305.410616232,
+    "dec_deg": 37.533034785,
+    "class": "RSG",
+    "spectral_type": "M3 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 5.58,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=BC%20Cyg",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=BC%20Cyg",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=BC%20Cyg",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=BC%20Cyg"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* RW Cyg",
+    "ra_deg": 307.210793036,
+    "dec_deg": 39.981784869,
+    "class": "RSG",
+    "spectral_type": "M3 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 4.49,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=RW%20Cyg",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=RW%20Cyg",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=RW%20Cyg",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=RW%20Cyg"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* TV Gem",
+    "ra_deg": 92.964226201,
+    "dec_deg": 21.868236968,
+    "class": "RSG",
+    "spectral_type": "M1 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 2.17,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TV%20Gem",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TV%20Gem",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TV%20Gem",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TV%20Gem"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* KY Cyg",
+    "ra_deg": 306.491848095,
+    "dec_deg": 38.352131059,
+    "class": "RSG",
+    "spectral_type": "M3\u20134 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 7.75,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=KY%20Cyg",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=KY%20Cyg",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=KY%20Cyg",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=KY%20Cyg"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* KW Sgr",
+    "ra_deg": 268.003028956,
+    "dec_deg": -28.022376571,
+    "class": "RSG",
+    "spectral_type": "M1.5 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 4.65,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=KW%20Sgr",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=KW%20Sgr",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=KW%20Sgr",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=KW%20Sgr"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* 6 Gem",
+    "ra_deg": 93.079578482,
+    "dec_deg": 22.908514752,
+    "class": "RSG",
+    "spectral_type": "M0 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 2.01,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=HD%2042543",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=HD%2042543",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=HD%2042543",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* YZ Per",
+    "ra_deg": 39.605916049,
+    "dec_deg": 57.046165094,
+    "class": "RSG",
+    "spectral_type": "M2 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 2.32,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=YZ%20Per",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=YZ%20Per",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=YZ%20Per",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=YZ%20Per"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* psi01 Aur",
+    "ra_deg": 96.224589793,
+    "dec_deg": 49.287892006,
+    "class": "RSG",
+    "spectral_type": "M0 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 0.62,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=psi01%20Aur",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=psi01%20Aur",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=psi01%20Aur",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* sig CMa",
+    "ra_deg": 105.429783502,
+    "dec_deg": -27.93483034,
+    "class": "RSG",
+    "spectral_type": "M1.5 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 0.16,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Sigma%20CMa",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Sigma%20CMa",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Sigma%20CMa",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* zet Cep",
+    "ra_deg": 332.713657107,
+    "dec_deg": 58.201261834,
+    "class": "RSG",
+    "spectral_type": "K1.5 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 0.0,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Zeta%20Cephei",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Zeta%20Cephei",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Zeta%20Cephei",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* V424 Lac",
+    "ra_deg": 344.108326625,
+    "dec_deg": 49.73354408,
+    "class": "RSG",
+    "spectral_type": "M0 I",
+    "distance_kpc": null,
+    "extinction_av_mag": 0.31,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "catalogued variable",
+        "reason": "SIMBAD identifies the target with a variable-star main identifier."
+      },
+      "evolved_stage": {
+        "value": "red supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2005ApJ...628..973L",
+          "claim": "Optical spectrophotometry establishes the revised red-supergiant subtype and model-fit visual extinction."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=V424%20Lac",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=V424%20Lac",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=V424%20Lac",
+      "spectral_type": "https://arxiv.org/html/astro-ph/0504337v1",
+      "extinction_av_mag": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.evidence[0]": "https://arxiv.org/html/astro-ph/0504337v1",
+      "lit.variability": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=V424%20Lac"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* gam02 Vel",
+    "ra_deg": 122.383125542,
+    "dec_deg": -47.336586333,
+    "class": "WR",
+    "spectral_type": "WC8+O7.5III",
+    "distance_kpc": 0.34,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The system contains a Wolf-Rayet star and a published companion classification; later binary evolution is unresolved."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%2011",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%2011",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "EM* AS 431",
+    "ra_deg": 309.181801145,
+    "dec_deg": 40.352067391,
+    "class": "WR",
+    "spectral_type": "WN8(h)+OB",
+    "distance_kpc": 0.73,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The system contains a Wolf-Rayet star and a published companion classification; later binary evolution is unresolved."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20147",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20147",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "HD 158860",
+    "ra_deg": 263.279446082,
+    "dec_deg": -33.639859858,
+    "class": "WR",
+    "spectral_type": "WN5",
+    "distance_kpc": 0.78,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%2094",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%2094",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "HD 156385",
+    "ra_deg": 259.874588508,
+    "dec_deg": -45.639965075,
+    "class": "WR",
+    "spectral_type": "WC7",
+    "distance_kpc": 1.15,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%2090",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%2090",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "HD 192163",
+    "ra_deg": 303.027257866,
+    "dec_deg": 38.35494005,
+    "class": "WR",
+    "spectral_type": "WN6b(h)",
+    "distance_kpc": 1.3,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20136",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20136",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "HD 192641",
+    "ra_deg": 303.63236119,
+    "dec_deg": 36.660999503,
+    "class": "WR",
+    "spectral_type": "WC7+O9",
+    "distance_kpc": 1.3,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The system contains a Wolf-Rayet star and a published companion classification; later binary evolution is unresolved."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20137",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20137",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "MR 110",
+    "ra_deg": 308.012583771,
+    "dec_deg": 41.25569437,
+    "class": "WR",
+    "spectral_type": "WC4",
+    "distance_kpc": 1.4,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20144",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20144",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "HD 151932",
+    "ra_deg": 253.080198766,
+    "dec_deg": -41.854519463,
+    "class": "WR",
+    "spectral_type": "WN7",
+    "distance_kpc": 1.64,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%2078",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%2078",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "HD 50896",
+    "ra_deg": 103.554349837,
+    "dec_deg": -23.928339811,
+    "class": "WR",
+    "spectral_type": "WN4b",
+    "distance_kpc": 1.8,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%206",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%206",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "HD 165763",
+    "ra_deg": 272.118621712,
+    "dec_deg": -21.25310641,
+    "class": "WR",
+    "spectral_type": "WC5",
+    "distance_kpc": 1.9,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20111",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20111",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "HD 191765",
+    "ra_deg": 302.559136685,
+    "dec_deg": 36.176408523,
+    "class": "WR",
+    "spectral_type": "WN6b",
+    "distance_kpc": 1.9,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20134",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20134",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "HD 192103",
+    "ra_deg": 302.973030974,
+    "dec_deg": 36.197368268,
+    "class": "WR",
+    "spectral_type": "WC8",
+    "distance_kpc": 1.9,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "No object-specific variability evidence verified in the opened sources."
+      },
+      "evolved_stage": {
+        "value": "Wolf-Rayet",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2015MNRAS.447.2322R",
+          "claim": "The published nearby Wolf-Rayet sample lists this system, spectral classification and heliocentric distance."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20135",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=WR%20135",
+      "class": "https://arxiv.org/html/1412.0699v2",
+      "spectral_type": "https://arxiv.org/html/1412.0699v2",
+      "distance_kpc": "https://arxiv.org/html/1412.0699v2",
+      "lit.evidence[0]": "https://arxiv.org/html/1412.0699v2"
+    },
+    "uncertain": [
+      "extinction_av_mag",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* bet Ori",
+    "ra_deg": 78.634467083,
+    "dec_deg": -8.201638361,
+    "class": "BSG",
+    "spectral_type": "B8Ia",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "The published light curves are too sparse for a firm object-specific variability conclusion."
+      },
+      "evolved_stage": {
+        "value": "blue supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": null,
+          "claim": "The study examines the star light curves but reports insufficient coverage for firm variability comparisons."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Rigel",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Rigel",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Rigel",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Rigel",
+      "lit.evidence[0]": "https://arxiv.org/abs/2410.23985",
+      "lit.variability": "https://arxiv.org/abs/2410.23985"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.evidence[0].bibcode",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* eps Ori",
+    "ra_deg": 84.053388958,
+    "dec_deg": -1.201919139,
+    "class": "BSG",
+    "spectral_type": "B0Ia",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "The published light curves are too sparse for a firm object-specific variability conclusion."
+      },
+      "evolved_stage": {
+        "value": "blue supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": null,
+          "claim": "The study examines the star light curves but reports insufficient coverage for firm variability comparisons."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Alnilam",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Alnilam",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Alnilam",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Alnilam",
+      "lit.evidence[0]": "https://arxiv.org/abs/2410.23985",
+      "lit.variability": "https://arxiv.org/abs/2410.23985"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.evidence[0].bibcode",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* kap Ori",
+    "ra_deg": 86.939120168,
+    "dec_deg": -9.669604919,
+    "class": "BSG",
+    "spectral_type": "B0.5Ia",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": null,
+        "reason": "The published light curves are too sparse for a firm object-specific variability conclusion."
+      },
+      "evolved_stage": {
+        "value": "blue supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": null,
+          "claim": "The study examines the star light curves but reports insufficient coverage for firm variability comparisons."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Saiph",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Saiph",
+      "class": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Saiph",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Saiph",
+      "lit.evidence[0]": "https://arxiv.org/abs/2410.23985",
+      "lit.variability": "https://arxiv.org/abs/2410.23985"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.evidence[0].bibcode",
+      "lit.mass_loss",
+      "lit.variability",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* alf Cyg",
+    "ra_deg": 310.35797975,
+    "dec_deg": 45.280338806,
+    "class": "BSG",
+    "spectral_type": "A2Ia",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "No object-specific mass-loss evidence verified in the opened sources."
+      },
+      "variability": {
+        "value": "documented",
+        "reason": "Published long-baseline photometry shows irregular pulsations in Deneb."
+      },
+      "evolved_stage": {
+        "value": "blue supergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": null,
+          "claim": "Time-series photometry documents irregular alpha-Cygni-type brightness variability."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Deneb",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Deneb",
+      "class": "https://arxiv.org/abs/2410.23985",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Deneb",
+      "lit.evidence[0]": "https://arxiv.org/abs/2410.23985",
+      "lit.variability": "https://arxiv.org/abs/2410.23985"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.evidence[0].bibcode",
+      "lit.mass_loss",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* rho Cas",
+    "ra_deg": 358.595968876,
+    "dec_deg": 57.499381871,
+    "class": "YSG",
+    "spectral_type": "G2_0",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": "historical ejection documented",
+        "reason": "Infrared observations trace the expanding dust shell of a past eruption."
+      },
+      "variability": {
+        "value": "eruptive variability documented",
+        "reason": "The yellow-hypergiant observations describe recurrent dimming and recovery episodes."
+      },
+      "evolved_stage": {
+        "value": "yellow hypergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "2024ApJ...974..113A",
+          "claim": "CHARA observations reveal prominent convection cells and a circumstellar envelope in the yellow hypergiant."
+        },
+        {
+          "bibcode": "2016AJ....151...51S",
+          "claim": "Infrared emission is consistent with dust shell material from a documented past eruption."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=rho%20Cas",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=rho%20Cas",
+      "class": "https://arxiv.org/abs/2408.02756",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=rho%20Cas",
+      "lit.evidence[0]": "https://arxiv.org/abs/2408.02756",
+      "lit.evidence[1]": "https://arxiv.org/abs/1512.01529",
+      "lit.mass_loss": "https://arxiv.org/abs/1512.01529",
+      "lit.variability": "https://arxiv.org/abs/2408.02756"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "V* V509 Cas",
+    "ra_deg": 345.021255091,
+    "dec_deg": 56.945375243,
+    "class": "YSG",
+    "spectral_type": "G4_0",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": "historical eruptive loss documented",
+        "reason": "The yellow-hypergiant study reports historical eruptive mass-loss outbursts."
+      },
+      "variability": {
+        "value": "low-amplitude monitoring variability",
+        "reason": "Multi-year photometric and spectroscopic monitoring shows small present-day variations."
+      },
+      "evolved_stage": {
+        "value": "yellow hypergiant",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": null,
+          "claim": "Spectroscopic and photometric monitoring identifies V509 Cas as a yellow hypergiant with earlier mass-loss outbursts."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=V509%20Cas",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=V509%20Cas",
+      "class": "https://arxiv.org/abs/2406.08276",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=V509%20Cas",
+      "lit.evidence[0]": "https://arxiv.org/abs/2406.08276",
+      "lit.mass_loss": "https://arxiv.org/abs/2406.08276",
+      "lit.variability": "https://arxiv.org/abs/2406.08276"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.evidence[0].bibcode",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "* P Cyg",
+    "ra_deg": 304.446674889,
+    "dec_deg": 38.032930315,
+    "class": "LBV",
+    "spectral_type": "B1-2Ia-0ep",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": "winds and past eruptions documented",
+        "reason": "Review describes strong winds and historical eruptive mass loss."
+      },
+      "variability": {
+        "value": "historical photometric eruptions",
+        "reason": "The observational review records eruptive photometric history."
+      },
+      "evolved_stage": {
+        "value": "luminous blue variable",
+        "reason": "The cited classification supports this evolved stellar class, not a predicted explosion time."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated zero-to-one core-collapse confidence is published in the opened sources."
+      },
+      "evidence": [
+        {
+          "bibcode": "1999SSRv...90..493I",
+          "claim": "Review documents eruptions, variable winds and luminous-blue-variable behavior."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=P%20Cyg",
+      "dec_deg": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=P%20Cyg",
+      "class": "https://arxiv.org/abs/astro-ph/9908309",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=P%20Cyg",
+      "lit.evidence[0]": "https://arxiv.org/abs/astro-ph/9908309",
+      "lit.mass_loss": "https://arxiv.org/abs/astro-ph/9908309",
+      "lit.variability": "https://arxiv.org/abs/astro-ph/9908309"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.confidence"
+    ],
+    "simulated": false
+  },
+  {
+    "star_id": "TXS 0506+056",
+    "common_name": "TXS 0506+056",
+    "ra_deg": 77.36,
+    "dec_deg": 5.69,
+    "class": "AGN",
+    "spectral_type": "BL Lac",
+    "distance_kpc": null,
+    "extinction_av_mag": null,
+    "lit": {
+      "mass_loss": {
+        "value": null,
+        "reason": "Not applicable to a blazar AGN."
+      },
+      "variability": {
+        "value": "flaring",
+        "reason": "Observed in a flaring gamma-ray state coincident with IceCube-170922A."
+      },
+      "evolved_stage": {
+        "value": "blazar",
+        "reason": "Known gamma-ray blazar TXS 0506+056."
+      },
+      "confidence": {
+        "value": null,
+        "reason": "No calibrated CCSN progenitor confidence; association is multimessenger."
+      },
+      "evidence": [
+        {
+          "bibcode": "2018Sci...361.1378I",
+          "claim": "IceCube Collaboration et al. 2018 report IceCube-170922A in positional coincidence with the flaring blazar TXS 0506+056 at RA 77.36\u00b0, Dec +5.69\u00b0 (J2000)."
+        },
+        {
+          "bibcode": "2018Sci...361..147I",
+          "claim": "IceCube Collaboration et al. 2018 find a neutrino flare from the direction of TXS 0506+056 in archival data independent of IceCube-170922A."
+        }
+      ]
+    },
+    "sources": {
+      "ra_deg": "https://arxiv.org/abs/1807.08816",
+      "dec_deg": "https://arxiv.org/abs/1807.08816",
+      "class": "https://arxiv.org/abs/1807.08816",
+      "spectral_type": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TXS+0506%2B056",
+      "lit.evidence[0]": "https://ui.adsabs.harvard.edu/abs/2018Sci...361.1378I",
+      "lit.evidence[1]": "https://ui.adsabs.harvard.edu/abs/2018Sci...361..147I"
+    },
+    "uncertain": [
+      "distance_kpc",
+      "extinction_av_mag",
+      "lit.confidence"
+    ],
+    "simulated": false,
+    "notes": "Added for Scenario B (IceCube-170922A). Coordinates and association from IceCube Collaboration et al. 2018 Science (ADS 2018Sci...361.1378I / arXiv:1807.08816). Class AGN is an additive CandidateScore enum for blazar multimessenger demos."
   }
 ]
