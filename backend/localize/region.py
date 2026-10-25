@@ -5,8 +5,10 @@ Derives a **smooth oval** (probability-weighted covariance ellipse) for the
 field stars and a galactic-plane guide. Also writes ``region.json`` (and a
 legacy focus PNG for classic UI).
 
-Never invents coordinates: localization from the fused map; star positions
-from the curated public SIMBAD/VizieR table on disk.
+Never invents coordinates: localization from the fused map; background star
+positions from the committed Yale Bright Star Catalogue subset
+(``data/stars/sky_background.json``, CDS V/50 / NASA HEASARC BSC5P). Ranked
+SN progenitors remain a separate overlay from the curated inventory.
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ logger = logging.getLogger("breakout.localize.region")
 
 SVG_RENDER_VERSION = "svg_v1"
 CURATED_STARS_PATH = ROOT / "data" / "stars" / "curated_stars.json"
+SKY_BACKGROUND_PATH = ROOT / "data" / "stars" / "sky_background.json"
 
 
 def _unwrap_ra(ras: np.ndarray, *, center_deg: float) -> np.ndarray:
@@ -174,11 +177,61 @@ def focus_fov_deg(
 
 def load_public_field_stars(
     *,
-    path: Path = CURATED_STARS_PATH,
-    limit: int = 80,
+    path: Path | None = None,
+    limit: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Bright progenitor-catalog stars from the public curated SIMBAD table."""
-    path = Path(path)
+    """All-sky background stars for SVG rendering (Yale BSC5 / HEASARC BSC5P).
+
+    Prefers the committed compact catalog at ``SKY_BACKGROUND_PATH`` (thousands
+    of magnitude-limited stars spanning the whole sky). Falls back to the
+    curated progenitor list only when the background file is missing so cold
+    start never invents coordinates.
+    """
+    bg = Path(path) if path is not None else SKY_BACKGROUND_PATH
+    if bg.is_file():
+        try:
+            payload = json.loads(bg.read_text(encoding="utf-8"))
+        except Exception:
+            logger.exception("failed_reading_sky_background path=%s", bg)
+            payload = None
+        rows: list[Any]
+        if isinstance(payload, dict):
+            rows = payload.get("stars") if isinstance(payload.get("stars"), list) else []
+        elif isinstance(payload, list):
+            rows = payload
+        else:
+            rows = []
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            try:
+                ra = float(row["ra_deg"])
+                dec = float(row["dec_deg"])
+            except Exception:
+                continue
+            item: dict[str, Any] = {
+                "star_id": str(row.get("star_id") or ""),
+                "common_name": row.get("common_name"),
+                "ra_deg": ra,
+                "dec_deg": dec,
+                "source": "yale_bsc5_v50",
+            }
+            if row.get("vmag") is not None:
+                try:
+                    item["vmag"] = float(row["vmag"])
+                except Exception:
+                    pass
+            if row.get("class"):
+                item["class"] = str(row["class"])
+            out.append(item)
+            if limit is not None and len(out) >= int(limit):
+                break
+        if out:
+            return out
+
+    # Offline fallback: curated progenitors (sparse — not a uniform sky).
+    path = CURATED_STARS_PATH
     if not path.is_file():
         return []
     try:
@@ -186,10 +239,11 @@ def load_public_field_stars(
     except Exception:
         logger.exception("failed_reading_curated_stars path=%s", path)
         return []
-    out: list[dict[str, Any]] = []
+    out = []
     if not isinstance(rows, list):
         return out
-    for row in rows[:limit]:
+    cap = 80 if limit is None else int(limit)
+    for row in rows[:cap]:
         if not isinstance(row, dict):
             continue
         try:
@@ -273,13 +327,25 @@ def healpix_prob_cells(
 
 
 def public_sky_base() -> dict[str, Any]:
-    """Layers that do not require an alert: public catalog + galactic plane."""
+    """Layers that do not require an alert: BSC5 background + galactic plane."""
+    field = load_public_field_stars()
+    source = (
+        "yale_bsc5_v50+astropy_galactic"
+        if field and field[0].get("source") == "yale_bsc5_v50"
+        else "curated_fallback+astropy_galactic"
+    )
     return {
         "frame": "ICRS",
         "render": SVG_RENDER_VERSION,
-        "field_stars": load_public_field_stars(),
+        "field_stars": field,
         "galactic_plane": galactic_plane_icrs(),
-        "source": "public_catalog+astropy_galactic",
+        "source": source,
+        "field_catalog": (
+            "Yale Bright Star Catalogue 5th Ed. (Hoffleit+1991) V<=6.5"
+            if source.startswith("yale_bsc5")
+            else "curated_stars.json fallback"
+        ),
+        "n_field_stars": len(field),
     }
 
 
@@ -306,6 +372,9 @@ def build_region_payload(
             }
         )
     base = public_sky_base()
+    # Do not embed the full ~8k-star background in every region.json — the UI
+    # loads field stars once from ``/api/sky/base``. Keep an empty list so
+    # older clients still see the key.
     return {
         "alert_id": alert_id,
         "level": level,
@@ -321,10 +390,12 @@ def build_region_payload(
         "render": SVG_RENDER_VERSION,
         "nested_ellipses": nested,
         "prob_cells": healpix_prob_cells(prob, level=level),
-        "field_stars": base["field_stars"],
+        "field_stars": [],
+        "field_stars_via": "/api/sky/base",
+        "n_field_stars_base": int(base.get("n_field_stars") or 0),
         "galactic_plane": base["galactic_plane"],
         "simulated": bool(simulated),
-        "survey_hint": "public_catalog_svg",
+        "survey_hint": "yale_bsc5_svg",
     }
 
 
