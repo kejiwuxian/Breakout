@@ -39,6 +39,31 @@ export LCOGT_DRY_RUN="${LCOGT_DRY_RUN:-True}"
 export BREAKOUT_DISABLE_AUTOSTART=1
 export SCENARIO="${SCENARIO:-scenario_a_galactic_ccsn}"
 
+# Prefer python3 when `python` is absent (common on minimal images).
+if command -v python >/dev/null 2>&1; then
+  PY=python
+elif command -v python3 >/dev/null 2>&1; then
+  PY=python3
+else
+  echo "FAIL: neither python nor python3 found"
+  fail=1
+  PY=
+fi
+
+if [[ -n "$PY" ]]; then
+  if ! "$PY" -m pytest tests/test_health.py -q; then
+    echo "FAIL: pytest tests/test_health.py"
+    fail=1
+  fi
+  if [[ -f tests/test_flags_off.py ]]; then
+    if ! "$PY" -m pytest tests/test_flags_off.py -q; then
+      echo "FAIL: pytest tests/test_flags_off.py"
+      fail=1
+    fi
+  fi
+fi
+
+
 run_pytest() {
   local label="$1"
   shift

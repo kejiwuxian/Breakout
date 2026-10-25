@@ -1,0 +1,71 @@
+{
+  "$schema": "https://apify.com/schemas/v1/input.ide.json",
+  "title": "BREAKOUT star literature input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "stars": {
+      "title": "Stars",
+      "type": "array",
+      "description": "Stars to search. Each entry needs star_id; aliases are extra query strings (common names).",
+      "editor": "json",
+      "items": {
+        "type": "object",
+        "properties": {
+          "star_id": {
+            "type": "string",
+            "title": "Star id",
+            "description": "Catalog / SIMBAD-style id (e.g. '* alf Ori')."
+          },
+          "aliases": {
+            "type": "array",
+            "title": "Aliases",
+            "description": "Human names used in ATel/arXiv queries (e.g. 'Betelgeuse').",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "star_id"
+        ]
+      }
+    },
+    "sources": {
+      "title": "Sources",
+      "type": "array",
+      "description": "Which public sources to query: atel and/or arxiv.",
+      "editor": "select",
+      "default": [
+        "atel",
+        "arxiv"
+      ],
+      "prefill": [
+        "atel",
+        "arxiv"
+      ],
+      "items": {
+        "type": "string",
+        "enum": [
+          "atel",
+          "arxiv"
+        ],
+        "enumTitles": [
+          "Astronomer's Telegram",
+          "arXiv"
+        ]
+      }
+    },
+    "max_items_per_star": {
+      "title": "Max items per star",
+      "type": "integer",
+      "description": "Maximum kept items (across sources) per star. Only real fetched rows that mention the star are kept.",
+      "default": 20,
+      "minimum": 1,
+      "maximum": 100
+    }
+  },
+  "required": [
+    "stars"
+  ]
+}
