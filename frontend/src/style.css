@@ -64,6 +64,14 @@ body {
   color: var(--muted);
 }
 
+.voice-caption {
+  margin: 0 0 1rem;
+  min-height: 1.35em;
+  color: var(--accent);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
 .dash-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.9fr);
@@ -329,4 +337,59 @@ body {
   min-height: 1.2em;
   font-size: 0.82rem;
   color: var(--muted);
+}
+
+.slot-actions:empty {
+  display: none;
+}
+
+.actions-meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.actions-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.actions-tabs button {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  padding: 0.3rem 0.65rem;
+  font: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.actions-tabs button[aria-selected="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.actions-sub {
+  margin: 0 0 0.45rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.actions-pre {
+  margin: 0;
+  max-height: 22rem;
+  overflow: auto;
+  padding: 0.65rem 0.75rem;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
 }

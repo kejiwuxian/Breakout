@@ -12,7 +12,7 @@ import numpy as np
 
 from backend.candidates.catalog import CURATED_PATH, STAR_TABLE_PATH, build_star_table, load_curated_stars
 from backend.candidates.filter import candidates_in_region
-from backend.config import ROOT, settings
+from backend.config import ROOT
 from backend.literature.rerank import rerank
 from backend.localize.fuse import fuse
 from backend.schemas import Alert, CandidateScore, SkyMap
@@ -89,13 +89,7 @@ def process_sn_burst(
     )
     latencies["rerank_ms"] = _stage("rerank", t0)
 
-    actions_payload: dict[str, Any] = {
-        "lcogt_dry_run": bool(settings.lcogt_dry_run),
-        "alert_id": alert.alert_id,
-        "top_star_id": scores[0].star_id if scores else None,
-        "note": "Action drafts (LCOGT/ToO/GCN) filled by actions/ modules.",
-    }
-    return skymap, scores, {"latencies_ms": latencies, "actions": actions_payload}
+    return skymap, scores, {"latencies_ms": latencies}
 
 
 def process_alert(
@@ -150,10 +144,16 @@ def process_alert(
                 "simulated": simulated or any(s.simulated for s in scores),
             }
         )
+        # Attach skymap + scores for app.py to build action drafts after candidates.
         events.append(
             {
-                "type": "actions",
-                "payload": meta["actions"],
+                "type": "_actions_context",
+                "payload": {
+                    "alert": alert,
+                    "skymap": skymap,
+                    "scores": scores,
+                    "latencies_ms": meta.get("latencies_ms", {}),
+                },
                 "simulated": simulated,
             }
         )
