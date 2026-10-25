@@ -113,6 +113,10 @@ def parse_catalog_line(line: str) -> dict[str, Any] | None:
     ra = sexagesimal_ra_to_deg(rah, ram, ras) % 360.0
     dec = max(-90.0, min(90.0, sexagesimal_dec_to_deg(des, ded, dem, dess)))
 
+    # CDS V/50 bytes 128-147: SpType; 162-166: trigonometric parallax (arcsec).
+    spectral = line[127:147].strip() if len(line) >= 147 else ""
+    plx = _parse_float(line[161:166]) if len(line) >= 166 else None
+
     row: dict[str, Any] = {
         "star_id": f"HR{hr}",
         "ra_deg": round(ra, 6),
@@ -122,6 +126,12 @@ def parse_catalog_line(line: str) -> dict[str, Any] | None:
         row["common_name"] = name
     if vmag is not None:
         row["vmag"] = round(vmag, 2)
+    if spectral:
+        row["spectral_type"] = spectral
+    # Positive parallax only — never invent a distance from a missing/negative plx.
+    if plx is not None and plx > 0.0:
+        row["parallax_arcsec"] = round(plx, 5)
+        row["distance_kpc"] = round((1.0 / plx) / 1000.0, 6)
     return row
 
 

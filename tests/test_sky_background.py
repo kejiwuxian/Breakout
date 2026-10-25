@@ -73,6 +73,16 @@ def test_build_script_parse_helpers() -> None:
     assert mod.parse_catalog_line("too-short") is None
 
 
+def test_sky_background_stars_include_spectral_types() -> None:
+    payload = json.loads(SKY_BACKGROUND_PATH.read_text(encoding="utf-8"))
+    stars = payload["stars"]
+    with_sp = [s for s in stars if s.get("spectral_type")]
+    assert len(with_sp) >= 1000
+    # Sirius (HR2491) is A0/A1 in BSC5.
+    sirius = next(s for s in stars if s["star_id"] == "HR2491")
+    assert sirius.get("spectral_type")
+
+
 def test_meta_documents_provenance() -> None:
     meta = json.loads(META_PATH.read_text(encoding="utf-8"))
     assert "cdsarc" in meta["source_url"] or meta["source_url"].startswith("file://")

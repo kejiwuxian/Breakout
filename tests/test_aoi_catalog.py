@@ -15,6 +15,12 @@ def test_aoi_catalog_merges_background_and_curated() -> None:
     bg = load_sky_background_stars()
     assert len(curated) >= 40
     assert len(bg) >= 1000
+    # Yale BSC5 SpType committed for offline enrichment.
+    with_sp = sum(1 for r in bg if r.get("spectral_type"))
+    assert with_sp >= 1000
+    # Most bright field stars are not CCSN progenitors (stay UNK).
+    unk = sum(1 for r in bg if r.get("class") == "UNK")
+    assert unk >= 1000
     merged = load_aoi_evaluation_catalog()
     assert len(merged) >= len(curated)
     assert len(merged) >= len(bg)  # mostly BSC5 + curated extras

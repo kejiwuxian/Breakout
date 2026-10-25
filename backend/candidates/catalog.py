@@ -83,8 +83,16 @@ def _angsep_deg(ra1: float, dec1: float, ra2: float, dec2: float) -> float:
     return math.hypot(dra, ddec)
 
 
+_BSC5_CATALOG_REF = {"catalog": "V/50", "bibcode": "1991bsc..book.....H"}
+
+
 def load_sky_background_stars(path: Path | None = None) -> list[dict[str, Any]]:
-    """Load committed Yale BSC5 background rows (ra/dec/vmag)."""
+    """Load committed Yale BSC5 background rows (ra/dec/vmag/SpType).
+
+    Spectral types come from the published V/50 ``SpType`` column. Progenitor
+    ``class`` is inferred only when the spectral type unambiguously indicates
+    RSG/BSG/YSG/WR/LBV; otherwise the star stays ``UNK`` (no breakout prior).
+    """
     target = Path(path) if path is not None else SKY_BACKGROUND_PATH
     if not target.is_file():
         return []
@@ -101,20 +109,30 @@ def load_sky_background_stars(path: Path | None = None) -> list[dict[str, Any]]:
             dec = float(row["dec_deg"])
         except (KeyError, TypeError, ValueError):
             continue
+        spectral = _as_str(row.get("spectral_type")) or ""
+        inferred = infer_progenitor_class_from_spectral(spectral) if spectral else None
         item: dict[str, Any] = {
             "star_id": str(row.get("star_id") or ""),
             "common_name": row.get("common_name"),
             "ra_deg": ra,
             "dec_deg": dec,
-            "class": "UNK",
-            "spectral_type": "",
+            "class": inferred or "UNK",
+            "spectral_type": spectral,
+            "luminosity_class": _parse_luminosity_class(spectral),
             "source": "yale_bsc5_v50",
+            "catalog_refs": [dict(_BSC5_CATALOG_REF)],
+            "notes": (
+                f"Yale BSC5 SpType={spectral}" if spectral else "Yale BSC5 field star"
+            ),
         }
         if row.get("vmag") is not None:
             try:
                 item["vmag"] = float(row["vmag"])
             except (TypeError, ValueError):
                 pass
+        dist = _as_float(row.get("distance_kpc"))
+        if dist is not None and dist > 0.0:
+            item["distance_kpc"] = dist
         if item["star_id"]:
             out.append(item)
     return out
@@ -229,16 +247,65 @@ def _parse_luminosity_class(spectral_type: str | None) -> str | None:
     """Extract a luminosity class token from a spectral type when clearly present.
 
     Does not invent a class: returns None if none is present in the string.
+    Longer tokens are matched first so ``IIIb`` is not misread as ``Ib``.
     """
     if not spectral_type:
         return None
-    # Prefer explicit Ia / Iab / Ib tokens inside the spectral type.
-    for token in ("Iab", "Ia", "Ib", "II", "III"):
-        if token in spectral_type:
+    compact = spectral_type.replace(" ", "")
+    # Order matters: III/II before Iab/Ia/Ib so ``M1IIIab`` is not read as ``Iab``.
+    for token in ("IIIb", "IIIa", "III", "IIb", "IIa", "II", "Iab", "Ia", "Ib", "IV", "V"):
+        if token in compact:
             return token
-    match = _LUM_CLASS_RE.search(spectral_type.replace(" ", ""))
+    match = _LUM_CLASS_RE.search(compact)
     if match:
         return match.group(1)
+    return None
+
+
+def infer_progenitor_class_from_spectral(spectral_type: str | None) -> str | None:
+    """Map a published spectral type to a CCSN progenitor class when unambiguous.
+
+    Returns ``None`` when the type is missing, dwarf/giant, or otherwise not a
+    clear RSG/BSG/YSG/WR/LBV label — callers keep ``UNK`` and ``n/a`` breakout.
+    Never invents chemistry; only reads luminosity class / WR / LBV tokens.
+    """
+    sp = _as_str(spectral_type)
+    if not sp:
+        return None
+    compact = sp.replace(" ", "")
+    upper = compact.upper()
+
+    if "LBV" in upper or "SDOR" in upper:
+        return "LBV"
+    # Wolf–Rayet: WN / WC / WO / WR prefixes (not random W in a metal line).
+    if upper.startswith(("WN", "WC", "WO", "WR")) or re.match(
+        r"^(WN|WC|WO|WR)\d", upper
+    ):
+        return "WR"
+
+    lum = _parse_luminosity_class(sp)
+    # Only luminosity class I / Ia / Iab / Ib count as supergiant progenitors.
+    if lum not in {"I", "Ia", "Iab", "Ib"}:
+        return None
+
+    # Temperature sequence letter (ignore leading luminosity 'g'/'d' prefixes).
+    letter_m = re.search(r"([OBAFGKM])\d", upper)
+    if not letter_m:
+        letter_m = re.search(r"([OBAFGKM])", upper)
+    if not letter_m:
+        return None
+    letter = letter_m.group(1)
+    if letter in {"M"}:
+        return "RSG"
+    if letter in {"K"}:
+        # Late-K Ia/Iab → RSG; early-K Ia often treated as YSG in curated sets.
+        digit_m = re.search(r"K(\d)", upper)
+        digit = int(digit_m.group(1)) if digit_m else 5
+        return "RSG" if digit >= 3 else "YSG"
+    if letter in {"G"}:
+        return "YSG"
+    if letter in {"O", "B", "A", "F"}:
+        return "BSG"
     return None
 
 
