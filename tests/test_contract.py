@@ -27,8 +27,8 @@ FIXTURES = ROOT / "data" / "fixtures"
 SCHEMA_DIR = ROOT / "docs" / "schemas"
 
 
-def test_contract_version_is_v1() -> None:
-    assert CONTRACT_VERSION == "v1"
+def test_contract_version_is_v1_1() -> None:
+    assert CONTRACT_VERSION == "v1.1"
 
 
 def test_tony_can_import_contract_symbols() -> None:

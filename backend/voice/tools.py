@@ -99,6 +99,10 @@ def get_top_candidates(*, limit: int = 5) -> dict[str, Any]:
                 "breakout": cand.get("breakout"),
                 "evidence": _evidence_rows(cand),
                 "simulated": bool(cand.get("simulated", snap["simulated"])),
+                "rank_confidence": cand.get("rank_confidence"),
+                "rank_reasoning": cand.get("rank_reasoning"),
+                "composition": cand.get("composition"),
+                "life_expectancy": cand.get("life_expectancy"),
             }
         )
     return {

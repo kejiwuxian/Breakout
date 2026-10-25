@@ -13,8 +13,8 @@ import numpy as np
 from backend.candidates.catalog import CURATED_PATH, STAR_TABLE_PATH, build_star_table, load_curated_stars
 from backend.candidates.filter import candidates_in_region
 from backend.config import ROOT
-from backend.literature.rerank import rerank
 from backend.localize.fuse import fuse
+from backend.progenitors.rank_runtime import rank_with_grok
 from backend.schemas import Alert, CandidateScore, SkyMap
 
 logger = logging.getLogger("breakout.pipeline")
@@ -79,12 +79,12 @@ def process_sn_burst(
     latencies["filter_ms"] = _stage("filter", t0)
 
     t0 = time.perf_counter()
-    scores = rerank(
+    # Inventory enrich + optional live Grok rank (offline when cached stream / no key).
+    scores = rank_with_grok(
         rows,
-        None,  # default index.parquet
-        _watchlist,
         skymap=skymap,
         t0_utc=alert.t0_utc,
+        watchlist=_watchlist,
         prob=prob,
     )
     latencies["rerank_ms"] = _stage("rerank", t0)
