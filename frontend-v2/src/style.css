@@ -162,6 +162,11 @@ body::before {
   color: var(--fog);
 }
 
+/* display:flex above would otherwise override UA [hidden]{display:none}. */
+.badge[hidden] {
+  display: none !important;
+}
+
 .badge.sim {
   color: var(--warn);
   border-color: rgba(217, 154, 43, 0.45);
