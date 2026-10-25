@@ -18,6 +18,10 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~5:20 PM PT | Light + Cursor agent | Integrate Tony H7 PRs (#2 catalog/filter, #3 build_index, #4 rerank/physics) onto Betelgeuse scenario branch; fix catalog distance assertions for Joyce 0.168 kpc; full pytest green | commit `integrate: Tony H7` |
 | Sat 24 Oct 2026, ~5:29–5:45 PM PT | Tony + Cursor agent | Dashboard panels (sky map, candidates+ADS, scenario buttons, Simulated/Real badges); WS `/ws/events`; copy in `strings.json`; one commit per panel | frontend dashboard (H8) |
 | Sat 24 Oct 2026, ~5:38 PM PT | Light + Cursor agent | Review and merge all open PRs after Tony H8; integrate dashboard + ranking contract onto mainline | merge stack to main |
+| Sat 24 Oct 2026, ~7:20–7:40 PM PT | Light + Cursor agent | Actions layer (LCOGT dry-run, HST/JWST ToO, GCN draft) + Grok Voice backend (announcer/session/tools) | PRs #12/#13 |
+| Sat 24 Oct 2026, ~7:40 PM PT | Light + Cursor agent | Offline test + preflight.sh + full mvp_gate.sh; cached voice clips; `*` alert_id voice URL fix | commit `offline: preflight and MVP gate` (PR #14) |
+| Sat 24 Oct 2026, ~7:40 PM PT | Tony + Cursor agent | Grok Voice frontend panel: captions, mute, push-to-talk judge Q&A over realtime tools | PR #15 |
+| Sat 24 Oct 2026, ~7:41–8:00 PM PT | Light + Cursor agent | Review plan Page; merge standing PRs onto main for code freeze; Scenario B GCN archive copies; gate PASS | mainline MVP freeze |
 
 Notes:
 
