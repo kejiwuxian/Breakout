@@ -11,7 +11,7 @@ Ignore Phase 2 until `scripts/mvp_gate.sh` prints PASS.
 | H2–H4 | Sat 4:46–6:46 PM | candidates/catalog.py + filter.py | **Done** |
 | H4–H6 | Sat 6:46–8:46 PM | literature/build_index.py | **Done** |
 | H4–H6 / H7 | Sat ~5:14 PM onward | rerank + breakout_window + extinction | **Done** |
-| H6–H8 | Sat 8:46–10:46 PM | Dashboard: skymap + candidate list + Simulated badges | Queued |
+| H6–H8 | Sat 8:46–10:46 PM | Dashboard: skymap + candidate list + Simulated badges | **Done** |
 | H8–H10 | Sat 10:46 PM–12:46 AM | Grok Voice frontend + judge Q&A wiring | Queued |
 | H10–H11 | Sun 12:46–1:46 AM | MVP gate rehearsal; fix FAIL items only | Queued |
 | H11+ | after gate PASS | Phase 2 Page only | Blocked on gate |
@@ -25,7 +25,7 @@ Ignore Phase 2 until `scripts/mvp_gate.sh` prints PASS.
 | `build_index.py` ADS + arXiv + Grok; drop unknown bibcodes | **Done** |
 | Index for curated stars (`* alf Ori`) | **Done** (replay; live with keys) |
 | `breakout_window` / `extinction` / `rerank` config weights | **Done** |
-| Dashboard Simulated badges + skymap/candidates UI | Pending |
+| Dashboard Simulated badges + skymap/candidates UI | **Done** (H8) |
 | Voice frontend / judge Q&A | Pending |
 
 ## Grok Bot / Cursor usage log
@@ -37,6 +37,7 @@ See `docs/prompt-log.md`.
 | Sat 24 Oct ~4:53–5:15 PM | catalog + filter |
 | Sat 24 Oct ~5:05 PM | literature build_index |
 | Sat 24 Oct ~5:14 PM | ranking physics (H7) |
+| Sat 24 Oct ~5:29–5:45 PM | dashboard panels + Simulated/Real badges (H8) |
 
 **Note:** Literature index from `--replay-dir` when keys absent. Live rebuild:
 
@@ -45,3 +46,5 @@ USE_CACHED_STREAM=False python -m backend.literature.build_index --curated-only 
 ```
 
 Rules: real data real; nulls stay null; `simulated=true` for simulated skymaps; no invented bibcodes.
+
+**Known follow-up (Bugbot):** Scenario B IceCube HE_NEUTRINO may need fuse pointing from IceCube DetectorHit RA/Dec (single-detector path) — tracked for later, not blocking H8 dashboard merge.
