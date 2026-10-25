@@ -130,6 +130,24 @@ def fuse_maps(
     plt.savefig(png_path, dpi=120, bbox_inches="tight")
     plt.close("all")
 
+    # Interactive UI artifacts: 90% outline + zoomed focus PNG (best-effort).
+    try:
+        from backend.localize.region import write_region_artifacts
+
+        write_region_artifacts(
+            prob,
+            out_dir=out_dir,
+            alert_id=alert.alert_id,
+            simulated=bool(alert.simulated),
+        )
+    except Exception:
+        # Mollweide PNG remains the offline fallback; focus/region are additive.
+        import logging
+
+        logging.getLogger("breakout.localize.fuse").exception(
+            "region_artifacts_failed alert_id=%s", alert.alert_id
+        )
+
     # Prefer repo-relative path in the schema when under ROOT.
     try:
         prob_path = str(fits_path.resolve().relative_to(ROOT.resolve()))

@@ -348,7 +348,54 @@ def skymap_png(alert_id: str) -> FileResponse:
     png = _safe_alert_dir(alert_id) / "skymap.png"
     if not png.is_file():
         raise HTTPException(status_code=404, detail=f"No skymap.png for {alert_id}")
-    return FileResponse(png, media_type="image/png")
+    return FileResponse(
+        png,
+        media_type="image/png",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+@app.get("/api/skymap/{alert_id}/region")
+def skymap_region(alert_id: str) -> dict[str, Any]:
+    """90% credible-region outline + FOV for interactive zoom / red contour.
+
+    Regenerates ``region.json`` / ``skymap_focus.png`` when the fused FITS is
+    newer so the UI always sees the latest localization.
+    """
+    from backend.localize.region import ensure_region_artifacts
+
+    alert_dir = _safe_alert_dir(alert_id)
+    if not (alert_dir / "skymap.fits").is_file():
+        raise HTTPException(status_code=404, detail=f"No skymap.fits for {alert_id}")
+    try:
+        payload = ensure_region_artifacts(alert_dir, alert_id=alert_id)
+    except Exception as exc:
+        logger.exception("skymap_region_failed alert_id=%s", alert_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return payload
+
+
+@app.get("/api/skymap/{alert_id}/focus.png")
+def skymap_focus_png(alert_id: str) -> FileResponse:
+    """Zoomed gnomonic PNG with red 90% outline (offline Aladin fallback)."""
+    from backend.localize.region import ensure_region_artifacts
+
+    alert_dir = _safe_alert_dir(alert_id)
+    if not (alert_dir / "skymap.fits").is_file():
+        raise HTTPException(status_code=404, detail=f"No skymap.fits for {alert_id}")
+    try:
+        ensure_region_artifacts(alert_dir, alert_id=alert_id)
+    except Exception as exc:
+        logger.exception("skymap_focus_failed alert_id=%s", alert_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    focus = alert_dir / "skymap_focus.png"
+    if not focus.is_file():
+        raise HTTPException(status_code=404, detail=f"No skymap_focus.png for {alert_id}")
+    return FileResponse(
+        focus,
+        media_type="image/png",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 def _star_id_slug(star_id: str) -> str:

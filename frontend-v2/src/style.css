@@ -193,6 +193,25 @@ body::before {
   color: var(--fog);
   padding: 1.5rem;
   text-align: center;
+  z-index: 1;
+}
+
+.sky-aladin {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.sky-aladin .aladin-container,
+.sky-aladin > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.sky-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
 .sky-img {
@@ -210,11 +229,59 @@ body::before {
   transform: scale(1);
 }
 
+.sky-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.sky-overlay .sky-star {
+  pointer-events: auto;
+}
+
+.sky-outline {
+  fill: rgba(226, 59, 59, 0.08);
+  stroke: #e23b3b;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.sky-star circle {
+  fill: var(--signal);
+  stroke: #071018;
+  stroke-width: 1.5;
+  opacity: 0.95;
+}
+
+.sky-star:hover circle {
+  fill: #ffd166;
+  stroke: #e23b3b;
+}
+
+.sky-hover {
+  position: absolute;
+  z-index: 5;
+  max-width: 16rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(226, 59, 59, 0.55);
+  background: rgba(7, 16, 24, 0.92);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+
 .sky-meta {
   position: absolute;
   left: 0.85rem;
   right: 0.85rem;
   bottom: 0.85rem;
+  z-index: 4;
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem 1rem;
@@ -226,6 +293,10 @@ body::before {
   border: 1px solid var(--line);
   padding: 0.55rem 0.7rem;
   backdrop-filter: blur(6px);
+}
+
+.sky-mode {
+  color: var(--signal);
 }
 
 .stage-foot {

@@ -1,0 +1,87 @@
+"""Credible-region outline + focus PNG + API."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import healpy as hp
+import numpy as np
+import pytest
+from fastapi.testclient import TestClient
+
+from backend.ingest.snewpy_sim import simulate_burst
+from backend.localize.fuse import fuse
+from backend.localize.region import (
+    build_region_payload,
+    credible_region_outline,
+    ensure_region_artifacts,
+    focus_fov_deg,
+)
+
+
+T0 = "2026-10-24T21:46:00"
+TRUE_RA = 88.7929
+TRUE_DEC = 7.4071
+
+
+def _fake_counts(distance_kpc: float, model: str, detectors) -> dict[str, int]:
+    return {d: 100 for d in detectors}
+
+
+def _burst_alert():
+    return simulate_burst(
+        TRUE_RA,
+        TRUE_DEC,
+        0.2,
+        "Nakazato_2013",
+        T0,
+        event_count_fn=_fake_counts,
+        detectors=["Super-K", "IceCube", "SNO+", "JUNO"],
+        pointing_err_deg=3.0,
+    )[0]
+
+
+def test_outline_is_closed_and_near_true_position(tmp_path: Path) -> None:
+    alert = _burst_alert()
+    skymap = fuse(alert, nside=64, out_root=tmp_path)
+    fits = tmp_path / alert.alert_id / "skymap.fits"
+    prob = np.asarray(hp.read_map(str(fits), nest=True), dtype=float)
+    ring = credible_region_outline(prob, level=0.9)
+    assert len(ring) >= 4
+    assert ring[0] == ring[-1]
+    ras = [p[0] for p in ring[:-1]]
+    decs = [p[1] for p in ring[:-1]]
+    # Centroid should sit near the true Betelgeuse-like position.
+    assert abs(((np.mean(ras) - TRUE_RA + 180) % 360) - 180) < 15.0
+    assert abs(float(np.mean(decs)) - TRUE_DEC) < 15.0
+    payload = build_region_payload(prob, alert_id=alert.alert_id, simulated=True)
+    assert payload["fov_deg"] == pytest.approx(focus_fov_deg(payload["credible_deg2"]))
+    assert (tmp_path / alert.alert_id / "region.json").is_file()
+    assert (tmp_path / alert.alert_id / "skymap_focus.png").is_file()
+    assert skymap.peak.ra_deg == pytest.approx(payload["peak"]["ra_deg"], abs=1e-6)
+
+
+def test_ensure_region_and_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import backend.app as app_mod
+
+    alert = _burst_alert()
+    fuse(alert, nside=32, out_root=tmp_path)
+    monkeypatch.setattr(app_mod, "_out_root", tmp_path)
+    monkeypatch.setenv("BREAKOUT_DISABLE_AUTOSTART", "1")
+
+    payload = ensure_region_artifacts(
+        tmp_path / alert.alert_id, alert_id=alert.alert_id, simulated=True
+    )
+    assert payload["outline"]
+    assert payload["simulated"] is True
+
+    with TestClient(app_mod.app) as client:
+        r = client.get(f"/api/skymap/{alert.alert_id}/region")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["alert_id"] == alert.alert_id
+        assert len(body["outline"]) >= 4
+        f = client.get(f"/api/skymap/{alert.alert_id}/focus.png")
+        assert f.status_code == 200
+        assert f.headers["content-type"].startswith("image/png")
+        assert len(f.content) > 1000
