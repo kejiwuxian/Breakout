@@ -1,1 +1,1 @@
-"""Localization: timing triangulation, Super-K pointing, map fusion."""
+"""Localization: timing triangulation, SNEWS DiffPointing, Super-K pointing, fuse."""

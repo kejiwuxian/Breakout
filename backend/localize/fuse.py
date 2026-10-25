@@ -1,5 +1,7 @@
-"""Product of timing rings and pointing, normalize, credible region → SkyMap.
+"""Product of timing (+ pointing), normalize, credible region → SkyMap.
 
+Timing prefers the SNEWS DiffPointing joint-χ² map (full Δt covariance)
+when ≥2 long baselines exist; otherwise falls back to independent rings.
 Writes data/run/<alert_id>/skymap.fits and a Mollweide PNG fallback
 (data/run/<alert_id>/skymap.png). HEALPix maps are NESTED and sum to 1.
 """
@@ -17,6 +19,7 @@ import numpy as np
 
 from backend.config import HEALPIX_NSIDE, ROOT, settings
 from backend.localize.pointing import extract_detector_pointing, pointing_map
+from backend.localize.snews_diffpointing import can_use_diffpointing, prob_map as snews_prob_map
 from backend.localize.triangulate import pairwise_baselines, ring_map
 from backend.schemas import Alert, SkyMap, SkyPeak
 
@@ -146,26 +149,36 @@ def build_component_maps(
     *,
     nside: int | None = None,
     include_pointing: bool = True,
+    use_snews_diffpointing: bool = True,
 ) -> tuple[list[np.ndarray], list[str]]:
-    """Build timing-ring (+ optional Super-K pointing) maps for one Alert."""
+    """Build timing (+ optional Super-K pointing) maps for one Alert.
+
+    When ``use_snews_diffpointing`` and ≥2 long baselines exist, emit one
+    joint-χ² timing map (SNEWS DiffPointing). Otherwise emit independent
+    pairwise rings (legacy product fusion).
+    """
     nside = int(nside if nside is not None else getattr(settings, "healpix_nside", HEALPIX_NSIDE))
     maps: list[np.ndarray] = []
     components: list[str] = []
 
-    for pair in pairwise_baselines(alert):
-        # Skip near-degenerate baselines (e.g. Super-K ↔ KamLAND ~km).
-        if pair["baseline_m"] < 1.0e5:  # < 100 km
-            continue
-        m = ring_map(
-            pair["det_a"],
-            pair["det_b"],
-            pair["dt_s"],
-            pair["dt_err_s"],
-            alert.t0_utc,
-            nside=nside,
-        )
-        maps.append(m)
-        components.append(f"timing:{pair['det_a']}-{pair['det_b']}")
+    if use_snews_diffpointing and can_use_diffpointing(alert):
+        maps.append(snews_prob_map(alert, nside=nside))
+        components.append("timing:snews_diffpointing")
+    else:
+        for pair in pairwise_baselines(alert):
+            # Skip near-degenerate baselines (e.g. Super-K ↔ KamLAND ~km).
+            if pair["baseline_m"] < 1.0e5:  # < 100 km
+                continue
+            m = ring_map(
+                pair["det_a"],
+                pair["det_b"],
+                pair["dt_s"],
+                pair["dt_err_s"],
+                alert.t0_utc,
+                nside=nside,
+            )
+            maps.append(m)
+            components.append(f"timing:{pair['det_a']}-{pair['det_b']}")
 
     if include_pointing:
         hit = extract_detector_pointing(alert)
@@ -193,8 +206,9 @@ def fuse(
     nside: int | None = None,
     out_root: Path | None = None,
     include_pointing: bool = True,
+    use_snews_diffpointing: bool = True,
 ) -> SkyMap:
-    """Fuse timing rings (+ Super-K pointing) for Alert(s) into a SkyMap.
+    """Fuse timing (+ Super-K pointing) for Alert(s) into a SkyMap.
 
     Writes ``data/run/<alert_id>/skymap.fits`` and ``skymap.png``.
     When multiple Alerts are passed, uses the first SN_BURST (else the first).
@@ -206,7 +220,10 @@ def fuse(
     alert = next((a for a in alert_list if a.kind == "SN_BURST"), alert_list[0])
     nside = int(nside if nside is not None else getattr(settings, "healpix_nside", HEALPIX_NSIDE))
     maps, components = build_component_maps(
-        alert, nside=nside, include_pointing=include_pointing
+        alert,
+        nside=nside,
+        include_pointing=include_pointing,
+        use_snews_diffpointing=use_snews_diffpointing,
     )
 
     root = Path(out_root) if out_root is not None else ROOT / "data" / "run"
