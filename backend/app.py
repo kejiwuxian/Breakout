@@ -102,9 +102,44 @@ def _note_run_state(event: dict[str, Any]) -> None:
         )
 
 
+def _build_actions_event(alert: Any, context: dict[str, Any]) -> dict[str, Any]:
+    """Run LCOGT / ToO / GCN builders after candidates (drafts only)."""
+    from backend.actions import build_actions_payload
+
+    payload = build_actions_payload(
+        context["alert"],
+        context["skymap"],
+        context["scores"],
+        run_dir=_out_root,
+    )
+    simulated = bool(payload.get("simulated", alert.simulated))
+    return {"type": "actions", "payload": payload, "simulated": simulated}
+
+
 async def _emit_pipeline_events(alert: Any) -> None:
+    """Process alert and push WS events; builders run after candidates."""
     events = await asyncio.to_thread(process_alert, alert, out_root=_out_root)
     for event in events:
+        if event.get("type") == "_actions_context":
+            # After candidates: build LCOGT / ToO / GCN drafts and push actions.
+            actions_event = await asyncio.to_thread(
+                _build_actions_event, alert, event["payload"]
+            )
+            _note_run_state(
+                {
+                    "type": "candidates",
+                    "payload": {
+                        "alert_id": alert.alert_id,
+                        "candidates": [
+                            s.model_dump(mode="json", by_alias=True)
+                            for s in event["payload"]["scores"]
+                        ],
+                    },
+                    "simulated": bool(alert.simulated),
+                }
+            )
+            await hub.broadcast(actions_event)
+            continue
         _note_run_state(event)
         await hub.broadcast(event)
 
