@@ -444,6 +444,119 @@ def merge_papers(*groups: list[dict[str, str]]) -> list[dict[str, str]]:
     return list(by_bib.values())
 
 
+def resolve_apify_item_ads_bibcode(
+    item: dict[str, Any],
+    *,
+    token: str,
+    http_get: HttpGet | None = None,
+    rate_limit_s: float = 0.0,
+) -> dict[str, str] | None:
+    """Resolve one Apify discovery item to an ADS paper; None if ADS has no bibcode.
+
+    Never invents a bibcode. Items without an ADS hit are dropped from what Grok
+    reads (Apify JSON on disk is still kept for provenance).
+    """
+    if not token:
+        return None
+    source = str(item.get("source") or "").strip().lower()
+    item_id = str(item.get("item_id") or "").strip()
+    title = str(item.get("title") or "").strip()
+    abstract = str(item.get("abstract_or_summary") or item.get("abstract") or "").strip()
+    queries: list[str] = []
+    arxiv_id: str | None = None
+    if source == "arxiv" and item_id:
+        arxiv_id = item_id
+        queries.append(f'identifier:"arXiv:{item_id}" OR arxiv:"{item_id}"')
+    if title:
+        safe = title.replace('"', "")[:180]
+        if safe:
+            queries.append(f'title:"{safe}"')
+    if not queries:
+        return None
+
+    getter = http_get or httpx.get
+    headers = {"Authorization": f"Bearer {token}"}
+    for q in queries:
+        params = {
+            "q": q,
+            "fl": "bibcode,title,abstract,identifier",
+            "rows": "3",
+            "sort": "score desc",
+        }
+        if rate_limit_s > 0:
+            time.sleep(rate_limit_s)
+        try:
+            resp = getter(ADS_SEARCH_URL, params=params, headers=headers, timeout=60.0)
+            resp.raise_for_status()
+            docs = (resp.json().get("response") or {}).get("docs") or []
+        except Exception as exc:  # noqa: BLE001 — offline build must continue
+            logger.warning("ADS resolve failed for Apify item %s: %s", item_id, exc)
+            continue
+        for doc in docs:
+            paper = _paper_dict(
+                bibcode=str(doc.get("bibcode") or ""),
+                title=_title_to_str(doc.get("title")) or title,
+                abstract=str(doc.get("abstract") or "") or abstract,
+                source="ADS",
+                arxiv_id=arxiv_id,
+            )
+            if paper:
+                paper["source"] = "Apify+ADS"
+                return paper
+    return None
+
+
+def papers_from_apify_items(
+    items: list[dict[str, Any]],
+    *,
+    ads_token: str,
+    http_get: HttpGet | None = None,
+    rate_limit_s: float = 0.0,
+) -> list[dict[str, str]]:
+    """Convert Apify dataset rows to ADS-backed papers; drop rows without bibcodes."""
+    out: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        paper = resolve_apify_item_ads_bibcode(
+            item, token=ads_token, http_get=http_get, rate_limit_s=rate_limit_s
+        )
+        if paper:
+            out.append(paper)
+        else:
+            logger.info(
+                "Dropped Apify item without ADS bibcode: source=%s id=%s",
+                item.get("source"),
+                item.get("item_id"),
+            )
+    return out
+
+
+def _load_apify_items_for_star(star_id: str) -> list[dict[str, Any]]:
+    """Lazy-load saved Apify JSON for a star. No ApifyClient import here."""
+    if not settings.apify_enabled:
+        return []
+    try:
+        from backend.integrations.apify_literature import load_star_items
+    except Exception:  # noqa: BLE001
+        logger.exception("Could not import apify_literature; skipping Apify merge")
+        return []
+    return load_star_items(star_id)
+
+
+def _maybe_run_apify_offline_fetch(stars: list[dict[str, Any]]) -> None:
+    """When APIFY_ENABLED, run the actor once before scoring (offline only)."""
+    if not settings.apify_enabled:
+        return
+    try:
+        from backend.integrations.apify_literature import fetch_and_store
+    except Exception:  # noqa: BLE001
+        logger.exception("Could not import apify_literature; continuing without Apify fetch")
+        return
+    written = fetch_and_store(stars)
+    logger.info("Apify offline fetch wrote %s star file(s)", len(written))
+
+
 def _extract_json_object(text: str) -> dict[str, Any]:
     """Parse a JSON object from a model reply (allows fenced markdown)."""
     stripped = text.strip()
@@ -677,6 +790,14 @@ def score_star(
             alt = Path(replay_dir) / star_id
             slug_dir = alt if alt.is_dir() else slug_dir
         papers = _papers_from_replay(slug_dir)
+        # Optional Apify discovery feed (flag on): resolve to ADS bibcodes only.
+        apify_papers = papers_from_apify_items(
+            _load_apify_items_for_star(star_id),
+            ads_token=ads_token,
+            http_get=http_get,
+            rate_limit_s=0.0,
+        )
+        papers = merge_papers(papers, apify_papers)
         grok = _grok_from_replay(slug_dir)
     else:
         ads_papers = query_ads(
@@ -685,7 +806,13 @@ def score_star(
         arxiv_papers = query_arxiv(
             star, http_get=http_get, rate_limit_s=rate_limit_s
         )
-        papers = merge_papers(ads_papers, arxiv_papers)
+        apify_papers = papers_from_apify_items(
+            _load_apify_items_for_star(star_id),
+            ads_token=ads_token,
+            http_get=http_get,
+            rate_limit_s=rate_limit_s,
+        )
+        papers = merge_papers(ads_papers, arxiv_papers, apify_papers)
         grok = query_grok(
             star,
             papers,
@@ -787,6 +914,10 @@ def build_index(
 
     existing = _read_existing_index(out_path)
     rows_by_id: dict[str, dict[str, Any]] = dict(existing)
+
+    # Phase 2.3: offline Apify discovery feed (no-op when APIFY_ENABLED=False).
+    if replay_dir is None:
+        _maybe_run_apify_offline_fetch(stars)
 
     for star in stars:
         star_id = str(star.get("star_id") or "")
