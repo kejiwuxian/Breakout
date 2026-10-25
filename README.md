@@ -32,6 +32,8 @@ Offline demo defaults (`USE_CACHED_STREAM=True`): replay `data/cache/`, no netwo
 
 ## Community alerts (Phase 1) — catch potential SNe today
 
+**UI:** frontend-v2 (`:5174`) rail **Community push**, or the classic dashboard (`:5173`) **Community alerts** panel — webhook and/or email, status line, honesty note, link to `/alerts/latest`.
+
 Subscribe a webhook (or optional email) and receive ranked ICRS targets on the next SN_BURST / HE_NEUTRINO candidate set:
 
 ```bash
@@ -41,7 +43,7 @@ curl -X POST http://127.0.0.1:8000/subscribe \
 curl http://127.0.0.1:8000/alerts/latest
 ```
 
-Default `NOTIFY_DRY_RUN=True` logs deliveries; set `NOTIFY_DRY_RUN=False` to POST live webhook JSON. This is community follow-up for potential counterparts, not a confirmed supernova detection service.
+Default `NOTIFY_DRY_RUN=True` logs deliveries; set `NOTIFY_DRY_RUN=False` to POST live webhook JSON. This is community follow-up for potential counterparts, not a confirmed supernova detection service. Full walkthrough: [`docs/community-subscribe.md`](docs/community-subscribe.md).
 
 ## Layout
 

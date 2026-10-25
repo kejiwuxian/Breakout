@@ -67,5 +67,20 @@
   "voiceRealtimeError": "Realtime voice unavailable",
   "voiceRealtimeTimeout": "Realtime session timed out",
   "voiceMicError": "Microphone unavailable",
-  "legacyNote": "Classic UI still at :5173"
+  "legacyNote": "Classic UI still at :5173",
+  "subscribeTitle": "Community push",
+  "subscribeHint": "Get ranked ICRS targets when BREAKOUT localizes a burst — webhook JSON for scripts, optional email.",
+  "subscribeHonesty": "Not official GCN. Packages set simulated=true when applicable; ADS bibcodes only if already on the candidate.",
+  "subscribeWebhook": "Webhook URL",
+  "subscribeEmail": "Email (optional)",
+  "subscribeLabel": "Label (optional)",
+  "subscribeSubmit": "Subscribe",
+  "subscribeWorking": "Subscribing…",
+  "subscribeOk": "Subscribed. Ranked-candidate JSON on the next alert.",
+  "subscribeFailed": "Subscribe failed — check webhook or email.",
+  "subscribeEmpty": "No subscribers yet.",
+  "subscribeDryRun": "NOTIFY_DRY_RUN=True — webhooks are logged, not POSTed, until you set NOTIFY_DRY_RUN=False.",
+  "subscribeDryRunShort": "(dry-run: deliveries logged only)",
+  "subscribeFeedHint": "Public feed:",
+  "subscribeFeedLink": "GET /alerts/latest"
 }

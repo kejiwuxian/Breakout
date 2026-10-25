@@ -7,6 +7,7 @@ import strings from "./copy/strings.json";
 import { mountCandidates } from "./panels/candidates";
 import { mountScenarios } from "./panels/scenarios";
 import { mountSky } from "./panels/sky";
+import { mountSubscribe } from "./panels/subscribe";
 import { handleVoiceEvent, mountVoice } from "./panels/voice";
 import {
   applyEvent,
@@ -118,6 +119,7 @@ app.innerHTML = `
     <aside class="rail" aria-label="Mission controls">
       <div id="panel-scenarios"></div>
       <div id="panel-candidates"></div>
+      <div id="panel-subscribe"></div>
       <div id="panel-voice"></div>
     </aside>
   </div>
@@ -160,6 +162,7 @@ mountScenarios(document.querySelector("#panel-scenarios")!, {
   },
 });
 mountCandidates(document.querySelector("#panel-candidates")!);
+mountSubscribe(document.querySelector("#panel-subscribe")!);
 mountVoice(document.querySelector("#panel-voice")!);
 
 void hydrateFromLatest();
