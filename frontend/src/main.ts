@@ -10,7 +10,7 @@ import { mountScenarios } from "./panels/scenarios";
 import { mountSky } from "./panels/sky";
 import { mountSourcesInfo, type SourceStatus } from "./panels/sources";
 import { mountSubscribe } from "./panels/subscribe";
-import { handleVoiceEvent, mountVoice } from "./panels/voice";
+import { handleVoiceEvent, mountVoice, resetVoicePlayback } from "./panels/voice";
 import {
   applyEvent,
   beginScenarioSwitch,
@@ -18,6 +18,7 @@ import {
   hydrateMission,
   packageMatchesScenario,
   setConnected,
+  returnToLive,
   subscribe,
   type CandidateRow,
   type SkymapPayload,
@@ -252,7 +253,7 @@ function renderConnectionStatus() {
   } else if (!sourceStatus) {
     label = "App connected · source status unverified";
   } else if (sourceStatus.mode === "cached") {
-    label = "Demo mode · connected";
+    label = "Connected";
   } else if (
     !sourceStatus.live_enabled ||
     sourceStatus.sources.every((source) =>
@@ -407,6 +408,13 @@ function paintEventSummary() {
 mountSky(
   document.querySelector("#panel-sky")!,
   document.querySelector<HTMLButtonElement>("#back-to-sky")!,
+  () => {
+    activeScenario = null;
+    resetVoicePlayback();
+    activeEpoch = returnToLive(sourceStatus?.mode !== "cached");
+    applyBadges(undefined);
+    updatePipelineProgress("Waiting for an event");
+  },
 );
 mountScenarios(document.querySelector("#panel-scenarios")!, {
   onScenario: (id) => {
@@ -424,16 +432,16 @@ paintEventSummary();
 subscribe(() => paintEventSummary());
 
 if (wantsHydrateFromLatest()) {
-  void hydrateFromLatest();
+  void hydrateFromLatest({ expectEpoch: getState().missionEpoch });
 }
 
 connectEvents(
   (event) => {
-    applyEvent(event);
+    if (!applyEvent(event)) return;
     if (event.type === "voice") handleVoiceEvent(event);
 
     if (event.type === "hello") {
-      const scen = (event as { scenario?: string }).scenario;
+      const scen = getState().scenario;
       if (!isIdleScenario(scen)) {
         activeScenario = scen ?? null;
         updatePipelineProgress(strings.connected);
