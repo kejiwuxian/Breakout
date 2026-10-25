@@ -1,9 +1,11 @@
-"""P2.3: Apify literature integration — mocked client; flag-off safety."""
+"""P2.3: Apify literature — mocked client; flag off means no import."""
 
 from __future__ import annotations
 
 import importlib
 import json
+import sys
+import types
 from pathlib import Path
 from typing import Any
 
@@ -26,16 +28,23 @@ ARXIV_ATOM = """<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry>
     <id>http://arxiv.org/abs/2006.09837v1</id>
-    <title>Betelgeuse example preprint title</title>
+    <title>The Great Dimming of Betelgeuse: a Surface Mass Ejection</title>
     <published>2020-06-17T00:00:00Z</published>
-    <summary>Abstract text.</summary>
+    <summary>We discuss Betelgeuse and its historic dimming event in detail.</summary>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/9999.99999v1</id>
+    <title>Unrelated quasar survey with no target star</title>
+    <published>2020-01-01T00:00:00Z</published>
+    <summary>No mention of the requested object here.</summary>
   </entry>
 </feed>
 """
 
 ATEL_HTML = """
 <html><body>
-<a href="?read=13601">Betelgeuse Great Dimming notice</a>
+<a href="?read=13601">Betelgeuse optical fading notice</a>
+<a href="?read=99999">Some other supernova in M31</a>
 <a href="?read=0">Home</a>
 </body></html>
 """
@@ -49,8 +58,10 @@ def _fake_http_get(url: str, params: dict | None = None, **_kwargs: Any) -> _Fak
     raise AssertionError(f"unexpected URL {url} params={params}")
 
 
-def test_flag_off_does_not_import_apify_client(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_flag_off_means_no_apify_client_import(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APIFY_ENABLED", "False")
+    sys.modules.pop("apify_client", None)
+
     from backend import config as config_mod
 
     config_mod.settings = config_mod.load_settings()
@@ -58,46 +69,41 @@ def test_flag_off_does_not_import_apify_client(monkeypatch: pytest.MonkeyPatch) 
 
     importlib.reload(mod)
     assert mod.is_enabled() is False
-    written = mod.fetch_and_store([{"star_id": "* alf Ori"}], out_dir=Path("/tmp/unused"))
+    assert "apify_client" not in sys.modules
+
+    written = mod.fetch_and_store([{"star_id": "* alf Ori"}])
     assert written == {}
+    assert "apify_client" not in sys.modules
 
 
-def test_local_fetchers_write_real_shaped_items(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    monkeypatch.setenv("APIFY_ENABLED", "True")
-    monkeypatch.setenv("APIFY_TOKEN", "")
-    from backend import config as config_mod
+def test_actor_collect_filters_non_mentions() -> None:
+    sys.path.insert(0, str(ACTOR_ROOT))
+    from src.main import run_collect  # type: ignore[import-not-found]
 
-    config_mod.settings = config_mod.load_settings()
-    import backend.integrations.apify_literature as mod
-
-    importlib.reload(mod)
-    assert mod.is_enabled() is True
-
-    written = mod.fetch_and_store(
-        [{"star_id": "* alf Ori", "aliases": ["Betelgeuse"]}],
-        out_dir=tmp_path,
-        prefer_cloud=False,
+    items = run_collect(
+        {
+            "stars": [{"star_id": "* alf Ori", "aliases": ["Betelgeuse"]}],
+            "sources": ["arxiv", "atel"],
+            "max_items_per_star": 10,
+        },
         http_get=_fake_http_get,
     )
-    assert "* alf Ori" in written
-    payload = json.loads(written["* alf Ori"].read_text(encoding="utf-8"))
-    assert payload["star_id"] == "* alf Ori"
-    assert payload["n_items"] >= 2
-    sources = {item["source"] for item in payload["items"]}
-    assert sources == {"arxiv", "atel"}
-    for item in payload["items"]:
-        assert item["simulated"] is False
-        assert item["url"].startswith("http")
-        assert item["item_id"]
-        assert item["title"]
+    assert items
+    assert all("Betelgeuse" in (i["title"] + (i.get("abstract_or_summary") or "")) for i in items)
+    assert all(i["simulated"] is False for i in items)
+    assert {i["source"] for i in items} == {"arxiv", "atel"}
+    assert all("url" in i and i["url"].startswith("http") for i in items)
+    assert all("abstract_or_summary" in i for i in items)
+    # Unrelated arXiv / ATel rows must be dropped by the mention filter.
+    assert all(i["item_id"] != "9999.99999" for i in items)
+    assert all(i["item_id"] != "99999" for i in items)
 
 
-def test_cloud_client_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_apify_client_call_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("APIFY_ENABLED", "True")
     monkeypatch.setenv("APIFY_TOKEN", "test-token")
     monkeypatch.setenv("APIFY_ACTOR_ID", "user/breakout-star-literature")
+
     from backend import config as config_mod
 
     config_mod.settings = config_mod.load_settings()
@@ -111,15 +117,17 @@ def test_cloud_client_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
                 "star_id": "* alf Ori",
                 "source": "arxiv",
                 "item_id": "2006.09837",
-                "title": "Mocked arXiv row",
+                "title": "Mocked arXiv row about Betelgeuse",
                 "date": "2020-06-17",
                 "url": "https://arxiv.org/abs/2006.09837",
+                "abstract_or_summary": "Summary text",
                 "simulated": False,
             }
 
-    class _Actor:
+    class _ActorHandle:
         def call(self, run_input=None):
             assert run_input is not None
+            assert "max_items_per_star" in run_input
             assert run_input["stars"][0]["star_id"] == "* alf Ori"
             return {"defaultDatasetId": "dataset-1"}
 
@@ -127,16 +135,13 @@ def test_cloud_client_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
         def __init__(self, token: str) -> None:
             assert token == "test-token"
 
-        def actor(self, actor_id: str) -> _Actor:
+        def actor(self, actor_id: str) -> _ActorHandle:
             assert actor_id == "user/breakout-star-literature"
-            return _Actor()
+            return _ActorHandle()
 
         def dataset(self, dataset_id: str) -> _Dataset:
             assert dataset_id == "dataset-1"
             return _Dataset()
-
-    import sys
-    import types
 
     fake = types.ModuleType("apify_client")
     fake.ApifyClient = _Client  # type: ignore[attr-defined]
@@ -145,41 +150,56 @@ def test_cloud_client_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     written = mod.fetch_and_store(
         [{"star_id": "* alf Ori", "aliases": ["Betelgeuse"]}],
         out_dir=tmp_path,
-        prefer_cloud=True,
     )
     payload = json.loads(written["* alf Ori"].read_text(encoding="utf-8"))
     assert payload["items"][0]["item_id"] == "2006.09837"
+    assert payload["items"][0]["url"] == "https://arxiv.org/abs/2006.09837"
     assert payload["items"][0]["simulated"] is False
 
 
-def test_actor_main_local_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import sys
+def test_resolve_apify_item_drops_without_bibcode(monkeypatch: pytest.MonkeyPatch) -> None:
+    from backend.literature import build_index as bi
 
-    actor_src = ACTOR_ROOT / "src"
-    sys.path.insert(0, str(actor_src))
-    import main as actor_main  # type: ignore[import-not-found]
+    class _Resp:
+        def __init__(self, docs: list[dict[str, Any]]) -> None:
+            self._docs = docs
 
-    inp = tmp_path / "input.json"
-    out = tmp_path / "out.jsonl"
-    inp.write_text(
-        json.dumps(
-            {
-                "stars": [{"star_id": "* alf Ori", "aliases": ["Betelgeuse"]}],
-                "sources": ["arxiv", "atel"],
-                "max_per_source": 5,
-            }
-        ),
-        encoding="utf-8",
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, Any]:
+            return {"response": {"docs": self._docs}}
+
+    def _get(url: str, params=None, headers=None, timeout=None):  # noqa: ANN001
+        return _Resp([])  # ADS has nothing → drop
+
+    paper = bi.resolve_apify_item_ads_bibcode(
+        {
+            "source": "arxiv",
+            "item_id": "2006.09837",
+            "title": "Betelgeuse paper",
+            "abstract_or_summary": "…",
+        },
+        token="tok",
+        http_get=_get,
     )
-    # Patch httpx used inside fetchers via run_local(http_get=...).
-    items = actor_main.run_local(
-        json.loads(inp.read_text(encoding="utf-8")),
-        http_get=_fake_http_get,
+    assert paper is None
+
+    def _get_hit(url: str, params=None, headers=None, timeout=None):  # noqa: ANN001
+        return _Resp(
+            [{"bibcode": "2020arXiv2006.09837X", "title": ["Betelgeuse paper"], "abstract": "abs"}]
+        )
+
+    paper2 = bi.resolve_apify_item_ads_bibcode(
+        {
+            "source": "arxiv",
+            "item_id": "2006.09837",
+            "title": "Betelgeuse paper",
+            "abstract_or_summary": "abs",
+        },
+        token="tok",
+        http_get=_get_hit,
     )
-    assert any(i["source"] == "arxiv" for i in items)
-    assert any(i["source"] == "atel" for i in items)
-    out.write_text(
-        "\n".join(json.dumps(i) for i in items) + "\n",
-        encoding="utf-8",
-    )
-    assert out.is_file()
+    assert paper2 is not None
+    assert paper2["bibcode"] == "2020arXiv2006.09837X"
+    assert paper2["source"] == "Apify+ADS"
