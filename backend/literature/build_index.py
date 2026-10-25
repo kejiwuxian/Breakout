@@ -27,6 +27,8 @@ logger = logging.getLogger("breakout.literature.build_index")
 
 INDEX_PATH = ROOT / "backend" / "literature" / "index.parquet"
 RAW_DIR = ROOT / "data" / "index" / "raw"
+# Recorded ADS / arXiv / Grok payloads used to materialize raw reasoning offline.
+FIXTURES_LITERATURE = ROOT / "tests" / "fixtures" / "literature"
 
 ADS_SEARCH_URL = "https://api.adsabs.harvard.edu/v1/search/query"
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
@@ -125,8 +127,153 @@ def write_index_rows(
 
 
 def seed_betelgeuse_index(*, out_path: Path = INDEX_PATH) -> Path:
-    """Write the Betelgeuse ADS seed index (no network)."""
-    return write_index_rows([BETELGEUSE_SEED], out_path=out_path)
+    """Write the Betelgeuse ADS seed index + raw reasoning (no network)."""
+    path = write_index_rows([BETELGEUSE_SEED], out_path=out_path)
+    ensure_raw_for_star(
+        "* alf Ori",
+        star={
+            "star_id": "* alf Ori",
+            "common_name": "Betelgeuse",
+            "class": "RSG",
+            "spectral_type": "M1-M2Ia-Iab",
+        },
+    )
+    return path
+
+
+def _evidence_from_index_row(row: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_ev = row.get("evidence_json") or row.get("evidence") or []
+    if isinstance(raw_ev, str):
+        try:
+            raw_ev = json.loads(raw_ev) if raw_ev.strip() else []
+        except json.JSONDecodeError:
+            raw_ev = []
+    out: list[dict[str, Any]] = []
+    for item in raw_ev or []:
+        if not isinstance(item, dict):
+            continue
+        bib = str(item.get("bibcode") or "").strip()
+        claim = str(item.get("claim") or "").strip()
+        if bib and claim:
+            out.append({"bibcode": bib, "claim": claim})
+    return out
+
+
+def _raw_from_index_evidence(
+    star_id: str,
+    *,
+    evidence: list[dict[str, Any]],
+    lit_scores: dict[str, float],
+) -> dict[str, Any]:
+    """Build a raw artifact whose reasoning is only the indexed ADS claims."""
+    lines = [
+        f"Offline literature index for {star_id} (ADS bibcodes only; no invented claims):",
+    ]
+    for ev in evidence:
+        lines.append(f"- {ev['bibcode']}: {ev['claim']}")
+    reasoning = "\n".join(lines) if evidence else "insufficient evidence"
+    return {
+        "star_id": star_id,
+        "reasoning": reasoning,
+        "literature": {
+            "mass_loss": float(lit_scores.get("mass_loss", 0.0) or 0.0),
+            "variability": float(lit_scores.get("variability", 0.0) or 0.0),
+            "evolved_stage": float(lit_scores.get("evolved_stage", 0.0) or 0.0),
+            "confidence": float(lit_scores.get("confidence", 0.0) or 0.0),
+            "evidence": evidence,
+        },
+        "raw_missing": False,
+        "simulated": False,
+        "source": "index.parquet",
+    }
+
+
+def ensure_raw_for_star(
+    star_id: str,
+    *,
+    raw_dir: Path = RAW_DIR,
+    replay_dir: Path | None = None,
+    index_path: Path = INDEX_PATH,
+    star: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Load or materialize ``data/index/raw/<slug>.json`` from real offline data.
+
+    Order:
+    1. Existing raw file
+    2. Recorded ADS/arXiv/Grok fixtures under ``tests/fixtures/literature``
+    3. Claims already stored in ``index.parquet`` (no invented text)
+
+    Returns ``None`` only when none of the above exist.
+    """
+    star_id = str(star_id or "").strip()
+    if not star_id:
+        return None
+
+    raw_dir = Path(raw_dir)
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    path = raw_path_for(star_id, raw_dir)
+    if path.is_file():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            logger.warning("Corrupt raw literature file %s; regenerating", path)
+
+    replay = Path(replay_dir) if replay_dir is not None else FIXTURES_LITERATURE
+    slug = star_id_slug(star_id)
+    slug_dir = replay / slug
+    if slug_dir.is_dir():
+        star_payload = {
+            "star_id": star_id,
+            "common_name": (star or {}).get("common_name"),
+            "class": (star or {}).get("class") or "RSG",
+            "spectral_type": (star or {}).get("spectral_type") or "",
+        }
+        if star_payload["common_name"] is None and "alf Ori" in star_id:
+            star_payload["common_name"] = "Betelgeuse"
+            star_payload["spectral_type"] = star_payload["spectral_type"] or "M1-M2Ia-Iab"
+        result = score_star(
+            star_payload,
+            ads_token="",
+            xai_api_key="",
+            replay_dir=replay,
+            rate_limit_s=0.0,
+        )
+        path.write_text(json.dumps(result["raw"], indent=2) + "\n", encoding="utf-8")
+        logger.info("Materialized raw literature for %s from fixtures", star_id)
+        return result["raw"]
+
+    index_path = Path(index_path)
+    if index_path.is_file():
+        df = pd.read_parquet(index_path)
+        hit = df.loc[df["star_id"].astype(str) == star_id]
+        if len(hit) == 0:
+            needle = star_id.replace("*", "").strip()
+            if needle:
+                hit = df.loc[
+                    df["star_id"].astype(str).str.contains(needle, regex=False)
+                ]
+        if len(hit) > 0:
+            row = hit.iloc[0].to_dict()
+            evidence = _evidence_from_index_row(row)
+            artifact = _raw_from_index_evidence(
+                star_id,
+                evidence=evidence,
+                lit_scores={
+                    "mass_loss": float(row.get("mass_loss", 0.0) or 0.0),
+                    "variability": float(row.get("variability", 0.0) or 0.0),
+                    "evolved_stage": float(row.get("evolved_stage", 0.0) or 0.0),
+                    "confidence": float(row.get("confidence", 0.0) or 0.0),
+                },
+            )
+            path.write_text(json.dumps(artifact, indent=2) + "\n", encoding="utf-8")
+            logger.info(
+                "Materialized raw literature for %s from index.parquet (%d claims)",
+                star_id,
+                len(evidence),
+            )
+            return artifact
+
+    return None
 
 
 def _title_to_str(value: Any) -> str:

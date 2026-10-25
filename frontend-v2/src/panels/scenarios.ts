@@ -2,6 +2,7 @@
  * Scenario replay controls — same POST /scenario/{id}/start as classic UI.
  */
 import strings from "../copy/strings.json";
+import { requestSkyZoomReplay } from "../state/store";
 
 const SCENARIOS: { id: string; label: string; realData: boolean }[] = [
   {
@@ -49,6 +50,7 @@ export function mountScenarios(
     btn.dataset.scenario = scen.id;
     btn.addEventListener("click", async () => {
       onScenario?.(scen.id);
+      requestSkyZoomReplay();
       btn.disabled = true;
       btn.textContent = strings.scenarioStarting;
       status.textContent = "";

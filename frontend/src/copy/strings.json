@@ -29,6 +29,7 @@
   "detailTitle": "Literature",
   "detailReasoning": "Reasoning",
   "detailEvidence": "Evidence",
+  "detailLoading": "Loading offline literature…",
   "detailNoReasoning": "No offline raw reasoning file for this star. Showing evidence from the literature index only — no invented text.",
   "detailNoEvidence": "No ADS evidence on this row.",
   "adsLinkLabel": "ADS",

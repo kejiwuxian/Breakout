@@ -49,6 +49,10 @@ export type DashState = {
   selectedStarId: string | null;
   voiceCaption: string;
   voiceSimulated: boolean;
+  /** When true, next skymap render shows full sky without replaying zoom. */
+  suppressSkyZoomOnce: boolean;
+  /** Bumped on Scenario Run so zoom replays even if alert_id is reused. */
+  skyZoomNonce: number;
 };
 
 type Listener = (state: DashState) => void;
@@ -64,6 +68,8 @@ const state: DashState = {
   selectedStarId: null,
   voiceCaption: "",
   voiceSimulated: false,
+  suppressSkyZoomOnce: false,
+  skyZoomNonce: 0,
 };
 
 const listeners = new Set<Listener>();
@@ -96,6 +102,43 @@ export function setVoiceCaption(text: string, simulated: boolean): void {
   state.voiceCaption = text;
   state.voiceSimulated = simulated;
   emit();
+}
+
+/** Seed skymap + candidates without a live WS event (e.g. /alerts/latest hydrate). */
+export function hydrateMission(opts: {
+  skymap: SkymapPayload;
+  candidates?: CandidateRow[];
+  simulated?: boolean;
+}): void {
+  state.skymap = opts.skymap;
+  state.suppressSkyZoomOnce = true;
+  if (opts.candidates) {
+    state.candidates = [...opts.candidates].sort(
+      (a, b) => b.posterior - a.posterior,
+    );
+    if (typeof opts.simulated === "boolean") {
+      state.candidatesSimulated = opts.simulated;
+    }
+    if (state.candidates.length && !state.selectedStarId) {
+      state.selectedStarId = state.candidates[0]!.star_id;
+    }
+  }
+  if (typeof opts.simulated === "boolean") {
+    state.lastSimulated = opts.simulated;
+  }
+  emit();
+}
+
+/** Call when the user starts a scenario so the sky zoom sequence can replay. */
+export function requestSkyZoomReplay(): void {
+  state.suppressSkyZoomOnce = false;
+  state.skyZoomNonce += 1;
+  emit();
+}
+
+export function clearSkyZoomSuppress(): void {
+  if (!state.suppressSkyZoomOnce) return;
+  state.suppressSkyZoomOnce = false;
 }
 
 export function applyEvent(event: PipelineEvent): void {

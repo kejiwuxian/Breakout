@@ -10,6 +10,7 @@ import pytest
 
 from backend.literature.build_index import (
     build_index,
+    ensure_raw_for_star,
     star_id_slug,
     validate_literature,
 )
@@ -21,6 +22,66 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "literature"
 def test_star_id_slug_filesystem_safe() -> None:
     assert star_id_slug("* alf Ori") == "alf_Ori"
     assert "/" not in star_id_slug("foo/bar")
+
+
+def test_ensure_raw_for_star_from_fixtures(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw"
+    artifact = ensure_raw_for_star(
+        "* alf Ori",
+        raw_dir=raw_dir,
+        replay_dir=FIXTURES,
+        star={
+            "star_id": "* alf Ori",
+            "common_name": "Betelgeuse",
+            "class": "RSG",
+            "spectral_type": "M1-M2Ia-Iab",
+        },
+    )
+    assert artifact is not None
+    assert artifact["star_id"] == "* alf Ori"
+    assert artifact.get("reasoning")
+    assert "2020ApJ...902...63J" in artifact["reasoning"]
+    assert (raw_dir / "alf_Ori.json").is_file()
+    # Second call reads the file (no rewrite required).
+    again = ensure_raw_for_star("* alf Ori", raw_dir=raw_dir, replay_dir=FIXTURES)
+    assert again is not None
+    assert again["reasoning"] == artifact["reasoning"]
+
+
+def test_ensure_raw_for_star_from_index_parquet(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw"
+    index = tmp_path / "index.parquet"
+    from backend.literature.build_index import write_index_rows
+
+    write_index_rows(
+        [
+            {
+                "star_id": "V* fake Star",
+                "mass_loss": 0.4,
+                "variability": 0.5,
+                "evolved_stage": 0.6,
+                "confidence": 0.7,
+                "evidence": [
+                    {
+                        "bibcode": "2020ApJ...902...63J",
+                        "claim": "Joyce et al. 2020 distance 168 pc for Betelgeuse.",
+                    }
+                ],
+                "simulated": False,
+            }
+        ],
+        out_path=index,
+    )
+    artifact = ensure_raw_for_star(
+        "V* fake Star",
+        raw_dir=raw_dir,
+        replay_dir=tmp_path / "no_fixtures",
+        index_path=index,
+    )
+    assert artifact is not None
+    assert artifact["source"] == "index.parquet"
+    assert "2020ApJ...902...63J" in artifact["reasoning"]
+    assert artifact["literature"]["evidence"][0]["bibcode"] == "2020ApJ...902...63J"
 
 
 def test_validate_literature_drops_unknown_bibcodes() -> None:
