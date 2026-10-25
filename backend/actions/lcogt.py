@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from backend.config import settings
+from backend import config as config_mod
 from backend.schemas import CandidateScore
 
 logger = logging.getLogger("breakout.actions.lcogt")
@@ -65,8 +65,10 @@ def build_request_group(
     When dry_run is True, do not call the LCO API.
     """
     if dry_run is None:
-        dry_run = bool(settings.lcogt_dry_run)
-    proposal_id = (proposal if proposal is not None else settings.lcogt_proposal) or ""
+        dry_run = bool(config_mod.settings.lcogt_dry_run)
+    proposal_id = (
+        proposal if proposal is not None else config_mod.settings.lcogt_proposal
+    ) or ""
     filters = _filters_for(candidate)
     group_name = name or (
         f"BREAKOUT-{alert_id or 'alert'}-{candidate.star_id}".replace(" ", "_")[:50]
@@ -156,7 +158,7 @@ def submit_request_group(request: dict[str, Any]) -> dict[str, Any]:
 
     Reads ``LCOGT_API_TOKEN`` from settings at call time (never during dry-run).
     """
-    token = (settings.lcogt_api_token or "").strip()
+    token = (config_mod.settings.lcogt_api_token or "").strip()
     if not token:
         raise RuntimeError("LCOGT_API_TOKEN is required when LCOGT_DRY_RUN=False")
     try:
@@ -195,7 +197,7 @@ def build_and_maybe_submit(
 ) -> dict[str, Any]:
     """Build RequestGroup, write dry-run JSON, submit only when dry_run is False."""
     if dry_run is None:
-        dry_run = bool(settings.lcogt_dry_run)
+        dry_run = bool(config_mod.settings.lcogt_dry_run)
     request = build_request_group(
         candidate,
         proposal=proposal,

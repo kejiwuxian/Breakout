@@ -4,6 +4,7 @@
  */
 import "./style.css";
 import strings from "./copy/strings.json";
+import { mountActionsPanel } from "./panels/actions";
 import { applyBadgeFromEvent, mountBadgeHosts, noteScenario } from "./panels/badges";
 import { mountCandidatesPanel } from "./panels/candidates";
 import { mountScenariosPanel } from "./panels/scenarios";
@@ -34,6 +35,7 @@ app.innerHTML = `
       <aside class="dash-side">
         <div id="panel-scenarios" class="slot-scenarios"></div>
         <div id="panel-candidates" class="slot-candidates"></div>
+        <div id="panel-actions" class="slot-actions"></div>
       </aside>
     </div>
   </div>
@@ -45,6 +47,7 @@ const badges = mountBadgeHosts();
 mountSkyMapPanel(document.querySelector("#panel-sky")!);
 mountScenariosPanel(document.querySelector("#panel-scenarios")!);
 mountCandidatesPanel(document.querySelector("#panel-candidates")!);
+mountActionsPanel(document.querySelector("#panel-actions")!);
 
 // Scenario buttons also note which path was requested (for Real vs Simulated).
 document.querySelector("#panel-scenarios")?.addEventListener(
@@ -69,6 +72,8 @@ connectEvents(
       statusEl.textContent = strings.statusSkymap;
     } else if (event.type === "candidates") {
       statusEl.textContent = strings.statusCandidates;
+    } else if (event.type === "actions") {
+      statusEl.textContent = strings.statusActions;
     } else if (event.type === "scenario_done") {
       statusEl.textContent = `${strings.scenarioStarted}: ${String(event.payload?.scenario ?? "")}`;
     }
