@@ -1,7 +1,10 @@
 # Community subscribers (Phase 1 MVP)
 
-Scientists and astronomy enthusiasts can **subscribe** to BREAKOUT ranked-candidate
-alerts and point their own instruments before large facilities respond.
+**In Phase 1 scope today:** scientists and astronomy enthusiasts subscribe to
+BREAKOUT ranked-candidate alerts and point their own instruments at potential
+optical counterparts before large facilities respond. This is community
+follow-up for potential supernovae — not an official GCN notice and not a
+confirmed detection.
 
 | Path | Role |
 | --- | --- |

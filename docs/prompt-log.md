@@ -27,9 +27,10 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~8:40 PM PT | Light + Cursor agent | Add Scenario D IceCube-191001A from GCN Circular 25913 + AMON archive; re-run real-data suite | `scenario_d_icecube_191001a/`, tests green |
 | Sat 24 Oct 2026, ~8:50 PM PT | Light + Cursor agent | Subscribe all public realtime channels (SNEWS2 GCN + classic SNEWS + IceCube + pre-SN + optional Hopskotch); self-localize via DiffPointing; epoch PM only when catalog has published values (no ranking impact at nside=64) | `live_channels`, `snews_classic`, `epoch_position` |
 | Sat 24 Oct 2026, ~10:10 PM PT | Light + Cursor agent | Phase 1 community notify: webhook/email subscribe + ranked-candidate alert feed so enthusiasts can point instruments today | `backend/notify/`, `/subscribe`, `/alerts/latest`, UI panel |
+| Sat 24 Oct 2026, ~10:15 PM PT | Light + Cursor agent | Lock community notify into Phase 1 MVP claim language + mvp_gate (`test_notify`) so we can say BREAKOUT already helps catch potential SNe today | README Phase 1 scope, `scripts/mvp_gate.sh`, judge Q&A 18b |
 
 Notes:
 
 - Plan Page: https://breakout-revised-hackathon-plan-and-7czo.pages.grok.bot/
-- Phase 2 (sponsor integrations) ignored until `scripts/mvp_gate.sh` prints PASS.
+- Phase 2 (**sponsor** integrations) ignored until `scripts/mvp_gate.sh` prints PASS. Community subscribe is Phase 1.
 - Never invent numbers or citations; simulated values use `simulated=true`.

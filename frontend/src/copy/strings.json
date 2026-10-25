@@ -62,7 +62,7 @@
   "actionsAlert": "Alert",
   "actionsDryBadge": "LCOGT dry-run",
   "subscribeTitle": "Community alerts",
-  "subscribeHint": "Get ranked progenitor coordinates for your telescope as soon as BREAKOUT localizes a burst — webhook JSON for scripts, optional email (dry-run unless SMTP is set).",
+  "subscribeHint": "Phase 1: point your telescope today. Subscribe for ranked progenitor coordinates as soon as BREAKOUT localizes a burst — webhook JSON for scripts, optional email (dry-run unless SMTP is set).",
   "subscribeWebhook": "Webhook URL",
   "subscribeEmail": "Email (optional)",
   "subscribeLabel": "Label (optional)",

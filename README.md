@@ -13,7 +13,9 @@ When the next galactic supernova goes off, neutrinos reach Earth first. BREAKOUT
 
 ## Phase 1 scope
 
-Build only what the Phase 1 plan Page specifies until `scripts/mvp_gate.sh` prints PASS. Phase 2 sponsor integrations are out of scope until then.
+Build what the Phase 1 plan Page specifies until `scripts/mvp_gate.sh` prints PASS. Phase 2 **sponsor** integrations (institute APIs, official notice brokers) stay out of scope until then.
+
+**Community alerts are in Phase 1.** Anyone with a telescope can subscribe today for ranked progenitor coordinates when BREAKOUT localizes a neutrino burst — so small instruments can chase a potential optical counterpart before large facilities respond. Packages are honest: `simulated=true` when applicable, ADS bibcodes only when already on the candidate, and they are not official GCN notices.
 
 ## Quick start
 
@@ -28,9 +30,9 @@ npm --prefix frontend run dev
 
 Offline demo defaults (`USE_CACHED_STREAM=True`): replay `data/cache/`, no network on the trigger path. Keys may stay empty. Label every simulated number (`simulated=true` in JSON; Simulated badge in the UI).
 
-## Community alerts (Phase 1)
+## Community alerts (Phase 1) — catch potential SNe today
 
-Anyone with a telescope can subscribe for ranked progenitor coordinates as soon as BREAKOUT localizes a burst:
+Subscribe a webhook (or optional email) and receive ranked ICRS targets on the next SN_BURST / HE_NEUTRINO candidate set:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/subscribe \
@@ -39,7 +41,7 @@ curl -X POST http://127.0.0.1:8000/subscribe \
 curl http://127.0.0.1:8000/alerts/latest
 ```
 
-Default `NOTIFY_DRY_RUN=True` logs deliveries; set `NOTIFY_DRY_RUN=False` to POST live webhook JSON. Packages mark `simulated` honestly and only include ADS bibcodes already on each candidate.
+Default `NOTIFY_DRY_RUN=True` logs deliveries; set `NOTIFY_DRY_RUN=False` to POST live webhook JSON. This is community follow-up for potential counterparts, not a confirmed supernova detection service.
 
 ## Layout
 
