@@ -8,6 +8,9 @@ All alert fields in `alerts.jsonl` use `simulated: false`.
 | Artifact | Source |
 | --- | --- |
 | `alerts.jsonl` | GCN Circular 21916 refined direction (RA 77.43°, Dec +5.72° J2000; 2017-09-22 20:54:30.43 UTC) |
+| `gcn_circular_21916.txt` | Local copy of GCN Circular 21916 text (archive) |
+| `gcn_amon_notice_50579430_130033.txt` | Local copy of the AMON notice text (archive) |
+| `blazars.json` | SIMBAD/astroquery blazar neighborhood cache (offline; `simulated=false`) |
 | Pointing `err_deg` ≈ 0.7° | Approximate 90% PSF containment scale from GCN 21916 asymmetric errors (not a simulated draw) |
 | Detector WGS84 (IceCube) | Real lab coordinates (`backend.config.DETECTOR_TABLE`) |
 | TXS 0506+056 in curated catalog | RA 77.36°, Dec +5.69° from IceCube Collaboration et al. 2018 Science (ADS `2018Sci...361.1378I` / arXiv:1807.08816) |

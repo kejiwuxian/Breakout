@@ -1,0 +1,86 @@
+{
+  "simulated": false,
+  "query": {
+    "service": "SIMBAD via astroquery.simbad.Simbad.query_region",
+    "center_ra_deg": 77.43,
+    "center_dec_deg": 5.72,
+    "radius_deg": 1.8,
+    "otypes": [
+      "BLL",
+      "Bla"
+    ],
+    "center_source": "GCN Circular 21916"
+  },
+  "blazars": [
+    {
+      "star_id": "NVSS J050833+053112",
+      "simbad_main_id": "NVSS J050833+053112",
+      "ra_deg": 77.13912153778084,
+      "dec_deg": 5.519168482621389,
+      "class": "BLAZAR",
+      "spectral_type": "Bla",
+      "otype": "Bla",
+      "distance_kpc": null,
+      "extinction_av_mag": null,
+      "simulated": false,
+      "source": "SIMBAD (astroquery) otype in {BLL,Bla}",
+      "presn_watch": false
+    },
+    {
+      "star_id": "PMN J0505+0416",
+      "simbad_main_id": "PMN J0505+0416",
+      "ra_deg": 76.39487243899,
+      "dec_deg": 4.2651604269100005,
+      "class": "BLAZAR",
+      "spectral_type": "BLL",
+      "otype": "BLL",
+      "distance_kpc": null,
+      "extinction_av_mag": null,
+      "simulated": false,
+      "source": "SIMBAD (astroquery) otype in {BLL,Bla}",
+      "presn_watch": false
+    },
+    {
+      "star_id": "TXS 0502+049",
+      "simbad_main_id": "QSO B0502+049",
+      "ra_deg": 76.34660302141667,
+      "dec_deg": 4.995201250222221,
+      "class": "BLAZAR",
+      "spectral_type": "Bla",
+      "otype": "Bla",
+      "distance_kpc": null,
+      "extinction_av_mag": null,
+      "simulated": false,
+      "source": "SIMBAD (astroquery) otype in {BLL,Bla}",
+      "presn_watch": false
+    },
+    {
+      "star_id": "TXS 0504+069",
+      "simbad_main_id": "87GB 050404.7+065828",
+      "ra_deg": 76.6957,
+      "dec_deg": 7.044730555555556,
+      "class": "BLAZAR",
+      "spectral_type": "BLL",
+      "otype": "BLL",
+      "distance_kpc": null,
+      "extinction_av_mag": null,
+      "simulated": false,
+      "source": "SIMBAD (astroquery) otype in {BLL,Bla}",
+      "presn_watch": false
+    },
+    {
+      "star_id": "TXS 0506+056",
+      "simbad_main_id": "PMN J0509+0541",
+      "ra_deg": 77.35818515578,
+      "dec_deg": 5.69314828345,
+      "class": "BLAZAR",
+      "spectral_type": "BLL",
+      "otype": "BLL",
+      "distance_kpc": null,
+      "extinction_av_mag": null,
+      "simulated": false,
+      "source": "SIMBAD (astroquery) otype in {BLL,Bla}",
+      "presn_watch": false
+    }
+  ]
+}
