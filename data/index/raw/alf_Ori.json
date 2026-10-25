@@ -1,0 +1,27 @@
+{
+  "star_id": "* alf Ori",
+  "reasoning": "Offline seed literature for Betelgeuse (* alf Ori). Each claim below is tied to an ADS bibcode already stored in backend/literature/index.parquet (Joyce et al. 2020; Harper et al. 2017; Dolan et al. 2016). This file is the UI reasoning source until a live build_index Grok pass writes a fuller raw response.",
+  "literature": {
+    "mass_loss": 0.85,
+    "variability": 0.9,
+    "evolved_stage": 0.95,
+    "confidence": 0.9,
+    "evidence": [
+      {
+        "bibcode": "2020ApJ...902...63J",
+        "claim": "Joyce et al. 2020 derive an independent distance of 168 pc (+27/\u221215 pc) and present-day mass 16.5\u201319 M\u2609 for Betelgeuse, placing it in early core helium-burning on the RSG branch."
+      },
+      {
+        "bibcode": "2017AJ....154...11H",
+        "claim": "Harper et al. 2017 report a combined radio+Hipparcos parallax solution of 4.51 \u00b1 0.80 mas, corresponding to a nominal distance of 222 pc (+48/\u221234 pc)."
+      },
+      {
+        "bibcode": "2016ApJ...819....7D",
+        "claim": "Dolan et al. 2016 evolutionary tracks suggest a best progenitor mass estimate of 20 (+5/\u22123) M\u2609 and age 8.0\u20138.5 Myr for Betelgeuse."
+      }
+    ]
+  },
+  "raw_missing": false,
+  "source": "seed_betelgeuse_index",
+  "simulated": false
+}

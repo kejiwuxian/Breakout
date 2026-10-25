@@ -178,3 +178,106 @@ body {
 .slot-candidates:empty {
   display: none;
 }
+
+.panel-hint {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.cand-table-wrap {
+  overflow-x: auto;
+}
+
+.cand-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.cand-table th,
+.cand-table td {
+  text-align: left;
+  padding: 0.4rem 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+}
+
+.cand-table th {
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.cand-table tr {
+  cursor: pointer;
+}
+
+.cand-table tr:hover,
+.cand-table tr.selected {
+  background: rgba(61, 214, 198, 0.08);
+}
+
+.cand-table .star-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+
+.breakout .bw {
+  display: block;
+  color: var(--fg);
+}
+
+.breakout .elapsed {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  margin-top: 0.15rem;
+}
+
+.cand-detail {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.cand-detail h3,
+.cand-detail h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cand-detail h4 {
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.detail-star {
+  margin: 0 0 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+.detail-reasoning {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  font-size: 0.88rem;
+  color: var(--fg);
+}
+
+.evidence-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.evidence-list a {
+  color: var(--accent);
+}
