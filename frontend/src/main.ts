@@ -4,6 +4,7 @@
  */
 import "./style.css";
 import strings from "./copy/strings.json";
+import { mountAbout } from "./panels/about";
 import { mountCandidates } from "./panels/candidates";
 import { mountScenarios } from "./panels/scenarios";
 import { mountSky } from "./panels/sky";
@@ -180,7 +181,10 @@ if (!app) throw new Error("#app missing");
 app.innerHTML = `
   <div class="app-shell">
     <header class="top-nav">
-      <h1 class="brand">${strings.brand}</h1>
+      <div class="nav-left">
+        <a class="brand" href="#/" id="brand-link">${strings.brand}</a>
+        <a class="nav-about" href="#/about" id="nav-about">${strings.navAbout}</a>
+      </div>
       <div class="nav-right">
         <div class="status-cluster">
           <span class="status-dot" id="status-dot" aria-hidden="true"></span>
@@ -191,7 +195,7 @@ app.innerHTML = `
         </div>
       </div>
     </header>
-    <div class="workspace">
+    <div class="workspace" id="mission-view">
       <main class="main">
         <div class="page-chrome">
           <p class="page-category">${strings.pageCategory}</p>
@@ -209,6 +213,13 @@ app.innerHTML = `
         <div id="panel-voice"></div>
       </aside>
     </div>
+    <section
+      class="about-view"
+      id="about-view"
+      hidden
+      tabindex="-1"
+      aria-label="${strings.aboutAria}"
+    ></section>
   </div>
 `;
 
@@ -218,6 +229,46 @@ const simBadge = document.querySelector<HTMLElement>("#sim-badge")!;
 const realBadge = document.querySelector<HTMLElement>("#real-badge")!;
 const liveBadge = document.querySelector<HTMLElement>("#live-badge")!;
 const summaryHost = document.querySelector<HTMLElement>("#panel-event-summary")!;
+const missionView = document.querySelector<HTMLElement>("#mission-view")!;
+const aboutView = document.querySelector<HTMLElement>("#about-view")!;
+const brandLink = document.querySelector<HTMLAnchorElement>("#brand-link")!;
+const aboutNav = document.querySelector<HTMLAnchorElement>("#nav-about")!;
+
+mountAbout(aboutView);
+
+/** Hash route: `#/about` shows About; anything else keeps the mission workspace. */
+function routeFromHash(): "mission" | "about" {
+  const raw = (window.location.hash || "").replace(/^#/, "").replace(/^\//, "");
+  const path = raw.split("?")[0]?.toLowerCase() ?? "";
+  return path === "about" ? "about" : "mission";
+}
+
+function applyRoute(route: "mission" | "about") {
+  const onAbout = route === "about";
+  missionView.hidden = onAbout;
+  aboutView.hidden = !onAbout;
+  aboutNav.setAttribute("aria-current", onAbout ? "page" : "false");
+  brandLink.setAttribute("aria-current", onAbout ? "false" : "page");
+  document.body.classList.toggle("view-about", onAbout);
+  if (onAbout) {
+    aboutView.focus({ preventScroll: true });
+    aboutView.scrollTop = 0;
+  }
+}
+
+function onHashChange() {
+  applyRoute(routeFromHash());
+}
+
+window.addEventListener("hashchange", onHashChange);
+applyRoute(routeFromHash());
+
+aboutView.addEventListener("click", (ev) => {
+  const target = ev.target as HTMLElement | null;
+  if (target?.closest?.("[data-role='about-back']")) {
+    // Let the hash link navigate; hashchange applies the route.
+  }
+});
 
 let activeScenario: string | null = null;
 let activeEpoch = 0;

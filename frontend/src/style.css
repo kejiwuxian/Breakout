@@ -80,6 +80,13 @@ body {
   background: var(--panel);
 }
 
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem 1.1rem;
+  min-width: 0;
+}
+
 .brand {
   margin: 0;
   font-family: var(--font-brand);
@@ -88,7 +95,48 @@ body {
   letter-spacing: -0.02em;
   line-height: 1.1;
   color: var(--text);
+  text-decoration: none;
   animation: brand-in 700ms var(--ease-out) both;
+}
+
+.brand:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.nav-about {
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  transition:
+    color 180ms var(--ease-out),
+    border-color 180ms var(--ease-out),
+    background 180ms var(--ease-out);
+}
+
+.nav-about:hover {
+  color: var(--text);
+  border-color: var(--signal-border);
+  background: var(--signal-dim);
+}
+
+.nav-about:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.nav-about[aria-current="page"] {
+  color: var(--signal);
+  border-color: var(--signal-border);
+  background: var(--signal-dim);
 }
 
 .nav-right {
@@ -171,6 +219,161 @@ body {
   grid-template-columns: minmax(0, 1fr) var(--rail-w);
   min-height: 0;
   overflow: hidden;
+}
+
+.workspace[hidden],
+.about-view[hidden] {
+  display: none !important;
+}
+
+/* —— About view —— */
+.about-view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px var(--page-pad) 40px;
+  outline: none;
+  animation: rise 520ms var(--ease-out) both;
+}
+
+.about-page {
+  max-width: 52rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.about-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.about-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+
+.about-heading {
+  margin: 0;
+  font-family: var(--font-brand);
+  font-weight: 800;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--text);
+}
+
+.about-tagline {
+  margin: 0;
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  letter-spacing: -0.015em;
+  color: var(--signal);
+  max-width: 40rem;
+}
+
+.about-lead {
+  margin: 0.25rem 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 42rem;
+}
+
+.about-section h3 {
+  margin: 0 0 0.65rem;
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+.about-section h4 {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: 0.98rem;
+  letter-spacing: -0.01em;
+  color: var(--signal);
+}
+
+.about-section p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.about-note {
+  margin-top: 0.75rem !important;
+  font-size: 13px !important;
+  color: var(--dim) !important;
+}
+
+.about-steps,
+.about-inside {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.about-steps strong,
+.about-inside strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.about-track-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.about-track {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--raised);
+}
+
+.about-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.about-footer p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.about-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+a.primary-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }
 
 .main {
@@ -1197,7 +1400,8 @@ body {
   .brand,
   .page-chrome,
   .event-select-host,
-  .sky-stage {
+  .sky-stage,
+  .about-view {
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;

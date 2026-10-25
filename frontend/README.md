@@ -20,9 +20,10 @@ Cold start is **idle / listening** (no auto Scenario A). Optional
 
 ## Layout
 
-- Top nav: brand, stream status, Simulated / Historical / Live badges
-- Main: page chrome → event select cards → SVG Mollweide skymap
+- Top nav: brand → About (`#/about`) → stream status, Simulated / Historical / Live badges
+- Main: page chrome → SVG Mollweide skymap → event select cards
 - Rail: event summary → ranked objects → detail/evidence → Subscribe → voice
+- About: hash route `#/about`; brand / Back to mission returns to `#/`
 
 Skymap behavior (BSC5 field, dual AOI, ranked red stars, wheel zoom / pan)
 matches the previous v2 panel; chrome uses design tokens (AOI red retained
