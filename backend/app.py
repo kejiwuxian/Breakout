@@ -344,6 +344,7 @@ def voice_session() -> dict[str, Any]:
 
 
 @app.get("/voice/tools/top_candidates")
+@app.get("/voice/tools/get_top_candidates")
 def voice_tool_top_candidates(limit: int = 5) -> dict[str, Any]:
     """Read-only judge tool: top candidates from the current run."""
     from backend.voice.tools import get_top_candidates
@@ -352,6 +353,7 @@ def voice_tool_top_candidates(limit: int = 5) -> dict[str, Any]:
 
 
 @app.get("/voice/tools/skymap_summary")
+@app.get("/voice/tools/get_skymap_summary")
 def voice_tool_skymap_summary() -> dict[str, Any]:
     """Read-only judge tool: active skymap summary."""
     from backend.voice.tools import get_skymap_summary
@@ -360,6 +362,7 @@ def voice_tool_skymap_summary() -> dict[str, Any]:
 
 
 @app.get("/voice/tools/breakout_countdown")
+@app.get("/voice/tools/get_breakout_countdown")
 def voice_tool_breakout_countdown(star_id: str | None = None) -> dict[str, Any]:
     """Read-only judge tool: breakout countdown for top or named star."""
     from backend.voice.tools import get_breakout_countdown
