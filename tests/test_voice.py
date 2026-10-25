@@ -220,6 +220,7 @@ def test_session_endpoint_never_leaks_api_key(monkeypatch: pytest.MonkeyPatch) -
         body = mint_client_secret(expires_after_seconds=300)
     assert body["token"] == "xai-realtime-client-secret-abc"
     assert body["model"] == "grok-voice-latest"
+    assert body["voice"] == "eve"
     assert SECRET not in json.dumps(body)
 
     import importlib
@@ -234,6 +235,7 @@ def test_session_endpoint_never_leaks_api_key(monkeypatch: pytest.MonkeyPatch) -
             data = resp.json()
             assert data["token"].startswith("xai-realtime-client-secret-")
             assert data["model"] == "grok-voice-latest"
+            assert data["voice"] == "eve"
             assert SECRET not in resp.text
             assert "XAI_API_KEY" not in resp.text
 
