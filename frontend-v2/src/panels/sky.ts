@@ -1,7 +1,7 @@
 /**
- * Interactive skymap: real DSS/HiPS via Aladin Lite when online, with
- * zoom-to-region + red 90% outline + hoverable ranked stars.
- * Offline fallback: focus PNG + SVG overlay (same outline + hover).
+ * Full-sky Mollweide by default. On a neutrino event: draw a smooth red oval
+ * from the localization ellipse, animate a zoom toward the peak, then settle
+ * on the focus map for accurate star hover (rank / posterior / p_sky).
  */
 import strings from "../copy/strings.json";
 import {
@@ -11,15 +11,17 @@ import {
   type CandidateRow,
   type SkymapPayload,
 } from "../state/store";
-import {
-  loadAladin,
-  type AladinApi,
-  type AladinInstance,
-  type Catalog,
-  type CatalogSource,
-  type GraphicOverlay,
-} from "../sky/aladin";
 import { raDecToFocusPx } from "../sky/projection";
+import { raDecToMollweide } from "../sky/mollweide";
+
+export type EllipsePayload = {
+  ra_deg: number;
+  dec_deg: number;
+  semi_major_deg: number;
+  semi_minor_deg: number;
+  pa_deg: number;
+  area_deg2: number;
+};
 
 export type RegionPayload = {
   alert_id: string;
@@ -27,8 +29,9 @@ export type RegionPayload = {
   fov_deg: number;
   credible_deg2: number;
   outline: number[][];
+  ellipse?: EllipsePayload;
+  shape?: string;
   simulated: boolean;
-  survey_hint?: string;
 };
 
 type HoverInfo = {
@@ -41,6 +44,8 @@ type HoverInfo = {
   dec_deg: number;
   simulated: boolean;
 };
+
+type ViewMode = "full" | "zooming" | "focus";
 
 async function fetchRegion(alertId: string): Promise<RegionPayload | null> {
   try {
@@ -66,10 +71,7 @@ function formatHover(info: HoverInfo): string {
   );
 }
 
-function candidateHover(
-  row: CandidateRow,
-  rank: number,
-): HoverInfo {
+function candidateHover(row: CandidateRow, rank: number): HoverInfo {
   return {
     rank,
     star_id: row.star_id,
@@ -82,14 +84,58 @@ function candidateHover(
   };
 }
 
+function ellipseOutline(ell: EllipsePayload, n = 96): number[][] {
+  const ra0 = ell.ra_deg;
+  const dec0 = ell.dec_deg;
+  const a = ell.semi_major_deg;
+  const b = ell.semi_minor_deg;
+  const pa = (ell.pa_deg * Math.PI) / 180;
+  const cosd = Math.max(Math.cos((dec0 * Math.PI) / 180), 0.15);
+  const ring: number[][] = [];
+  for (let i = 0; i < n; i++) {
+    const t = (2 * Math.PI * i) / n;
+    const dm = a * Math.cos(t);
+    const dn = b * Math.sin(t);
+    const east = dm * Math.sin(pa) + dn * Math.cos(pa);
+    const north = dm * Math.cos(pa) - dn * Math.sin(pa);
+    const ra = (((ra0 + east / cosd) % 360) + 360) % 360;
+    const dec = Math.max(-90, Math.min(90, dec0 + north));
+    ring.push([ra, dec]);
+  }
+  ring.push(ring[0]!);
+  return ring;
+}
+
+function outlineRing(reg: RegionPayload): number[][] {
+  if (reg.outline?.length >= 4) return reg.outline;
+  if (reg.ellipse) return ellipseOutline(reg.ellipse);
+  return [];
+}
+
+function loadImage(img: HTMLImageElement, src: string): Promise<void> {
+  return new Promise((resolve) => {
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+    if (img.getAttribute("src") !== src) {
+      img.src = src;
+    } else if (img.complete) {
+      resolve();
+    }
+  });
+}
+
 export function mountSky(host: HTMLElement): () => void {
   host.innerHTML = `
     <div class="sky-stage" data-role="stage">
       <div class="sky-empty" data-role="empty">${strings.skyEmpty}</div>
-      <div class="sky-aladin" data-role="aladin" hidden></div>
-      <div class="sky-fallback" data-role="fallback" hidden>
-        <img class="sky-img" data-role="focus-img" alt="${strings.skyTitle}" />
-        <svg class="sky-overlay" data-role="overlay" aria-hidden="true"></svg>
+      <div class="sky-world" data-role="world" hidden>
+        <div class="sky-zoomable" data-role="zoomable">
+          <div class="sky-frame" data-role="frame">
+            <img class="sky-img sky-full" data-role="full-img" alt="${strings.skyTitle}" />
+            <img class="sky-img sky-focus" data-role="focus-img" alt="" hidden />
+            <svg class="sky-overlay" data-role="overlay" aria-hidden="true"></svg>
+          </div>
+        </div>
       </div>
       <div class="sky-hover" data-role="hover" hidden></div>
       <div class="sky-meta" data-role="meta" hidden></div>
@@ -97,22 +143,41 @@ export function mountSky(host: HTMLElement): () => void {
   `;
 
   const empty = host.querySelector<HTMLElement>("[data-role=empty]")!;
-  const aladinHost = host.querySelector<HTMLElement>("[data-role=aladin]")!;
-  const fallback = host.querySelector<HTMLElement>("[data-role=fallback]")!;
-  const focusImg = host.querySelector<HTMLImageElement>("[data-role=focus-img]")!;
+  const world = host.querySelector<HTMLElement>("[data-role=world]")!;
+  const zoomable = host.querySelector<HTMLElement>("[data-role=zoomable]")!;
+  const frame = host.querySelector<HTMLElement>("[data-role=frame]")!;
+  const full = host.querySelector<HTMLImageElement>("[data-role=full-img]")!;
+  const focus = host.querySelector<HTMLImageElement>("[data-role=focus-img]")!;
   const overlay = host.querySelector<SVGSVGElement>("[data-role=overlay]")!;
   const hoverEl = host.querySelector<HTMLElement>("[data-role=hover]")!;
   const meta = host.querySelector<HTMLElement>("[data-role=meta]")!;
 
-  let lastAlertId: string | null = null;
   let region: RegionPayload | null = null;
-  let mode: "aladin" | "fallback" | null = null;
-  let Aref: AladinApi | null = null;
-  let aladin: AladinInstance | null = null;
-  let overlayLayer: GraphicOverlay | null = null;
-  let catalog: Catalog | null = null;
+  /** Alert id we already played the zoom sequence for (survives render races). */
+  let animatedAlertId: string | null = null;
   let renderSeq = 0;
-  let aladinHoverBound = false;
+  let viewMode: ViewMode = "full";
+  let zoomTimer = 0;
+  let settleTimer = 0;
+
+  /** Fit the map stack to the stage using the active image's intrinsic aspect. */
+  const fitFrame = (img: HTMLImageElement) => {
+    const ar =
+      img.naturalWidth > 0 && img.naturalHeight > 0
+        ? img.naturalWidth / img.naturalHeight
+        : 2;
+    const pw = world.clientWidth || host.clientWidth || 640;
+    const ph = world.clientHeight || host.clientHeight || 360;
+    let w = pw;
+    let h = w / ar;
+    if (h > ph) {
+      h = ph;
+      w = h * ar;
+    }
+    frame.style.width = `${Math.max(1, Math.floor(w))}px`;
+    frame.style.height = `${Math.max(1, Math.floor(h))}px`;
+    return { w: frame.clientWidth || w, h: frame.clientHeight || h, ar };
+  };
 
   const showHover = (info: HoverInfo | null, clientX?: number, clientY?: number) => {
     if (!info) {
@@ -131,49 +196,108 @@ export function mountSky(host: HTMLElement): () => void {
     }
   };
 
+  const phaseLabel = () => {
+    if (viewMode === "full") return strings.skyModeFull;
+    if (viewMode === "zooming") return strings.skyModeZoom;
+    return strings.skyModeFocus;
+  };
+
   const setMeta = (skymap: SkymapPayload, reg: RegionPayload | null) => {
     meta.hidden = false;
     const peak = reg?.peak ?? skymap.peak;
     const area = reg?.credible_deg2 ?? skymap.credible_90_deg2;
-    const fov = reg?.fov_deg;
+    const ell = reg?.ellipse;
+    const axes = ell
+      ? ` · oval ${ell.semi_major_deg.toFixed(1)}°×${ell.semi_minor_deg.toFixed(1)}°`
+      : "";
     meta.innerHTML = `
       <span>${strings.skyPeak} RA ${peak.ra_deg.toFixed(2)}° · Dec ${peak.dec_deg.toFixed(2)}°</span>
-      <span>90% · ${area.toFixed(1)} deg²${fov ? ` · FoV ${fov.toFixed(1)}°` : ""}</span>
-      <span class="sky-mode">${mode === "aladin" ? strings.skyModeLive : strings.skyModeFocus}</span>
+      <span>90% · ${area.toFixed(1)} deg²${axes}</span>
+      <span class="sky-mode">${phaseLabel()}</span>
       ${(reg?.simulated ?? skymap.simulated)
         ? `<span class="badge sim">${strings.simulatedBadge}</span>`
         : `<span class="badge real">${strings.realBadge}</span>`}
     `;
   };
 
-  const drawFallbackOverlay = (
-    reg: RegionPayload,
-    candidates: CandidateRow[],
-  ) => {
-    const w = focusImg.clientWidth || fallback.clientWidth || 640;
-    const h = focusImg.clientHeight || Math.round(w * 0.85) || 480;
+  const wireStar = (g: SVGGElement, row: CandidateRow, rank: number) => {
+    const info = candidateHover(row, rank);
+    g.style.cursor = "pointer";
+    g.addEventListener("pointerenter", (ev) => {
+      showHover(info, ev.clientX, ev.clientY);
+      selectStar(row.star_id);
+    });
+    g.addEventListener("pointermove", (ev) => showHover(info, ev.clientX, ev.clientY));
+    g.addEventListener("pointerleave", () => showHover(null));
+    g.addEventListener("click", () => selectStar(row.star_id));
+  };
+
+  const sizeOverlay = (w: number, h: number) => {
     overlay.setAttribute("viewBox", `0 0 ${w} ${h}`);
     overlay.setAttribute("width", String(w));
     overlay.setAttribute("height", String(h));
     overlay.innerHTML = "";
+  };
+
+  const drawOval = (
+    pts: string[],
+    opts: { strokeWidth: number },
+  ) => {
+    if (pts.length < 3) return;
+    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    poly.setAttribute("points", pts.join(" "));
+    poly.setAttribute("class", "sky-outline");
+    poly.setAttribute("stroke-width", String(opts.strokeWidth));
+    overlay.appendChild(poly);
+  };
+
+  const drawFullOverlay = (reg: RegionPayload, candidates: CandidateRow[]) => {
+    const { w, h } = fitFrame(full);
+    sizeOverlay(w, h);
+
+    const pts: string[] = [];
+    for (const pair of outlineRing(reg)) {
+      const p = raDecToMollweide(Number(pair[0]), Number(pair[1]), w, h);
+      if (p) pts.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+    }
+    drawOval(pts, { strokeWidth: 2.5 });
+
+    candidates.forEach((row, idx) => {
+      const p = raDecToMollweide(row.ra_deg, row.dec_deg, w, h);
+      if (!p) return;
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("class", "sky-star");
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("cx", String(p.x));
+      c.setAttribute("cy", String(p.y));
+      c.setAttribute("r", idx === 0 ? "6" : "4.5");
+      g.appendChild(c);
+      wireStar(g, row, idx + 1);
+      overlay.appendChild(g);
+    });
+    return { w, h };
+  };
+
+  const drawFocusOverlay = (reg: RegionPayload, candidates: CandidateRow[]) => {
+    const { w, h } = fitFrame(focus);
+    sizeOverlay(w, h);
 
     const peak = reg.peak;
     const fov = reg.fov_deg;
-
-    // Red credible-region outline
     const pts: string[] = [];
-    for (const pair of reg.outline) {
-      const ra = Number(pair[0]);
-      const dec = Number(pair[1]);
-      const p = raDecToFocusPx(ra, dec, peak.ra_deg, peak.dec_deg, fov, w, h);
+    for (const pair of outlineRing(reg)) {
+      const p = raDecToFocusPx(
+        Number(pair[0]),
+        Number(pair[1]),
+        peak.ra_deg,
+        peak.dec_deg,
+        fov,
+        w,
+        h,
+      );
       if (p) pts.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
     }
-    if (pts.length >= 2) {
-      const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-      poly.setAttribute("points", pts.join(" "));
-      poly.setAttribute("class", "sky-outline");
-      overlay.appendChild(poly);
-    }
+    drawOval(pts, { strokeWidth: 3 });
 
     candidates.forEach((row, idx) => {
       const p = raDecToFocusPx(
@@ -188,169 +312,120 @@ export function mountSky(host: HTMLElement): () => void {
       if (!p) return;
       const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
       g.setAttribute("class", "sky-star");
-      g.style.cursor = "pointer";
       const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       c.setAttribute("cx", String(p.x));
       c.setAttribute("cy", String(p.y));
       c.setAttribute("r", idx === 0 ? "7" : "5");
-      const info = candidateHover(row, idx + 1);
-      g.addEventListener("pointerenter", (ev) => {
-        showHover(info, ev.clientX, ev.clientY);
-        selectStar(row.star_id);
-      });
-      g.addEventListener("pointermove", (ev) => showHover(info, ev.clientX, ev.clientY));
-      g.addEventListener("pointerleave", () => showHover(null));
-      g.addEventListener("click", () => selectStar(row.star_id));
       g.appendChild(c);
+      wireStar(g, row, idx + 1);
       overlay.appendChild(g);
     });
   };
 
-  const syncAladin = (reg: RegionPayload, candidates: CandidateRow[]) => {
-    if (!aladin || !Aref) return;
-    aladin.gotoRaDec(reg.peak.ra_deg, reg.peak.dec_deg);
-    aladin.setFov(reg.fov_deg);
-    aladin.removeLayers();
-
-    overlayLayer = Aref.graphicOverlay({ color: "#e23b3b", lineWidth: 3 });
-    aladin.addOverlay(overlayLayer);
-    if (reg.outline.length >= 3) {
-      overlayLayer.addFootprints([
-        Aref.polygon(reg.outline.map((p) => [Number(p[0]), Number(p[1])]), {
-          color: "#e23b3b",
-          lineWidth: 3,
-        }),
-      ]);
-    }
-
-    catalog = Aref.catalog({
-      name: "BREAKOUT ranked",
-      color: "#1ec8b2",
-      sourceSize: 14,
-      shape: "circle",
-      hoverColor: "#ffd166",
-      displayLabel: true,
-      labelColumn: "label",
-      labelColor: "#eef3f7",
-      labelFont: "11px IBM Plex Sans, sans-serif",
-      onClick: "showPopup",
-    });
-    aladin.addCatalog(catalog);
-
-    const sources = candidates.map((row, idx) => {
-      const info = candidateHover(row, idx + 1);
-      return Aref!.source(row.ra_deg, row.dec_deg, {
-        name: row.star_id,
-        label: `#${info.rank}`,
-        rank: info.rank,
-        star_id: info.star_id,
-        class: info.class,
-        posterior: info.posterior,
-        p_sky: info.p_sky,
-        simulated: info.simulated,
-        popupTitle: `#${info.rank} ${info.star_id}`,
-        popupDesc: formatHover(info).replaceAll("\n", "<br/>"),
-      });
-    });
-    catalog.addSources(sources);
-
-    if (!aladinHoverBound) {
-      aladinHoverBound = true;
-      aladin.on("objectHovered", (obj: CatalogSource | null) => {
-        if (!obj?.data) {
-          showHover(null);
-          return;
-        }
-        const d = obj.data;
-        showHover({
-          rank: Number(d.rank) || 0,
-          star_id: String(d.star_id ?? d.name ?? ""),
-          class: String(d.class ?? ""),
-          posterior: Number(d.posterior) || 0,
-          p_sky: Number(d.p_sky) || 0,
-          ra_deg: Number(obj.ra) || 0,
-          dec_deg: Number(obj.dec) || 0,
-          simulated: Boolean(d.simulated),
-        });
-        if (d.star_id) selectStar(String(d.star_id));
-      });
-    }
+  const clearFrameZoom = () => {
+    // Drop scale without a reverse transition (otherwise settle animates back out).
+    frame.style.transition = "none";
+    frame.classList.remove("is-zoomed");
+    frame.style.transform = "none";
+    frame.style.transformOrigin = "50% 50%";
+    void frame.offsetWidth;
+    frame.style.transition = "";
   };
 
-  const useFallback = async (
+  const resetTransform = () => {
+    clearFrameZoom();
+    zoomable.classList.remove("is-focus");
+    full.hidden = false;
+    focus.hidden = true;
+    focus.classList.remove("is-in");
+  };
+
+  const settleOnFocus = async (
     skymap: SkymapPayload,
     reg: RegionPayload,
     candidates: CandidateRow[],
   ) => {
-    mode = "fallback";
-    aladinHost.hidden = true;
-    fallback.hidden = false;
-    empty.hidden = true;
     const src = `/api/skymap/${encodeURIComponent(skymap.alert_id)}/focus.png?v=${encodeURIComponent(skymap.alert_id)}`;
-    await new Promise<void>((resolve) => {
-      focusImg.onload = () => resolve();
-      focusImg.onerror = () => resolve();
-      if (focusImg.getAttribute("src") !== src) focusImg.src = src;
-      else if (focusImg.complete) resolve();
-    });
-    focusImg.classList.add("is-in");
-    drawFallbackOverlay(reg, candidates);
+    await loadImage(focus, src);
+    viewMode = "focus";
+    clearFrameZoom();
+    zoomable.classList.add("is-focus");
+    full.hidden = true;
+    full.classList.remove("is-in");
+    focus.hidden = false;
+    focus.classList.add("is-in");
+    fitFrame(focus);
+    drawFocusOverlay(reg, candidates);
     setMeta(skymap, reg);
   };
 
-  const useAladin = async (
+  const runZoomSequence = (
     skymap: SkymapPayload,
     reg: RegionPayload,
     candidates: CandidateRow[],
   ) => {
-    if (!Aref) Aref = await loadAladin();
-    empty.hidden = true;
-    // Keep Aladin hidden until a canvas appears so failures never cover the focus map.
-    aladinHost.hidden = true;
-    if (!aladin) {
-      aladinHost.innerHTML = "";
-      try {
-        aladin = Aref.aladin(aladinHost, {
-          survey: reg.survey_hint || "P/DSS2/color",
-          fov: reg.fov_deg,
-          target: `${reg.peak.ra_deg} ${reg.peak.dec_deg}`,
-          cooFrame: "ICRSd",
-          showReticle: false,
-          showCooGrid: true,
-          showCooGridControl: false,
-          showProjectionControl: false,
-          showFullscreenControl: false,
-          showLayersControl: false,
-          showGotoControl: false,
-          showShareControl: false,
-          showFrame: true,
-          showSimbadPointerControl: false,
-        });
-      } catch (err) {
-        aladin = null;
-        aladinHost.hidden = true;
-        aladinHost.innerHTML = "";
-        throw err;
-      }
+    const { w, h } = drawFullOverlay(reg, candidates);
+    const pt = raDecToMollweide(reg.peak.ra_deg, reg.peak.dec_deg, w, h);
+    const major = reg.ellipse?.semi_major_deg ?? Math.sqrt(reg.credible_deg2 / Math.PI);
+    // Mollweide compresses longitude; use map width as ~360° across.
+    const pxPerDeg = w / 360;
+    const ovalPx = Math.max(major * pxPerDeg * 1.35, 10);
+    const target = Math.min(w, h) * 0.62;
+    const scale = Math.min(Math.max(target / ovalPx, 5), 20);
+
+    viewMode = "full";
+    resetTransform();
+    full.classList.add("is-in");
+    if (pt) {
+      frame.style.transformOrigin = `${pt.x.toFixed(1)}px ${pt.y.toFixed(1)}px`;
     }
-    await new Promise((r) => window.setTimeout(r, 700));
-    if (!aladinHost.querySelector("canvas")) {
-      try {
-        aladin?.destroy?.();
-      } catch {
-        /* ignore */
-      }
-      aladin = null;
-      aladinHoverBound = false;
-      aladinHost.hidden = true;
-      aladinHost.innerHTML = "";
-      throw new Error("Aladin produced no canvas");
-    }
-    syncAladin(reg, candidates);
-    mode = "aladin";
-    fallback.hidden = true;
-    aladinHost.hidden = false;
     setMeta(skymap, reg);
+
+    window.clearTimeout(zoomTimer);
+    window.clearTimeout(settleTimer);
+
+    // Beat on full sky with oval visible, then zoom, then settle on focus map.
+    zoomTimer = window.setTimeout(() => {
+      viewMode = "zooming";
+      setMeta(skymap, reg);
+      // Double rAF so the browser commits transform-origin before scale.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          frame.classList.add("is-zoomed");
+          frame.style.transform = `scale(${scale.toFixed(3)})`;
+        });
+      });
+      settleTimer = window.setTimeout(() => {
+        void settleOnFocus(skymap, reg, candidates);
+      }, 1800);
+    }, 800);
+  };
+
+  const showEvent = async (
+    skymap: SkymapPayload,
+    reg: RegionPayload,
+    candidates: CandidateRow[],
+    animate: boolean,
+  ) => {
+    empty.hidden = true;
+    world.hidden = false;
+
+    const fullSrc = `/api/skymap/${encodeURIComponent(skymap.alert_id)}/png?v=${encodeURIComponent(skymap.alert_id)}`;
+    if (animate) full.classList.remove("is-in");
+    await loadImage(full, fullSrc);
+    fitFrame(full);
+
+    if (animate) {
+      // Wait one frame so the fitted frame has real layout boxes.
+      requestAnimationFrame(() => {
+        runZoomSequence(skymap, reg, candidates);
+      });
+      return;
+    }
+
+    // Candidate / store updates must not cancel an in-flight zoom sequence.
+    if (viewMode !== "focus") return;
+    await settleOnFocus(skymap, reg, candidates);
   };
 
   const render = async () => {
@@ -358,60 +433,58 @@ export function mountSky(host: HTMLElement): () => void {
     const { skymap, candidates } = getState();
     if (!skymap) {
       empty.hidden = false;
-      aladinHost.hidden = true;
-      fallback.hidden = true;
+      world.hidden = true;
       meta.hidden = true;
       showHover(null);
-      lastAlertId = null;
+      window.clearTimeout(zoomTimer);
+      window.clearTimeout(settleTimer);
+      resetTransform();
+      viewMode = "full";
+      animatedAlertId = null;
       region = null;
       return;
     }
 
-    empty.hidden = true;
-    if (skymap.alert_id !== lastAlertId || !region) {
-      lastAlertId = skymap.alert_id;
-      region = await fetchRegion(skymap.alert_id);
+    // Fetch region without claiming the alert as "shown" yet — otherwise a
+    // concurrent render can see a stale flag and skip the zoom animation.
+    if (!region || region.alert_id !== skymap.alert_id) {
+      const next = await fetchRegion(skymap.alert_id);
       if (seq !== renderSeq) return;
+      region = next;
     }
     if (!region) {
-      // Last-resort: static mollweide if region API fails
-      mode = "fallback";
-      aladinHost.hidden = true;
-      fallback.hidden = false;
-      focusImg.src = `/api/skymap/${encodeURIComponent(skymap.alert_id)}/png?v=${encodeURIComponent(skymap.alert_id)}`;
+      empty.hidden = true;
+      world.hidden = false;
+      resetTransform();
+      await loadImage(
+        full,
+        `/api/skymap/${encodeURIComponent(skymap.alert_id)}/png?v=${encodeURIComponent(skymap.alert_id)}`,
+      );
+      fitFrame(full);
+      full.classList.add("is-in");
       setMeta(skymap, null);
       return;
     }
 
-    // Always paint the focus map first (zoom + red outline + hover).
-    // Upgrade to Aladin DSS/HiPS only when it actually produces a canvas.
-    await useFallback(skymap, region, candidates);
-    if (seq !== renderSeq) return;
-    try {
-      await useAladin(skymap, region, candidates);
-    } catch {
-      if (seq !== renderSeq) return;
-      await useFallback(skymap, region, candidates);
-    }
+    const shouldAnimate = skymap.alert_id !== animatedAlertId;
+    if (shouldAnimate) animatedAlertId = skymap.alert_id;
+    await showEvent(skymap, region, candidates, shouldAnimate);
   };
 
   const unsub = subscribe(() => {
     void render();
   });
   const onResize = () => {
-    if (mode === "fallback" && region) {
-      drawFallbackOverlay(region, getState().candidates);
-    }
+    if (!region || world.hidden || !getState().skymap) return;
+    if (viewMode === "focus") drawFocusOverlay(region, getState().candidates);
+    else drawFullOverlay(region, getState().candidates);
   };
   window.addEventListener("resize", onResize);
 
   return () => {
     unsub();
     window.removeEventListener("resize", onResize);
-    try {
-      aladin?.destroy?.();
-    } catch {
-      /* ignore */
-    }
+    window.clearTimeout(zoomTimer);
+    window.clearTimeout(settleTimer);
   };
 }

@@ -13,6 +13,7 @@ from backend.ingest.snewpy_sim import simulate_burst
 from backend.localize.fuse import fuse
 from backend.localize.region import (
     build_region_payload,
+    credible_region_ellipse,
     credible_region_outline,
     ensure_region_artifacts,
     focus_fov_deg,
@@ -46,16 +47,24 @@ def test_outline_is_closed_and_near_true_position(tmp_path: Path) -> None:
     skymap = fuse(alert, nside=64, out_root=tmp_path)
     fits = tmp_path / alert.alert_id / "skymap.fits"
     prob = np.asarray(hp.read_map(str(fits), nest=True), dtype=float)
+    ell = credible_region_ellipse(prob, level=0.9)
+    assert ell["semi_major_deg"] >= ell["semi_minor_deg"] > 0
+    assert abs(((ell["ra_deg"] - TRUE_RA + 180) % 360) - 180) < 15.0
+    assert abs(ell["dec_deg"] - TRUE_DEC) < 15.0
     ring = credible_region_outline(prob, level=0.9)
     assert len(ring) >= 4
     assert ring[0] == ring[-1]
-    ras = [p[0] for p in ring[:-1]]
-    decs = [p[1] for p in ring[:-1]]
-    # Centroid should sit near the true Betelgeuse-like position.
-    assert abs(((np.mean(ras) - TRUE_RA + 180) % 360) - 180) < 15.0
-    assert abs(float(np.mean(decs)) - TRUE_DEC) < 15.0
+    # Smooth oval — successive points should not jump wildly.
+    steps = [
+        abs(((ring[i][0] - ring[i - 1][0] + 180) % 360) - 180)
+        + abs(ring[i][1] - ring[i - 1][1])
+        for i in range(1, len(ring))
+    ]
+    assert max(steps) < 25.0
     payload = build_region_payload(prob, alert_id=alert.alert_id, simulated=True)
-    assert payload["fov_deg"] == pytest.approx(focus_fov_deg(payload["credible_deg2"]))
+    assert payload["shape"] == "ellipse"
+    assert "ellipse" in payload
+    assert payload["fov_deg"] == pytest.approx(focus_fov_deg(payload["ellipse"]))
     assert (tmp_path / alert.alert_id / "region.json").is_file()
     assert (tmp_path / alert.alert_id / "skymap_focus.png").is_file()
     assert skymap.peak.ra_deg == pytest.approx(payload["peak"]["ra_deg"], abs=1e-6)
@@ -80,6 +89,8 @@ def test_ensure_region_and_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         assert r.status_code == 200
         body = r.json()
         assert body["alert_id"] == alert.alert_id
+        assert body["shape"] == "ellipse"
+        assert body["ellipse"]["semi_major_deg"] >= body["ellipse"]["semi_minor_deg"]
         assert len(body["outline"]) >= 4
         f = client.get(f"/api/skymap/{alert.alert_id}/focus.png")
         assert f.status_code == 200

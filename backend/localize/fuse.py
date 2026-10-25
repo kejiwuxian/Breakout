@@ -114,20 +114,21 @@ def fuse_maps(
         overwrite=True,
     )
 
-    # Mollweide 2D fallback for demos when WebGL stutters.
-    plt.figure(figsize=(8, 4.5))
+    # Full-sky Mollweide for the dashboard (tight crop so overlays align).
+    plt.figure(figsize=(10, 5))
     hp.mollview(
         prob,
         nest=True,
         coord="C",
-        title=f"BREAKOUT skymap {alert.alert_id}",
-        unit="probability / pixel",
+        title="",
+        unit="",
         min=0.0,
-        notext=False,
+        cbar=False,
+        notext=True,
     )
     if alert.simulated:
-        plt.figtext(0.02, 0.02, "Simulated", color="C1", fontsize=10)
-    plt.savefig(png_path, dpi=120, bbox_inches="tight")
+        plt.figtext(0.02, 0.02, "Simulated", color="C1", fontsize=9)
+    plt.savefig(png_path, dpi=140, bbox_inches="tight", pad_inches=0.02, facecolor="black")
     plt.close("all")
 
     # Interactive UI artifacts: 90% outline + zoomed focus PNG (best-effort).

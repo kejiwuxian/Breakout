@@ -14,6 +14,8 @@
   "skyPeak": "Peak",
   "skyModeLive": "DSS · live HiPS",
   "skyModeFocus": "Focus map · offline",
+  "skyModeFull": "Full sky",
+  "skyModeZoom": "Zooming to event",
   "skyHoverPosterior": "Rank P",
   "skyHoverPSky": "p_sky",
   "candidatesTitle": "Ranked progenitors",

@@ -1,9 +1,8 @@
-"""Credible-region outline + zoomed focus PNG for interactive skymaps.
+"""Credible-region ellipse + zoomed focus PNG for interactive skymaps.
 
-Reads the fused NESTED HEALPix probability map and derives:
-- a closed ICRS outline of the 90% credible region (red contour in the UI)
-- a gnomonic ``skymap_focus.png`` centered on the peak (offline-friendly)
-- a ``region.json`` summary (peak, FOV, outline) for Aladin / SVG overlays
+Derives a **smooth oval** (probability-weighted covariance ellipse) for the
+90% credible region from the fused NESTED HEALPix map — not a jagged pixel
+boundary. Also writes ``region.json`` and ``skymap_focus.png``.
 
 Never invents coordinates: everything comes from the fused map on disk.
 """
@@ -27,81 +26,143 @@ from backend.localize.fuse import credible_region_area_deg2, credible_region_pix
 logger = logging.getLogger("breakout.localize.region")
 
 
-def _unwrap_ra(ras: np.ndarray) -> np.ndarray:
-    """Unwrap RA (deg) around the sample median so polygons do not wrap at 0/360."""
-    med = float(np.median(ras))
-    return ((ras - med + 180.0) % 360.0) - 180.0 + med
+def _unwrap_ra(ras: np.ndarray, *, center_deg: float) -> np.ndarray:
+    """Unwrap RA (deg) around ``center_deg`` so differences do not wrap at 0/360."""
+    return ((ras - center_deg + 180.0) % 360.0) - 180.0 + center_deg
+
+
+def credible_region_ellipse(
+    prob: np.ndarray,
+    *,
+    level: float = 0.9,
+) -> dict[str, float]:
+    """Fit a smooth ICRS oval to the localization credible region.
+
+    Uses pixels inside the ``level`` credible region. Center is the
+    probability-weighted mean; axes come from the covariance, scaled so
+    ``π · a · b`` matches the credible area (deg²). Position angle is
+    east of north (degrees): 0 = major axis toward increasing Dec.
+    """
+    prob = np.asarray(prob, dtype=float)
+    nside = hp.npix2nside(len(prob))
+    pix = np.asarray(credible_region_pixels(prob, level=level), dtype=int)
+    area = credible_region_area_deg2(prob, level=level)
+    peak = peak_ra_dec(prob)
+
+    if pix.size < 3:
+        r = max(float(np.sqrt(max(area, 1e-6) / np.pi)), 0.5)
+        return {
+            "ra_deg": float(peak.ra_deg),
+            "dec_deg": float(peak.dec_deg),
+            "semi_major_deg": r,
+            "semi_minor_deg": r,
+            "pa_deg": 0.0,
+            "area_deg2": float(area),
+        }
+
+    ra, dec = hp.pix2ang(nside, pix, nest=True, lonlat=True)
+    ra = np.asarray(ra, dtype=float)
+    dec = np.asarray(dec, dtype=float)
+    w = np.asarray(prob[pix], dtype=float)
+    w_sum = float(w.sum())
+    if not np.isfinite(w_sum) or w_sum <= 0.0:
+        w = np.full(pix.size, 1.0 / pix.size, dtype=float)
+    else:
+        w = w / w_sum
+
+    # Weighted mean RA with unwrap around the peak.
+    ra_u = _unwrap_ra(ra, center_deg=float(peak.ra_deg))
+    ra0 = float(np.sum(w * ra_u) % 360.0)
+    dec0 = float(np.sum(w * dec))
+    cosd = max(float(np.cos(np.deg2rad(dec0))), 0.15)
+
+    # Local tangent plane: +x = east (RA), +y = north (Dec), degrees.
+    x = ((ra_u - ra0 + 180.0) % 360.0 - 180.0) * cosd
+    y = dec - dec0
+    cxx = float(np.sum(w * x * x))
+    cyy = float(np.sum(w * y * y))
+    cxy = float(np.sum(w * x * y))
+    cov = np.array([[cxx, cxy], [cxy, cyy]], dtype=float)
+    evals, evecs = np.linalg.eigh(cov)
+    evals = np.clip(evals, 1e-12, None)
+
+    # Scale so ellipse area matches the credible region area.
+    # Unscaled 1σ area is π √(λ0 λ1); k stretches both axes.
+    base_area = float(np.pi * np.sqrt(evals[0] * evals[1]))
+    k = float(np.sqrt(max(area, 1e-6) / max(base_area, 1e-12)))
+    # evecs columns correspond to evals; largest eigenvalue → major axis.
+    order = int(np.argmax(evals))
+    major_vec = evecs[:, order]
+    a = k * float(np.sqrt(evals[order]))
+    b = k * float(np.sqrt(evals[1 - order]))
+    # PA east of north: angle of major axis from +y (north) toward +x (east).
+    # major_vec = (east, north) = (x, y)
+    pa = float(np.rad2deg(np.arctan2(major_vec[0], major_vec[1])) % 180.0)
+
+    return {
+        "ra_deg": float(ra0 % 360.0),
+        "dec_deg": float(np.clip(dec0, -90.0, 90.0)),
+        "semi_major_deg": float(max(a, b)),
+        "semi_minor_deg": float(min(a, b)),
+        "pa_deg": pa,
+        "area_deg2": float(area),
+    }
+
+
+def sample_ellipse_outline(
+    ellipse: dict[str, float],
+    *,
+    n_points: int = 96,
+) -> list[list[float]]:
+    """Closed [[ra, dec], ...] ring sampling a smooth localization oval."""
+    ra0 = float(ellipse["ra_deg"])
+    dec0 = float(ellipse["dec_deg"])
+    a = float(ellipse["semi_major_deg"])
+    b = float(ellipse["semi_minor_deg"])
+    pa = np.deg2rad(float(ellipse["pa_deg"]))
+    cosd = max(float(np.cos(np.deg2rad(dec0))), 0.15)
+    # PA is east of north: rotate local (major along north initially).
+    # Point on axis-aligned ellipse in (east, north) after PA rotation.
+    ring: list[list[float]] = []
+    for i in range(n_points):
+        t = 2.0 * np.pi * i / n_points
+        # Ellipse in major/minor frame (major along +north before PA).
+        dm = a * np.cos(t)  # along major
+        dn = b * np.sin(t)  # along minor
+        # Rotate: major axis at PA east of north → components in (east, north).
+        east = dm * np.sin(pa) + dn * np.cos(pa)
+        north = dm * np.cos(pa) - dn * np.sin(pa)
+        ra = (ra0 + east / cosd) % 360.0
+        dec = float(np.clip(dec0 + north, -90.0, 90.0))
+        ring.append([float(ra), dec])
+    ring.append(ring[0][:])
+    return ring
 
 
 def credible_region_outline(
     prob: np.ndarray,
     *,
     level: float = 0.9,
-    max_points: int = 240,
+    max_points: int = 96,
 ) -> list[list[float]]:
-    """Return a closed [[ra_deg, dec_deg], ...] ring for the credible region.
-
-    Boundary HEALPix pixels (NESTED) are angularly sorted around the region
-    centroid. The ring is closed (first point repeated at the end).
-    """
-    prob = np.asarray(prob, dtype=float)
-    nside = hp.npix2nside(len(prob))
-    pix = credible_region_pixels(prob, level=level)
-    region = set(int(p) for p in pix.tolist())
-    if not region:
-        peak = peak_ra_dec(prob)
-        ra, dec = float(peak.ra_deg), float(peak.dec_deg)
-        return [[ra, dec], [ra, dec]]
-
-    boundary: list[tuple[float, float]] = []
-    for ipix in region:
-        neigh = hp.get_all_neighbours(nside, int(ipix), nest=True)
-        if any(int(n) >= 0 and int(n) not in region for n in neigh):
-            ra, dec = hp.pix2ang(nside, int(ipix), nest=True, lonlat=True)
-            boundary.append((float(ra), float(dec)))
-
-    if len(boundary) < 3:
-        # Tiny region — circle a few samples around the peak.
-        peak = peak_ra_dec(prob)
-        ra0, dec0 = float(peak.ra_deg), float(peak.dec_deg)
-        radius = max(np.sqrt(credible_region_area_deg2(prob, level=level) / np.pi), 0.5)
-        ring = []
-        for k in range(32):
-            ang = 2.0 * np.pi * k / 32.0
-            ring.append(
-                [
-                    (ra0 + radius * np.cos(ang) / max(np.cos(np.deg2rad(dec0)), 0.2)) % 360.0,
-                    float(np.clip(dec0 + radius * np.sin(ang), -90.0, 90.0)),
-                ]
-            )
-        ring.append(ring[0][:])
-        return ring
-
-    ras = np.array([p[0] for p in boundary], dtype=float)
-    decs = np.array([p[1] for p in boundary], dtype=float)
-    ras_u = _unwrap_ra(ras)
-    cx = float(ras_u.mean())
-    cy = float(decs.mean())
-    ang = np.arctan2(decs - cy, ras_u - cx)
-    order = np.argsort(ang)
-    ras_s = ras_u[order]
-    decs_s = decs[order]
-
-    # Decimate dense boundaries for the browser.
-    if len(ras_s) > max_points:
-        idx = np.linspace(0, len(ras_s) - 1, max_points).astype(int)
-        ras_s = ras_s[idx]
-        decs_s = decs_s[idx]
-
-    ring = [[float(ras_s[i] % 360.0), float(decs_s[i])] for i in range(len(ras_s))]
-    ring.append(ring[0][:])
-    return ring
+    """Smooth oval outline of the credible region (closed RA/Dec ring)."""
+    ellipse = credible_region_ellipse(prob, level=level)
+    return sample_ellipse_outline(ellipse, n_points=max_points)
 
 
-def focus_fov_deg(area_deg2: float, *, min_fov: float = 6.0, max_fov: float = 90.0) -> float:
-    """Angular diameter (deg) that frames the credible region with margin."""
-    radius = float(np.sqrt(max(area_deg2, 1e-6) / np.pi))
-    fov = 2.4 * 2.0 * radius  # diameter × margin
+def focus_fov_deg(
+    ellipse: dict[str, float] | float,
+    *,
+    min_fov: float = 6.0,
+    max_fov: float = 90.0,
+) -> float:
+    """Angular diameter (deg) that frames the oval with margin."""
+    if isinstance(ellipse, dict):
+        major = float(ellipse["semi_major_deg"])
+        fov = 2.6 * 2.0 * major
+    else:
+        radius = float(np.sqrt(max(float(ellipse), 1e-6) / np.pi))
+        fov = 2.4 * 2.0 * radius
     return float(np.clip(fov, min_fov, max_fov))
 
 
@@ -113,10 +174,10 @@ def build_region_payload(
     level: float = 0.9,
 ) -> dict[str, Any]:
     """JSON-serializable region summary for the interactive skymap."""
-    area = credible_region_area_deg2(prob, level=level)
+    ellipse = credible_region_ellipse(prob, level=level)
+    outline = sample_ellipse_outline(ellipse)
     peak = peak_ra_dec(prob)
-    outline = credible_region_outline(prob, level=level)
-    fov = focus_fov_deg(area)
+    fov = focus_fov_deg(ellipse)
     return {
         "alert_id": alert_id,
         "level": level,
@@ -124,9 +185,11 @@ def build_region_payload(
         "ordering": "NESTED",
         "nside": int(hp.npix2nside(len(prob))),
         "peak": {"ra_deg": float(peak.ra_deg), "dec_deg": float(peak.dec_deg)},
-        "credible_deg2": float(area),
+        "ellipse": ellipse,
+        "credible_deg2": float(ellipse["area_deg2"]),
         "fov_deg": float(fov),
         "outline": outline,
+        "shape": "ellipse",
         "simulated": bool(simulated),
         "survey_hint": "P/DSS2/color",
     }
@@ -140,13 +203,12 @@ def write_focus_png(
     simulated: bool,
     level: float = 0.9,
 ) -> Path:
-    """Write a gnomonic zoom PNG with a red 90% outline around the region."""
+    """Write a gnomonic zoom PNG with a smooth red oval around the region."""
     payload = build_region_payload(prob, alert_id=alert_id, simulated=simulated, level=level)
     peak = payload["peak"]
     fov = float(payload["fov_deg"])
-    # healpy gnomview reso is arcmin/pixel; aim ~800 px across FOV.
     xsize = 800
-    reso = (fov * 60.0) / xsize  # arcmin / pixel
+    reso = (fov * 60.0) / xsize
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -164,19 +226,14 @@ def write_focus_png(
         notext=False,
         cmap="viridis",
     )
-    # Project outline into the same gnomonic axes (healpy sets current axes).
     ax = plt.gca()
     outline = payload["outline"]
     if len(outline) >= 2:
-        # Convert ICRS outline → gnomonic display by projecting each point
-        # with healpy's projector attached to the current moll/gnom axes.
         try:
             proj = ax.proj
             xs: list[float] = []
             ys: list[float] = []
             for ra, dec in outline:
-                # healpy projector expects lon/lat in degrees for lonlat=True paths;
-                # proj.ang2xy takes theta,phi in radians — use vec2xy via ang2vec.
                 theta = np.deg2rad(90.0 - float(dec))
                 phi = np.deg2rad(float(ra))
                 x, y = proj.ang2xy(theta, phi)
@@ -184,7 +241,7 @@ def write_focus_png(
                     xs.append(float(x))
                     ys.append(float(y))
             if len(xs) >= 2:
-                ax.plot(xs, ys, color="#e23b3b", linewidth=2.0, solid_capstyle="round")
+                ax.plot(xs, ys, color="#e23b3b", linewidth=2.2, solid_capstyle="round")
         except Exception:
             logger.exception("focus_outline_overlay_failed alert_id=%s", alert_id)
 
@@ -235,7 +292,7 @@ def ensure_region_artifacts(
     alert_id: str,
     simulated: bool | None = None,
 ) -> dict[str, Any]:
-    """Return region payload, regenerating focus artifacts when missing/stale."""
+    """Return region payload, regenerating when FITS is newer or shape is stale."""
     alert_dir = Path(alert_dir)
     fits = alert_dir / "skymap.fits"
     region_path = alert_dir / "region.json"
@@ -250,12 +307,20 @@ def ensure_region_artifacts(
         or region_path.stat().st_mtime < fits_mtime
         or focus_path.stat().st_mtime < fits_mtime
     )
+    if not need and region_path.is_file():
+        try:
+            cached = json.loads(region_path.read_text(encoding="utf-8"))
+            if cached.get("shape") != "ellipse" or "ellipse" not in cached:
+                need = True
+            else:
+                return cached
+        except Exception:
+            need = True
     if not need:
         return json.loads(region_path.read_text(encoding="utf-8"))
 
     prob = load_prob_from_alert_dir(alert_dir)
     if simulated is None:
-        # Prefer existing region.json flag; else True only if filename is sim-*.
         if region_path.is_file():
             try:
                 simulated = bool(json.loads(region_path.read_text(encoding="utf-8")).get("simulated"))
