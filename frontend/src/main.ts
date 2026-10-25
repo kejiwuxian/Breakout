@@ -4,6 +4,7 @@
  */
 import "./style.css";
 import strings from "./copy/strings.json";
+import { applyBadgeFromEvent, mountBadgeHosts, noteScenario } from "./panels/badges";
 import { mountCandidatesPanel } from "./panels/candidates";
 import { mountScenariosPanel } from "./panels/scenarios";
 import { mountSkyMapPanel } from "./panels/skyMap";
@@ -39,16 +40,27 @@ app.innerHTML = `
 `;
 
 const statusEl = document.querySelector<HTMLElement>("#status")!;
-const simBadge = document.querySelector<HTMLElement>("#sim-badge")!;
-const realBadge = document.querySelector<HTMLElement>("#real-badge")!;
+const badges = mountBadgeHosts();
 
 mountSkyMapPanel(document.querySelector("#panel-sky")!);
 mountScenariosPanel(document.querySelector("#panel-scenarios")!);
 mountCandidatesPanel(document.querySelector("#panel-candidates")!);
 
+// Scenario buttons also note which path was requested (for Real vs Simulated).
+document.querySelector("#panel-scenarios")?.addEventListener(
+  "click",
+  (ev) => {
+    const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>("button[data-scenario]");
+    if (btn?.dataset.scenario) noteScenario(btn.dataset.scenario);
+  },
+  true,
+);
+
 connectEvents(
   (event) => {
     applyEvent(event);
+    applyBadgeFromEvent(badges, event);
+
     if (event.type === "hello") {
       statusEl.textContent = strings.connected;
     } else if (event.type === "alert") {
@@ -57,16 +69,8 @@ connectEvents(
       statusEl.textContent = strings.statusSkymap;
     } else if (event.type === "candidates") {
       statusEl.textContent = strings.statusCandidates;
-    }
-    // Badge visibility: any simulated payload → Simulated; scenario B real → Real.
-    const sim = Boolean(event.simulated);
-    if (sim) {
-      simBadge.hidden = false;
-      realBadge.hidden = true;
-    } else if (event.type === "alert" || event.type === "skymap" || event.type === "candidates") {
-      // Explicit real payload (e.g. scenario B when filled).
-      realBadge.hidden = false;
-      simBadge.hidden = true;
+    } else if (event.type === "scenario_done") {
+      statusEl.textContent = `${strings.scenarioStarted}: ${String(event.payload?.scenario ?? "")}`;
     }
   },
   (state) => {

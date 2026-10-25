@@ -12,6 +12,7 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~4:38 PM PT | Light + Cursor agent | Freeze CandidateScore v1 contract: Evidence/Literature/Breakout models, export JSON Schema to docs/schemas/, fixture wrappers with simulated=true, test_contract.py | commit `contract: freeze CandidateScore v1` |
 | Sat 24 Oct 2026, ~4:43 PM PT | Light + Cursor agent | Wire e2e core loop in app.py (cache replay → fuse → filter → rerank → WS events); POST /scenario/start; test_e2e with network blocked | commit `e2e: core loop` |
 | Sat 24 Oct 2026, ~4:55 PM PT | Light + Cursor agent | Betelgeuse Scenario A: curated Joyce 0.168 kpc, simulate_presn + SN_BURST from curated, index.parquet ADS evidence, README real vs simulated, test_scenario_betelgeuse | commit `scenario: Betelgeuse` |
+| Sat 24 Oct 2026, ~5:29–5:45 PM PT | Tony + Cursor agent | Dashboard panels (sky map, candidates+ADS, scenario buttons, Simulated/Real badges); WS `/ws/events`; copy in `strings.json`; one commit per panel | frontend dashboard |
 
 Notes:
 
