@@ -1,4 +1,4 @@
-"""Fan-out community alerts to registered webhooks (email is dry-run unless SMTP set)."""
+"""Fan-out community alerts to confirmed email subscribers (no webhooks)."""
 
 from __future__ import annotations
 
@@ -24,35 +24,6 @@ def _append_feed(package: dict[str, Any]) -> None:
         fh.write(json.dumps(package, ensure_ascii=False) + "\n")
 
 
-def _post_webhook(url: str, package: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:
-    if dry_run:
-        logger.info("notify_webhook_dry_run url=%s alert_id=%s", url, package.get("alert_id"))
-        return {"ok": True, "dry_run": True, "status_code": None}
-    try:
-        import httpx
-    except ImportError:
-        return {"ok": False, "dry_run": False, "error": "httpx missing"}
-    try:
-        with httpx.Client(timeout=10.0, follow_redirects=True) as client:
-            resp = client.post(
-                url,
-                json=package,
-                headers={
-                    "Content-Type": "application/json",
-                    "User-Agent": "BREAKOUT-community-alert/1.0",
-                    "X-Breakout-Schema": str(package.get("schema") or ""),
-                },
-            )
-        return {
-            "ok": 200 <= resp.status_code < 300,
-            "dry_run": False,
-            "status_code": resp.status_code,
-        }
-    except Exception as exc:  # noqa: BLE001 — record delivery failure, do not crash pipeline
-        logger.exception("notify_webhook_failed url=%s", url)
-        return {"ok": False, "dry_run": False, "error": str(exc)}
-
-
 def _email_stub(email: str, package: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:
     """Email delivery: dry-run unless SMTP env is configured (Phase 1 default dry-run)."""
     smtp_host = (getattr(config_mod.settings, "smtp_host", "") or "").strip()
@@ -69,7 +40,7 @@ def _email_stub(email: str, package: dict[str, Any], *, dry_run: bool) -> dict[s
         "ok": False,
         "dry_run": False,
         "channel": "email",
-        "error": "SMTP live send not enabled in Phase 1 MVP (set dry-run webhook instead)",
+        "error": "SMTP live send not enabled in Phase 1 MVP",
     }
 
 
@@ -99,18 +70,16 @@ def dispatch_ranked_alert(
     *,
     run_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Build package, append feed, POST webhooks / stub emails for every subscriber."""
+    """Build package, append feed, email only *active* (confirmed) subscribers."""
     package = build_community_alert(alert, skymap, candidates)
     _append_feed(package)
 
     dry_run = bool(getattr(config_mod.settings, "notify_dry_run", True))
     deliveries: list[dict[str, Any]] = []
-    for sub in list_subscribers(public=False):
+    # Only confirmed subscribers receive email; webhook path removed.
+    for sub in list_subscribers(public=False, active_only=True):
         sid = str(sub.get("id") or "")
         entry: dict[str, Any] = {"subscriber_id": sid, "label": sub.get("label")}
-        wh = sub.get("webhook_url")
-        if isinstance(wh, str) and wh:
-            entry["webhook"] = _post_webhook(wh, package, dry_run=dry_run)
         em = sub.get("email")
         if isinstance(em, str) and em:
             entry["email"] = _email_stub(em, package, dry_run=dry_run)
@@ -124,6 +93,7 @@ def dispatch_ranked_alert(
         "dry_run": dry_run,
         "deliveries": deliveries,
         "schema": package.get("schema"),
+        "channels": ["email"],
     }
 
     if run_dir is not None:

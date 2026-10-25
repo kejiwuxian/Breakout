@@ -604,6 +604,47 @@ body::before {
   font-size: 0.78rem;
 }
 
+.subscribe-step {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(158, 179, 196, 0.85);
+}
+
+.subscribe-confirm-form {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(158, 179, 196, 0.18);
+}
+
+.subscribe-dry-tokens {
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px dashed rgba(30, 200, 178, 0.35);
+  background: rgba(7, 16, 24, 0.45);
+  font-size: 0.78rem;
+  color: var(--fog);
+}
+
+.subscribe-dry-label {
+  margin: 0 0 0.4rem;
+  color: var(--signal);
+}
+
+.subscribe-token-line {
+  margin: 0.3rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  word-break: break-all;
+}
+
+.subscribe-token-line code {
+  font-size: 0.72rem;
+  color: var(--paper);
+}
+
 .subscribe-form {
   display: flex;
   flex-direction: column;

@@ -11,14 +11,20 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from backend.config import ROOT, settings
 from backend.ingest.cache import replay_scenario
 from backend.notify.dispatch import latest_feed_packages
-from backend.notify.subscribers import add_subscriber, list_subscribers, remove_subscriber
+from backend.notify.subscribers import (
+    confirm_subscribe,
+    list_subscribers,
+    remove_subscriber,
+    request_subscribe,
+    verify_access_token,
+)
 from backend.pipeline import process_alert, reset_watchlist
 from backend.schemas import WsHelloEvent
 from backend.voice import announcer as voice_announcer
@@ -286,39 +292,88 @@ def health() -> dict[str, Any]:
         "voice_mode": settings.voice_mode,
         "lcogt_dry_run": settings.lcogt_dry_run,
         "notify_dry_run": settings.notify_dry_run,
-        "n_subscribers": len(list_subscribers(public=True)),
+        "n_subscribers": len(list_subscribers(public=True, active_only=True)),
     }
 
 
-class SubscribeRequest(BaseModel):
-    """Community opt-in for ranked-candidate alerts (webhook and/or email)."""
+class SubscribeRequestBody(BaseModel):
+    """Step 1: request a pending subscription (email + optional label)."""
 
-    webhook_url: str | None = Field(default=None, description="HTTPS endpoint for JSON POST")
-    email: str | None = Field(default=None, description="Contact email (dry-run unless SMTP set)")
+    email: str = Field(..., description="Contact email for ranked-candidate alerts")
     label: str | None = Field(default=None, description="Optional human label")
 
 
-@app.post("/subscribe")
-def subscribe(body: SubscribeRequest) -> dict[str, Any]:
-    """Register a scientist/enthusiast webhook or email for ranked-star alerts."""
+class SubscribeConfirmBody(BaseModel):
+    """Step 2: confirm with both short-lived tokens from the request step."""
+
+    request_token: str = Field(..., description="Request token from /subscribe/request")
+    confirm_token: str = Field(..., description="Confirm token from /subscribe/request")
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _smtp_configured() -> bool:
+    return bool((getattr(settings, "smtp_host", "") or "").strip())
+
+
+@app.post("/subscribe/request")
+def subscribe_request(body: SubscribeRequestBody, request: Request) -> dict[str, Any]:
+    """Create a pending subscriber; does not enable alert email until confirm."""
     try:
-        row = add_subscriber(
-            webhook_url=body.webhook_url,
+        result = request_subscribe(
             email=body.email,
             label=body.label,
+            client_ip=_client_ip(request),
+            dry_run=bool(settings.notify_dry_run),
+            smtp_configured=_smtp_configured(),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"status": "subscribed", "subscriber": row, "notify_dry_run": settings.notify_dry_run}
+    return {
+        **result,
+        "notify_dry_run": settings.notify_dry_run,
+        "next": "POST /subscribe/confirm with request_token and confirm_token",
+    }
+
+
+@app.post("/subscribe/confirm")
+def subscribe_confirm(body: SubscribeConfirmBody) -> dict[str, Any]:
+    """Activate a pending subscriber with both tokens; returns durable access_token."""
+    try:
+        result = confirm_subscribe(
+            request_token=body.request_token,
+            confirm_token=body.confirm_token,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        **result,
+        "notify_dry_run": settings.notify_dry_run,
+        "note": "Email alerts go only to confirmed subscribers. No webhook delivery.",
+    }
+
+
+@app.post("/subscribe")
+def subscribe_legacy(body: SubscribeRequestBody, request: Request) -> dict[str, Any]:
+    """Backward-compatible alias for ``POST /subscribe/request`` (email-only, no webhook)."""
+    return subscribe_request(body, request)
 
 
 @app.get("/subscribe")
 def subscribe_list() -> dict[str, Any]:
-    """List public subscriber metadata (hosts only; no secrets)."""
+    """List active subscriber metadata (masked email; no secrets)."""
     return {
-        "subscribers": list_subscribers(public=True),
+        "subscribers": list_subscribers(public=True, active_only=True),
         "notify_dry_run": settings.notify_dry_run,
         "feed": "/alerts/latest",
+        "auth": "two-token email confirm; no webhook",
     }
 
 
@@ -331,8 +386,24 @@ def subscribe_delete(subscriber_id: str) -> dict[str, Any]:
 
 
 @app.get("/alerts/latest")
-def alerts_latest(limit: int = 10) -> dict[str, Any]:
-    """Recent community alert packages (ranked candidates + coords)."""
+def alerts_latest(
+    limit: int = 10,
+    token: str | None = Query(default=None, description="Optional access_token from confirm"),
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Recent community alert packages (ranked candidates + coords).
+
+    Feed remains readable without a token for local demos. When ``token`` or
+    ``Authorization: Bearer`` is supplied, it must match a confirmed subscriber.
+    """
+    bearer: str | None = None
+    if authorization and authorization.lower().startswith("bearer "):
+        bearer = authorization[7:].strip()
+    access = (token or bearer or "").strip()
+    if access:
+        if verify_access_token(access) is None:
+            raise HTTPException(status_code=401, detail="invalid or inactive access token")
+
     lim = max(1, min(int(limit), 50))
     packages = latest_feed_packages(limit=lim)
     return {
@@ -340,7 +411,8 @@ def alerts_latest(limit: int = 10) -> dict[str, Any]:
         "packages": packages,
         "note": (
             "BREAKOUT community feed for local/instrument follow-up. "
-            "simulated=true fields are not real observations."
+            "simulated=true fields are not real observations. "
+            "Email push requires two-token confirmation."
         ),
     }
 
