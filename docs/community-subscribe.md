@@ -39,12 +39,15 @@ hashed tokens at rest, active-only public listing with masked emails.
 | **frontend-v2** (primary) | `5174` | Rail block **Community push** |
 | Classic `frontend/` | `5173` | **Community alerts** panel |
 
-1. Start the API (`uvicorn backend.app:app`, typically `:8000`).
+1. Start the API (`uvicorn backend.app:app`, typically `:8000`). Cold start is
+   **idle / listening** — no auto Scenario A unless `BREAKOUT_AUTOSTART=1`.
 2. Open frontend-v2 at http://127.0.0.1:5174 (Vite proxies `/subscribe` and `/alerts`).
 3. **Step 1:** enter email (+ optional label) → **Request**.
 4. In dry-run, copy the Simulated/dry-run tokens shown in the panel into **Step 2** → **Confirm**.
 5. Active subscribers appear in the list (masked email). Browse packages at
    [`GET /alerts/latest`](http://127.0.0.1:8000/alerts/latest).
+6. To exercise a push locally, manually **Run** a Replay scenario (packages carry
+   `simulated=true` when applicable).
 
 ## What gets pushed
 

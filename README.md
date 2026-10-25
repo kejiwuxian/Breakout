@@ -17,6 +17,9 @@ MVP gate: `bash scripts/mvp_gate.sh` must print PASS. Phase 2 sponsor integratio
 
 **Community alerts are in Phase 1.** Anyone with a telescope can subscribe today for ranked progenitor coordinates when BREAKOUT localizes a neutrino burst — so small instruments can chase a potential optical counterpart before large facilities respond. Packages are honest: `simulated=true` when applicable, ADS bibcodes only when already on the candidate, and they are not official GCN notices.
 
+## After MVP gate
+
+Full post-gate index: [`docs/post-mvp.md`](docs/post-mvp.md) — idle live-waiting default, SVG skymap zoom/pan, progenitor inventory (CandidateScore v1.1), two-token community push, DiffPointing / live channels, Apify behind flags.
 
 ## Quick start
 
@@ -24,12 +27,15 @@ MVP gate: `bash scripts/mvp_gate.sh` must print PASS. Phase 2 sponsor integratio
 cp .env.example .env
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-uvicorn backend.app:app --reload
-npm --prefix frontend install
-npm --prefix frontend run dev
+uvicorn backend.app:app --reload          # idle / listening — no auto scenario
+npm --prefix frontend-v2 install && npm --prefix frontend-v2 run dev   # :5174
+# optional classic UI:
+npm --prefix frontend install && npm --prefix frontend run dev         # :5173
 ```
 
 Offline capability (`USE_CACHED_STREAM=True`): fixtures under `data/cache/` are available, with **no network** on the trigger path — but scenarios do **not** auto-play. Cold start is idle / listening (hello `scenario=live_waiting`); use the UI **Replay** rail or `POST /scenario/{name}/start` to inject simulated events. Opt-in auto-replay only with `BREAKOUT_AUTOSTART=1`. Keys may stay empty. Label every simulated number (`simulated=true` in JSON; Simulated badge in the UI).
+
+**Skymap:** pure SVG Mollweide; field stars are the curated progenitor catalog (not a uniform all-sky survey); dashed line = galactic plane; wheel zoom + drag pan; auto zoom to the localization oval on event.
 
 ## Community alerts (Phase 1) — catch potential SNe today
 
