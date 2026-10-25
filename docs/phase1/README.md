@@ -2,9 +2,11 @@
 
 This bundle consolidates the unique Phase 1 files created during the conversation. No Phase 2 sponsor-integration output is included.
 
+**Post-MVP modules** (SVG skymap, progenitors inventory, DiffPointing, frontend-v2, …) are documented in [`docs/post-mvp.md`](../post-mvp.md) and are not part of this historical zip/manifest bundle.
+
 ## Contents
 
-- `data/stars/curated_stars.json` — original curated star catalog (40 objects, unchanged)
+- `data/stars/curated_stars.json` — original curated star catalog (40 objects at packaging; live repo may include TXS 0506+056 → 41)
 - `data/stars/citation_audit.json` — star evidence citation audit
 - `data/stars/citation_audit.md` — human-readable citation audit
 - `tests/test_curated_stars.py` — schema and provenance validation tests
@@ -18,8 +20,9 @@ This bundle consolidates the unique Phase 1 files created during the conversatio
 ## Important notes
 
 - The curated star data has not been modified in this packaging pass.
-- The recorded `pytest` run did **not** pass: 7 `lit.evidence[*].bibcode` values were null. Verify/correct the underlying citations before claiming an MVP gate PASS.
+- The recorded `pytest` run did **not** pass: 7 `lit.evidence[*].bibcode` values were null. Verify/correct the underlying citations before claiming an MVP gate PASS. (Later mainline gate PASS uses the pipeline + curated tests with AGN / uncertain-null rules — see `scripts/mvp_gate.sh`.)
 - The Q&A sheet labels plan-specific items unverified where the source plan page could not be accessed.
 - `scripts/` contains provenance scripts from the creation process, **not** approved production integrations. Some paths are absolute to the original build environment; they are included as-is.
 - The previous validation ZIP is retained to preserve all user-facing Phase 1 deliverables, though its contents are also present elsewhere in this folder.
 - No Phase 2 sponsor files, environment settings, or sponsor connectors are included.
+- Community notify is Phase 1 (not sponsor Phase 2); see root `README.md` and `data/subscribers/README.md`.

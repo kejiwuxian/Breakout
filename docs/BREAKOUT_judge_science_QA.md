@@ -80,6 +80,17 @@ JWST's documented Target-of-Opportunity proposal rules require response times of
 Core collapse can, in some models, lead to black-hole formation without a normal luminous supernova, so an optical non-detection does not automatically invalidate a credible neutrino burst. Follow-up plans should preserve uncertainty and consider dust, visibility, and the possibility of a failed supernova.  
 **Source:** [Adams et al.](https://arxiv.org/abs/1306.0559).
 
+### 18b. Can community telescopes help catch a potential counterpart today?
+Yes as a follow-up strategy: published Galactic-supernova plans emphasize searching a localization region quickly, and small optical/NIR instruments can cover ranked progenitor coordinates while large facilities ramp up. BREAKOUT's Phase 1 community alerts deliver those ranked ICRS targets via webhook/feed; they are **not** official GCN notices and do not confirm a supernova by themselves.  
+**Source:** [Adams et al.](https://arxiv.org/abs/1306.0559); [Walter, Scolnic & Slosar](https://arxiv.org/abs/1901.01599).
+
+### 18c. What does the progenitor inventory / “CONF” column mean?
+It is a comparable ranking aid from the offline curated inventory (and optional live Grok shortlist when keys allow), exposed as CandidateScore v1.1 `rank_confidence` plus class optical-breakout `life_expectancy` and catalog `composition`. It is **not** a calibrated probability of imminent collapse, and life windows are class estimates (minutes / hours / about 1 day) — never a star-specific explosion date. Stage notes and bibcodes appear only when already present in ADS-backed evidence.  
+**Source:** same class-window literature basis as Q3–Q4 (e.g. [Nakar & Sari 2010](https://arxiv.org/abs/1004.2496)); inventory module docs in `docs/post-mvp.md`.
+
+### 18d. Are the skymap background stars the whole sky?
+No. frontend-v2 draws **curated progenitor-catalog** field stars from the public SIMBAD/VizieR table on disk, plus a dashed **galactic plane** guide (`b=0`). That is not a uniform all-sky survey catalog and must not be described as one.
+
 ## Demonstration integrity
 
 ### 19. Why replay IceCube-170922A, and should TXS 0506+056 come out first?

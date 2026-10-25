@@ -18,9 +18,25 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~5:20 PM PT | Light + Cursor agent | Integrate Tony H7 PRs (#2 catalog/filter, #3 build_index, #4 rerank/physics) onto Betelgeuse scenario branch; fix catalog distance assertions for Joyce 0.168 kpc; full pytest green | commit `integrate: Tony H7` |
 | Sat 24 Oct 2026, ~5:29–5:45 PM PT | Tony + Cursor agent | Dashboard panels (sky map, candidates+ADS, scenario buttons, Simulated/Real badges); WS `/ws/events`; copy in `strings.json`; one commit per panel | frontend dashboard (H8) |
 | Sat 24 Oct 2026, ~5:38 PM PT | Light + Cursor agent | Review and merge all open PRs after Tony H8; integrate dashboard + ranking contract onto mainline | merge stack to main |
+| Sat 24 Oct 2026, ~7:20–7:40 PM PT | Light + Cursor agent | Actions layer (LCOGT dry-run, HST/JWST ToO, GCN draft) + Grok Voice backend (announcer/session/tools) | PRs #12/#13 |
+| Sat 24 Oct 2026, ~7:40 PM PT | Light + Cursor agent | Offline test + preflight.sh + full mvp_gate.sh; cached voice clips; `*` alert_id voice URL fix | commit `offline: preflight and MVP gate` (PR #14) |
+| Sat 24 Oct 2026, ~7:40 PM PT | Tony + Cursor agent | Grok Voice frontend panel: captions, mute, push-to-talk judge Q&A over realtime tools | PR #15 |
+| Sat 24 Oct 2026, ~7:41–8:00 PM PT | Light + Cursor agent | Review plan Page; merge standing PRs onto main for code freeze; Scenario B GCN archive copies; gate PASS | mainline MVP freeze |
+| Sat 24 Oct 2026, ~8:16 PM PT | Light + Cursor agent | Review SNEWS2/SNEWS_Coincidence_System for direction finding; adopt snewpdag DiffPointing joint-χ² (Coincidence System has no skymap) into localize/fuse | `backend/localize/snews_diffpointing.py` |
+| Sat 24 Oct 2026, ~8:35 PM PT | Light + Cursor agent | Confirm real-data validation still PASS after DiffPointing; add IceCube historical alert catalog + Scenario C (GCN IceCube-230416A example); document SN1987A clock limits | `data/cache/icecube_alert_catalog/`, `scenario_c_icecube_230416a/` |
+| Sat 24 Oct 2026, ~8:40 PM PT | Light + Cursor agent | Add Scenario D IceCube-191001A from GCN Circular 25913 + AMON archive; re-run real-data suite | `scenario_d_icecube_191001a/`, tests green |
+| Sat 24 Oct 2026, ~8:50 PM PT | Light + Cursor agent | Subscribe all public realtime channels (SNEWS2 GCN + classic SNEWS + IceCube + pre-SN + optional Hopskotch); self-localize via DiffPointing; epoch PM only when catalog has published values (no ranking impact at nside=64) | `live_channels`, `snews_classic`, `epoch_position` |
+| Sat 24 Oct 2026, ~10:10 PM PT | Light + Cursor agent | Phase 1 community notify: webhook/email subscribe + ranked-candidate alert feed so enthusiasts can point instruments today | `backend/notify/`, `/subscribe`, `/alerts/latest`, UI panel |
+| Sat 24 Oct 2026, ~10:15 PM PT | Light + Cursor agent | Lock community notify into Phase 1 MVP claim language + mvp_gate (`test_notify`) so we can say BREAKOUT already helps catch potential SNe today | README Phase 1 scope, `scripts/mvp_gate.sh`, judge Q&A 18b |
+| Sat 24 Oct 2026, ~10:55 PM PT | Light + Cursor agent | Interactive skymap: latest fused region.json + focus PNG; Aladin DSS zoom + red 90% outline; hover ranked stars for posterior/p_sky | `backend/localize/region.py`, `/api/skymap/*/region`, frontend-v2 sky panel |
+| Sun 25 Oct 2026, ~12:10 AM PT | Light + Cursor agent | Full-sky default + smooth zoom-in; localization area as smooth oval (covariance ellipse), not jagged HEALPix ring | `credible_region_ellipse`, frontend-v2 sky zoom animation |
+| Sun 25 Oct 2026, ~3:10 AM PT | Light + Cursor agent | Stop evidence panel flashing “no offline reasoning”; materialize raw JSON from ADS/arXiv fixtures or index.parquet | `ensure_raw_for_star`, candidates cache + tick-only countdown |
+| Sun 25 Oct 2026, ~3:25 AM PT | Light + Cursor agent | Pure SVG Mollweide skymap (public catalog + galactic plane + HEALPix cells); zoom without raster swap | `render=svg_v1`, `/api/sky/base`, frontend-v2 svgMap |
+| Sun 25 Oct 2026, ~3:40 AM PT | Light + Cursor agent | Grok progenitor inventory + publication monitor; AOI filter + offline/live rank with confidence; sorted list + sky hover details | `backend/progenitors/`, CandidateScore v1.1, frontend-v2 candidates/sky |
+| Sun 25 Oct 2026, ~3:55 AM PT | Light + Cursor agent | Docs-only pass: post-MVP feature index, README / evidence / tony-track / judge Q&A / frontend-v2 honesty notes | `docs/post-mvp.md` + README After MVP section |
 
 Notes:
 
 - Plan Page: https://breakout-revised-hackathon-plan-and-7czo.pages.grok.bot/
-- Phase 2 (sponsor integrations) ignored until `scripts/mvp_gate.sh` prints PASS.
+- Phase 2 (**sponsor** integrations) ignored until `scripts/mvp_gate.sh` prints PASS. Community subscribe is Phase 1.
 - Never invent numbers or citations; simulated values use `simulated=true`.
