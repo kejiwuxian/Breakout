@@ -9,6 +9,15 @@
     "distance_kpc": 0.168,
     "extinction_av_mag": null,
     "notes": "SIMBAD main_id * alf Ori; ICRS coords from public SIMBAD catalog. distance_kpc=0.168 from Joyce et al. 2020 (ADS 2020ApJ...902...63J; 168 pc). Alternate Harper et al. 2017 astrometric solution ~222 pc (ADS 2017AJ....154...11H) is cited in the literature index but not used as the scenario distance.",
-    "source": "SIMBAD + Joyce+2020"
+    "source": "SIMBAD",
+    "field_sources": {
+      "star_id": "SIMBAD",
+      "common_name": "SIMBAD",
+      "ra_deg": "SIMBAD",
+      "dec_deg": "SIMBAD",
+      "class": "SIMBAD",
+      "spectral_type": "SIMBAD",
+      "distance_kpc": "2020ApJ...902...63J"
+    }
   }
 ]

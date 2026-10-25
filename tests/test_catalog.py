@@ -34,8 +34,8 @@ def test_load_curated_stars_has_betelgeuse() -> None:
     assert betel["ra_deg"] == pytest.approx(88.792939, abs=1e-5)
     assert betel["dec_deg"] == pytest.approx(7.407064, abs=1e-5)
     assert betel["class"] == "RSG"
-    # Distance left null in curated (published values disagree) — never invent.
-    assert betel.get("distance_kpc") is None
+    # Joyce et al. 2020 (ADS 2020ApJ...902...63J): 168 pc — cited in curated notes.
+    assert betel.get("distance_kpc") == pytest.approx(0.168)
 
 
 def test_build_star_table_offline_writes_parquet(
@@ -60,7 +60,7 @@ def test_build_star_table_offline_writes_parquet(
     rows = load_star_table(out)
     betel = next(r for r in rows if "alf Ori" in r["star_id"])
     assert betel["ra_deg"] == pytest.approx(88.792939, abs=1e-5)
-    assert betel["distance_kpc"] is None
+    assert betel["distance_kpc"] == pytest.approx(0.168)
     assert betel["teff_k"] is None
     assert betel["simulated"] is False
     sources = betel["field_sources"]

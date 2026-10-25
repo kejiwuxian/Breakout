@@ -15,6 +15,7 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~4:55 PM PT | Light + Cursor agent | Betelgeuse Scenario A: curated Joyce 0.168 kpc, simulate_presn + SN_BURST from curated, index.parquet ADS evidence, README real vs simulated, test_scenario_betelgeuse | commit `scenario: Betelgeuse` |
 | Sat 24 Oct 2026, ~5:05–5:20 PM PT | Tony + Cursor agent | Implement OFFLINE `literature/build_index.py`: ADS + arXiv retrieval, Grok Literature JSON, drop unknown bibcodes, resume/rate-limit, raw reasoning under `data/index/raw/`, index.parquet for curated stars; tests with recorded responses; one commit per step | commits implement → tests → curated index |
 | Sat 24 Oct 2026, ~5:14 PM PT | Tony + Cursor agent | Implement `breakout_window`, `extinction`, `rerank` with config weights; normalized posteriors; tests for ordering / class windows / IR flag | commits physics + rerank; H7 ranking path done |
+| Sat 24 Oct 2026, ~5:20 PM PT | Light + Cursor agent | Integrate Tony H7 PRs (#2 catalog/filter, #3 build_index, #4 rerank/physics) onto Betelgeuse scenario branch; fix catalog distance assertions for Joyce 0.168 kpc; full pytest green | commit `integrate: Tony H7` |
 
 Notes:
 
