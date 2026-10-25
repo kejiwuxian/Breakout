@@ -1,0 +1,1 @@
+{"root":["./src/main.ts","./src/vite-env.d.ts","./src/panels/skyMap.ts","./src/sky/mollweide.ts","./src/sky/scene.ts","./src/state/store.ts","./src/voice/announcer.ts","./src/voice/judge_qa.ts","./src/ws/events.ts"],"version":"5.9.3"}
