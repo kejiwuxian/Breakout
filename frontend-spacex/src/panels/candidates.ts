@@ -234,6 +234,8 @@ export function mountCandidates(host: HTMLElement): () => void {
     simBadge.hidden = !candidatesSimulated;
 
     if (!candidates.length) {
+      list.replaceChildren();
+      detailSeq += 1;
       empty.hidden = false;
       list.hidden = true;
       detail.hidden = true;

@@ -54,6 +54,16 @@ export function handleVoiceEvent(event: PipelineEvent): void {
   if (caption && sim) void pump(caption, sim);
 }
 
+export function resetVoicePlayback(): void {
+  queue = [];
+  playing = false;
+  if (audioEl) {
+    audioEl.pause();
+    audioEl.removeAttribute("src");
+    audioEl.load();
+  }
+}
+
 export function mountVoice(host: HTMLElement): () => void {
   host.innerHTML = `
     <div class="rail-block voice">
@@ -134,10 +144,8 @@ export function mountVoice(host: HTMLElement): () => void {
 
   const unsub = subscribe(() => {
     const { voiceCaption, voiceSimulated } = getState();
-    if (voiceCaption && !caption.textContent) {
-      caption.textContent = voiceCaption;
-      sim.hidden = !voiceSimulated;
-    }
+    caption.textContent = voiceCaption;
+    sim.hidden = !voiceCaption || !voiceSimulated;
   });
 
   return () => {

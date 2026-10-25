@@ -93,6 +93,9 @@ const state: DashState = {
 };
 
 const listeners = new Set<Listener>();
+const dismissedAlertIds = new Set<string>();
+let awaitingFreshAlert = false;
+let acceptUnselectedAlerts = true;
 
 export function getState(): DashState {
   return state;
@@ -130,6 +133,9 @@ export function setVoiceCaption(text: string, simulated: boolean): void {
  * package is still in flight.
  */
 export function beginScenarioSwitch(scenarioId: string): number {
+  dismissedAlertIds.clear();
+  awaitingFreshAlert = false;
+  acceptUnselectedAlerts = true;
   state.scenario = scenarioId;
   state.alert = null;
   state.skymap = null;
@@ -138,6 +144,29 @@ export function beginScenarioSwitch(scenarioId: string): number {
   state.selectedStarId = null;
   state.lastSimulated = null;
   state.voiceCaption = "";
+  state.suppressSkyZoomOnce = false;
+  state.skyZoomNonce += 1;
+  state.missionEpoch += 1;
+  emit();
+  return state.missionEpoch;
+}
+
+/** Clear the displayed mission without disconnecting incoming live alerts. */
+export function returnToLive(acceptLiveAlerts = true): number {
+  for (const alertId of [state.skymap?.alert_id, state.alert?.alert_id]) {
+    if (typeof alertId === "string") dismissedAlertIds.add(alertId);
+  }
+  awaitingFreshAlert = true;
+  acceptUnselectedAlerts = acceptLiveAlerts;
+  state.scenario = null;
+  state.alert = null;
+  state.skymap = null;
+  state.candidates = [];
+  state.candidatesSimulated = false;
+  state.selectedStarId = null;
+  state.lastSimulated = null;
+  state.voiceCaption = "";
+  state.voiceSimulated = false;
   state.suppressSkyZoomOnce = false;
   state.skyZoomNonce += 1;
   state.missionEpoch += 1;
@@ -255,24 +284,21 @@ function isStaleScenarioEvent(event: PipelineEvent): boolean {
   return false;
 }
 
-export function applyEvent(event: PipelineEvent): void {
+export function applyEvent(event: PipelineEvent): boolean {
   if (event.type === "hello") {
-    const flat = event as PipelineEvent & { scenario?: string };
-    const scenario = flat.scenario ?? (event.payload?.scenario as string | undefined);
-    // Do not let a reconnect hello roll back a user-selected scenario switch.
-    if (typeof scenario === "string" && scenario !== "live_waiting") {
-      if (!state.scenario || state.scenario === scenario) {
-        state.scenario = scenario;
-      }
-    } else if (scenario === "live_waiting" && !state.scenario) {
-      state.scenario = null;
-    }
+    // Server run metadata must not select an event on refresh or reconnect.
     emit();
-    return;
+    return true;
   }
 
+  const alertId = String(event.payload?.alert_id ?? "");
+  if (dismissedAlertIds.has(alertId)) return false;
+  if (
+    awaitingFreshAlert &&
+    (!acceptUnselectedAlerts || event.type !== "alert" || !alertId || event.simulated === true)
+  ) return false;
   if (isStaleScenarioEvent(event)) {
-    return;
+    return false;
   }
 
   if (typeof event.simulated === "boolean") {
@@ -280,6 +306,7 @@ export function applyEvent(event: PipelineEvent): void {
   }
 
   if (event.type === "alert" && event.payload) {
+    awaitingFreshAlert = false;
     state.alert = event.payload;
   }
 
@@ -307,4 +334,5 @@ export function applyEvent(event: PipelineEvent): void {
   }
 
   emit();
+  return true;
 }
