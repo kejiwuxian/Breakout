@@ -32,6 +32,7 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sun 25 Oct 2026, ~12:10 AM PT | Light + Cursor agent | Full-sky default + smooth zoom-in; localization area as smooth oval (covariance ellipse), not jagged HEALPix ring | `credible_region_ellipse`, frontend-v2 sky zoom animation |
 | Sun 25 Oct 2026, ~3:10 AM PT | Light + Cursor agent | Stop evidence panel flashing “no offline reasoning”; materialize raw JSON from ADS/arXiv fixtures or index.parquet | `ensure_raw_for_star`, candidates cache + tick-only countdown |
 | Sun 25 Oct 2026, ~3:25 AM PT | Light + Cursor agent | Pure SVG Mollweide skymap (public catalog + galactic plane + HEALPix cells); zoom without raster swap | `render=svg_v1`, `/api/sky/base`, frontend-v2 svgMap |
+| Sun 25 Oct 2026, ~3:40 AM PT | Light + Cursor agent | Grok progenitor inventory + publication monitor; AOI filter + offline/live rank with confidence; sorted list + sky hover details | `backend/progenitors/`, CandidateScore v1.1, frontend-v2 candidates/sky |
 
 Notes:
 
