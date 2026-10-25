@@ -170,10 +170,13 @@ async def _start_scenario_task(name: str, *, speed: float = 0.0) -> None:
 async def _start_live_listeners() -> None:
     """Spawn live ingest iterators when USE_CACHED_STREAM=False.
 
-    Each listener runs in a worker thread and schedules pipeline work on the
-    asyncio loop. Credentials come only from .env; modules no-op if cached.
+    Multiplexes every public realtime channel we can subscribe to:
+    GCN Kafka (SNEWS2 coincidence, IceCube gold/bronze, pre-SN, classic
+    SNEWS text) plus optional SCiMMA Hopskotch ``snews2.alert``. Each
+    listener runs in a worker thread; localization uses DiffPointing /
+    pointing inside the pipeline. Credentials come only from .env.
     """
-    from backend.ingest import gcn_kafka, presn, snews
+    from backend.ingest import live_channels
 
     loop = asyncio.get_running_loop()
 
@@ -186,10 +189,15 @@ async def _start_live_listeners() -> None:
         except Exception:
             logger.exception("live_listener_failed %s", name)
 
-    asyncio.create_task(asyncio.to_thread(_pump, "presn", lambda: presn.listen_presn_alerts()))
-    asyncio.create_task(asyncio.to_thread(_pump, "snews", lambda: snews.listen_snews_alerts()))
     asyncio.create_task(
-        asyncio.to_thread(_pump, "gcn_kafka", lambda: gcn_kafka.listen_gcn_alerts())
+        asyncio.to_thread(
+            _pump, "gcn_all", lambda: live_channels.listen_gcn_live_alerts()
+        )
+    )
+    asyncio.create_task(
+        asyncio.to_thread(
+            _pump, "hop_snews", lambda: live_channels.listen_hop_snews_alerts()
+        )
     )
 
 @asynccontextmanager

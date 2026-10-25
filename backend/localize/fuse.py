@@ -18,8 +18,13 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np
 
 from backend.config import HEALPIX_NSIDE, ROOT, settings
+from backend.localize.external_skymap import fetch_notice_healpix
 from backend.localize.pointing import extract_detector_pointing, pointing_map
-from backend.localize.snews_diffpointing import can_use_diffpointing, prob_map as snews_prob_map
+from backend.localize.snews_diffpointing import (
+    can_use_diffpointing,
+    has_independent_arrival_times,
+    prob_map as snews_prob_map,
+)
 from backend.localize.triangulate import pairwise_baselines, ring_map
 from backend.schemas import Alert, SkyMap, SkyPeak
 
@@ -161,10 +166,13 @@ def build_component_maps(
     maps: list[np.ndarray] = []
     components: list[str] = []
 
+    # Prefer self-localization from detector times (SNEWS DiffPointing / rings).
+    # Skip timing maps when the notice has no independent arrival times
+    # (e.g. classic GCN SNEWS text — all EXPT share one EVENT_TIME).
     if use_snews_diffpointing and can_use_diffpointing(alert):
         maps.append(snews_prob_map(alert, nside=nside))
         components.append("timing:snews_diffpointing")
-    else:
+    elif has_independent_arrival_times(alert):
         for pair in pairwise_baselines(alert):
             # Skip near-degenerate baselines (e.g. Super-K ↔ KamLAND ~km).
             if pair["baseline_m"] < 1.0e5:  # < 100 km
@@ -179,6 +187,12 @@ def build_component_maps(
             )
             maps.append(m)
             components.append(f"timing:{pair['det_a']}-{pair['det_b']}")
+
+    # Multiply in a published HEALPix map when the notice provides a real URL.
+    external = fetch_notice_healpix(alert, nside=nside)
+    if external is not None:
+        maps.append(external)
+        components.append("external:healpix")
 
     if include_pointing:
         hit = extract_detector_pointing(alert)

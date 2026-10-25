@@ -1,0 +1,25 @@
+TITLE:         GCN/SNEWS POSITION NOTICE
+NOTICE_DATE:   Sun 22 May 15 19:17:16 UT
+NOTICE_TYPE:   REAL COINCIDENCE
+TRIGGER_NUM:   131
+EVENT_RA:      273.34d {+18h 13m 22s} (J2000),
+               273.38d {+18h 13m 32s} (current),
+               272.98d {+18h 11m 54s} (1950)
+EVENT_DEC:     +44.60d {+44d 36' 06"} (J2000),
+               +44.60d {+44d 36' 13"} (current),
+               +44.59d {+44d 35' 11"} (1950)
+EVENT_ERROR:   10.0 [deg radius, statistical plus systematic],  68.00% containment
+EVENT_FLUENCE: 18 [neutrinos]
+EVENT_TIME:    78275.83 SOD {21:44:35.83} UT
+EVENT_DATE:    13501 TJD;   140 DOY;   05/05/22
+EVENT_DUR:     10.00 [sec]
+EXPT:          Super-K Good, LVD Good, IceCube Possible, Daya_Bay Possible
+SUN_POSTN:     185.38d {+12h 21m 31s}   -2.33d {-02d 19' 37"}
+SUN_DIST:       90.21 [deg]
+MOON_POSTN:    139.61d {+09h 18m 25s}  +20.44d {+20d 26' 41"}
+MOON_DIST:     102.49 [deg]
+GAL_COORDS:     72.06, 25.15 [deg] galactic lon,lat of the burst
+ECL_COORDS:    276.35, 67.97 [deg] ecliptic lon,lat of the burst
+COMMENTS:      SNEWS Event Coordinates.
+COMMENTS:      This is a notification of a REAL COINCIDENCE event !!!
+COMMENTS:      For more information see:  http://snews.bnl.gov

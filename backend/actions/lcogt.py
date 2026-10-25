@@ -39,6 +39,45 @@ def _filters_for(candidate: CandidateScore) -> tuple[str, ...]:
     return FILTERS_OPTICAL
 
 
+def _lookup_pm(star_id: str) -> tuple[float, float, float]:
+    """Return (pmra_mas_yr, pmdec_mas_yr, epoch_year) from catalog when published.
+
+    Never invents PM: missing fields → (0, 0, 2000) for LCO schema defaults.
+    """
+    try:
+        from backend.candidates.catalog import load_curated_stars
+
+        for row in load_curated_stars():
+            if str(row.get("star_id")) != star_id:
+                continue
+            pmra = row.get("pmra_mas_yr", row.get("pmra"))
+            pmdec = row.get("pmdec_mas_yr", row.get("pmdec"))
+            epoch = row.get("epoch_year", row.get("ref_epoch", 2000.0))
+            return (
+                float(pmra) if pmra is not None else 0.0,
+                float(pmdec) if pmdec is not None else 0.0,
+                float(epoch) if epoch is not None else 2000.0,
+            )
+    except Exception:
+        logger.debug("lcogt_pm_lookup_failed star_id=%s", star_id, exc_info=True)
+    return 0.0, 0.0, 2000.0
+
+
+def _target_from_candidate(candidate: CandidateScore) -> dict[str, Any]:
+    """ICRS target; attach published PM when the curated catalog has it."""
+    pmra, pmdec, epoch = _lookup_pm(candidate.star_id)
+    return {
+        "name": candidate.star_id,
+        "type": "ICRS",
+        "ra": float(candidate.ra_deg),
+        "dec": float(candidate.dec_deg),
+        "proper_motion_ra": pmra,
+        "proper_motion_dec": pmdec,
+        "epoch": epoch,
+        "parallax": 0.0,
+    }
+
+
 def _window_utc(hours: float = 24.0) -> list[dict[str, str]]:
     """Observation window starting now (UTC). Duration is a scheduling draft, not data."""
     start = datetime.now(timezone.utc).replace(microsecond=0)
@@ -96,16 +135,7 @@ def build_request_group(
                     "min_lunar_distance": 30.0,
                     "max_lunar_phase": 1.0,
                 },
-                "target": {
-                    "name": candidate.star_id,
-                    "type": "ICRS",
-                    "ra": float(candidate.ra_deg),
-                    "dec": float(candidate.dec_deg),
-                    "proper_motion_ra": 0.0,
-                    "proper_motion_dec": 0.0,
-                    "epoch": 2000.0,
-                    "parallax": 0.0,
-                },
+                "target": _target_from_candidate(candidate),
             }
         )
 

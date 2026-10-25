@@ -19,6 +19,8 @@ TOPIC_ICECUBE_GOLD_BRONZE = "gcn.notices.icecube.gold_bronze_track_alerts"
 # Pre-SN combined alert is documented as GCN circular + registered text feed
 # (arXiv:2404.09920); Kafka topic name reserved for when GCN publishes JSON.
 TOPIC_PRESN_COMBINED = "gcn.notices.presn.kamland_superk"
+# GCN Classic-over-Kafka (legacy SNEWS POSITION / EVENT notices).
+TOPIC_CLASSIC_SNEWS_TEXT = "gcn.classic.text.SNEWS"
 
 DETECTOR_NAME_ALIASES: dict[str, DetectorName] = {
     "super-k": "Super-K",
@@ -74,8 +76,38 @@ def make_consumer(topics: list[str]) -> Any:
     return consumer
 
 
+def _decode_message_value(raw: Any) -> Any:
+    """Decode Kafka message value to dict (JSON) or str (classic text)."""
+    if raw is None:
+        return None
+    if isinstance(raw, bytes):
+        text = raw.decode("utf-8", errors="replace")
+    elif isinstance(raw, str):
+        text = raw
+    elif isinstance(raw, dict):
+        return raw
+    else:
+        return raw
+    stripped = text.lstrip()
+    if stripped.startswith("{") or stripped.startswith("["):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return text
+    return text
+
+
 def iter_json_messages(consumer: Any, *, timeout_s: float = 1.0) -> Iterator[dict[str, Any]]:
     """Yield decoded JSON dicts from a gcn-kafka Consumer."""
+    for _topic, payload in iter_topic_messages(consumer, timeout_s=timeout_s):
+        if isinstance(payload, dict):
+            yield payload
+
+
+def iter_topic_messages(
+    consumer: Any, *, timeout_s: float = 1.0
+) -> Iterator[tuple[str, Any]]:
+    """Yield ``(topic, payload)`` for JSON objects or classic text strings."""
     while True:
         for message in consumer.consume(timeout=timeout_s):
             if message.error():
@@ -83,12 +115,13 @@ def iter_json_messages(consumer: Any, *, timeout_s: float = 1.0) -> Iterator[dic
             raw = message.value()
             if raw is None:
                 continue
-            if isinstance(raw, bytes):
-                raw = raw.decode("utf-8")
-            payload = json.loads(raw)
-            if not isinstance(payload, dict):
-                raise TypeError(f"Expected JSON object from GCN, got {type(payload)}")
-            yield payload
+            payload = _decode_message_value(raw)
+            topic = ""
+            try:
+                topic = str(message.topic())
+            except Exception:
+                topic = ""
+            yield topic, payload
 
 
 def canonical_detector_name(name: str) -> DetectorName | None:

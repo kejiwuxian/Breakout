@@ -187,6 +187,10 @@ class Settings(BaseModel):
     xai_api_key: str = ""
     gcn_client_id: str = ""
     gcn_client_secret: str = ""
+    hop_username: str = ""
+    hop_password: str = ""
+    hop_snews_topic: str = "kafka://kafka.scimma.org/snews2.alert"
+    subscribe_icecube_test: bool = False
     lcogt_api_token: str = ""
     lcogt_proposal: str = ""
 
@@ -243,6 +247,12 @@ def load_settings() -> Settings:
         xai_api_key=_env_str("XAI_API_KEY", ""),
         gcn_client_id=_env_str("GCN_CLIENT_ID", ""),
         gcn_client_secret=_env_str("GCN_CLIENT_SECRET", ""),
+        hop_username=_env_str("HOP_USERNAME", ""),
+        hop_password=_env_str("HOP_PASSWORD", ""),
+        hop_snews_topic=_env_str(
+            "HOP_SNEWS_TOPIC", "kafka://kafka.scimma.org/snews2.alert"
+        ),
+        subscribe_icecube_test=_env_bool("SUBSCRIBE_ICECUBE_TEST", False),
         lcogt_api_token=_env_str("LCOGT_API_TOKEN", ""),
         lcogt_proposal=_env_str("LCOGT_PROPOSAL", ""),
         healpix_nside=healpix_nside,
