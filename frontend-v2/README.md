@@ -36,8 +36,8 @@ Open http://127.0.0.1:5174 — classic UI remains on http://127.0.0.1:5173.
 ## Community push
 
 The rail **Community push** block uses the two-token email flow
-(`POST /subscribe/request` → confirm tokens → `POST /subscribe/confirm`).
-No webhook fields. Default `NOTIFY_DRY_RUN=True` returns Simulated/dry-run
+(`POST /subscribe` → access + refresh → `/ws/subscribe`).
+Access tokens expire; refresh and send the new access token on the live wire to extend. Default `NOTIFY_DRY_RUN=True` logs optional
 tokens in the API response for local demos (no invented SMTP). Packages carry
 `simulated=true` when applicable and are not official GCN notices. Details:
 [`docs/community-subscribe.md`](../docs/community-subscribe.md).

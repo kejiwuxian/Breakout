@@ -8,6 +8,7 @@ import logging
 import os
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -19,12 +20,14 @@ from backend.config import ROOT, settings
 from backend.ingest.cache import replay_scenario
 from backend.notify.dispatch import latest_feed_packages
 from backend.notify.subscribers import (
-    confirm_subscribe,
+    access_expires_at,
+    issue_tokens,
     list_subscribers,
+    refresh_access_token,
     remove_subscriber,
-    request_subscribe,
     verify_access_token,
 )
+from backend.notify.ws_hub import CLOSE_ACCESS_INVALID, subscribe_hub
 from backend.pipeline import process_alert, reset_watchlist
 from backend.schemas import WsHelloEvent
 from backend.voice import announcer as voice_announcer
@@ -296,18 +299,17 @@ def health() -> dict[str, Any]:
     }
 
 
-class SubscribeRequestBody(BaseModel):
-    """Step 1: request a pending subscription (email + optional label)."""
+class SubscribeIssueBody(BaseModel):
+    """Issue access + refresh tokens for WebSocket community alerts."""
 
-    email: str = Field(..., description="Contact email for ranked-candidate alerts")
+    email: str | None = Field(default=None, description="Optional contact email")
     label: str | None = Field(default=None, description="Optional human label")
 
 
-class SubscribeConfirmBody(BaseModel):
-    """Step 2: confirm with both short-lived tokens from the request step."""
+class SubscribeRefreshBody(BaseModel):
+    """Exchange refresh_token for a new access_token (and rotated refresh)."""
 
-    request_token: str = Field(..., description="Request token from /subscribe/request")
-    confirm_token: str = Field(..., description="Confirm token from /subscribe/request")
+    refresh_token: str = Field(..., description="Refresh token from /subscribe")
 
 
 def _client_ip(request: Request) -> str:
@@ -319,51 +321,35 @@ def _client_ip(request: Request) -> str:
     return "unknown"
 
 
-def _smtp_configured() -> bool:
-    return bool((getattr(settings, "smtp_host", "") or "").strip())
-
-
-@app.post("/subscribe/request")
-def subscribe_request(body: SubscribeRequestBody, request: Request) -> dict[str, Any]:
-    """Create a pending subscriber; does not enable alert email until confirm."""
+@app.post("/subscribe")
+def subscribe_issue(body: SubscribeIssueBody, request: Request) -> dict[str, Any]:
+    """Issue access_token + refresh_token for /ws/subscribe."""
     try:
-        result = request_subscribe(
+        result = issue_tokens(
             email=body.email,
             label=body.label,
             client_ip=_client_ip(request),
-            dry_run=bool(settings.notify_dry_run),
-            smtp_configured=_smtp_configured(),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {
         **result,
         "notify_dry_run": settings.notify_dry_run,
-        "next": "POST /subscribe/confirm with request_token and confirm_token",
     }
 
 
-@app.post("/subscribe/confirm")
-def subscribe_confirm(body: SubscribeConfirmBody) -> dict[str, Any]:
-    """Activate a pending subscriber with both tokens; returns durable access_token."""
+@app.post("/subscribe/refresh")
+def subscribe_refresh(body: SubscribeRefreshBody) -> dict[str, Any]:
+    """Mint a new access_token from refresh_token; push it on live WS to extend."""
     try:
-        result = confirm_subscribe(
-            request_token=body.request_token,
-            confirm_token=body.confirm_token,
-        )
+        result = refresh_access_token(refresh_token=body.refresh_token)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
     return {
         **result,
         "notify_dry_run": settings.notify_dry_run,
-        "note": "Email alerts go only to confirmed subscribers. No webhook delivery.",
+        "next": "Send {type:access_token, access_token} on /ws/subscribe to extend",
     }
-
-
-@app.post("/subscribe")
-def subscribe_legacy(body: SubscribeRequestBody, request: Request) -> dict[str, Any]:
-    """Backward-compatible alias for ``POST /subscribe/request`` (email-only, no webhook)."""
-    return subscribe_request(body, request)
 
 
 @app.get("/subscribe")
@@ -373,7 +359,9 @@ def subscribe_list() -> dict[str, Any]:
         "subscribers": list_subscribers(public=True, active_only=True),
         "notify_dry_run": settings.notify_dry_run,
         "feed": "/alerts/latest",
-        "auth": "two-token email confirm; no webhook",
+        "ws": "/ws/subscribe",
+        "n_ws_connected": subscribe_hub.n_connected,
+        "auth": "access_token + refresh_token over WebSocket",
     }
 
 
@@ -388,13 +376,14 @@ def subscribe_delete(subscriber_id: str) -> dict[str, Any]:
 @app.get("/alerts/latest")
 def alerts_latest(
     limit: int = 10,
-    token: str | None = Query(default=None, description="Optional access_token from confirm"),
+    token: str | None = Query(default=None, description="Optional access_token"),
     authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
     """Recent community alert packages (ranked candidates + coords).
 
     Feed remains readable without a token for local demos. When ``token`` or
-    ``Authorization: Bearer`` is supplied, it must match a confirmed subscriber.
+    ``Authorization: Bearer`` is supplied, it must match a non-expired access token.
+    Live push uses ``/ws/subscribe``.
     """
     bearer: str | None = None
     if authorization and authorization.lower().startswith("bearer "):
@@ -402,17 +391,18 @@ def alerts_latest(
     access = (token or bearer or "").strip()
     if access:
         if verify_access_token(access) is None:
-            raise HTTPException(status_code=401, detail="invalid or inactive access token")
+            raise HTTPException(status_code=401, detail="invalid or expired access token")
 
     lim = max(1, min(int(limit), 50))
     packages = latest_feed_packages(limit=lim)
     return {
         "count": len(packages),
         "packages": packages,
+        "ws": "/ws/subscribe",
         "note": (
             "BREAKOUT community feed for local/instrument follow-up. "
             "simulated=true fields are not real observations. "
-            "Email push requires two-token confirmation."
+            "Prefer /ws/subscribe with access_token for live push."
         ),
     }
 
@@ -624,6 +614,112 @@ def voice_tool_breakout_countdown(star_id: str | None = None) -> dict[str, Any]:
     from backend.voice.tools import get_breakout_countdown
 
     return get_breakout_countdown(star_id=star_id)
+
+
+@app.websocket("/ws/subscribe")
+async def ws_subscribe(
+    websocket: WebSocket,
+    access_token: str | None = Query(default=None),
+) -> None:
+    """Community alert push: access_token required; auto-closes on expiry.
+
+    Client may send ``{"type":"access_token","access_token":"…"}`` after
+    ``POST /subscribe/refresh`` to extend the live wire. Otherwise the socket
+    closes with code 4001 when the last access token expires.
+    """
+    token = (access_token or "").strip()
+    if not token:
+        await websocket.accept()
+        try:
+            first = await asyncio.wait_for(websocket.receive_text(), timeout=15.0)
+        except (TimeoutError, WebSocketDisconnect):
+            await websocket.close(code=CLOSE_ACCESS_INVALID, reason="access_token_required")
+            return
+        try:
+            payload = json.loads(first)
+        except json.JSONDecodeError:
+            payload = {}
+        if isinstance(payload, dict):
+            token = str(
+                payload.get("access_token")
+                or (payload.get("payload") or {}).get("access_token")
+                or ""
+            ).strip()
+        if not token:
+            await websocket.close(code=CLOSE_ACCESS_INVALID, reason="access_token_required")
+            return
+        row = verify_access_token(token)
+        if row is None:
+            await websocket.close(code=CLOSE_ACCESS_INVALID, reason="invalid_access_token")
+            return
+    else:
+        row = verify_access_token(token)
+        await websocket.accept()
+        if row is None:
+            await websocket.close(code=CLOSE_ACCESS_INVALID, reason="invalid_access_token")
+            return
+
+    exp = access_expires_at(row)
+    if exp is None:
+        await websocket.close(code=CLOSE_ACCESS_INVALID, reason="invalid_access_token")
+        return
+
+    await subscribe_hub.register(
+        websocket,
+        subscriber_id=str(row.get("id")),
+        access_expires_utc=exp,
+    )
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    expires_in = max(0, int((exp - now).total_seconds()))
+    await websocket.send_text(
+        json.dumps(
+            {
+                "type": "subscribe_hello",
+                "subscriber_id": row.get("id"),
+                "access_expires_utc": exp.isoformat().replace("+00:00", "Z"),
+                "expires_in_sec": expires_in,
+                "note": (
+                    "Push ranked community_alert packages here. "
+                    "Refresh access_token via POST /subscribe/refresh and send it "
+                    "on this socket before expiry, or the wire closes."
+                ),
+            }
+        )
+    )
+    try:
+        while True:
+            message = await websocket.receive_text()
+            stripped = message.strip()
+            low = stripped.lower()
+            if low in {"ping", '{"type":"ping"}'}:
+                await websocket.send_text(json.dumps({"type": "pong"}))
+                continue
+            try:
+                msg = json.loads(stripped)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(msg, dict):
+                continue
+            mtype = str(msg.get("type") or "").lower()
+            if mtype in {"access_token", "auth", "extend"}:
+                new_tok = str(msg.get("access_token") or "").strip()
+                try:
+                    extended = await subscribe_hub.extend_access(
+                        websocket, access_token=new_tok
+                    )
+                except ValueError as exc:
+                    await websocket.send_text(
+                        json.dumps({"type": "error", "detail": str(exc)})
+                    )
+                    await websocket.close(
+                        code=CLOSE_ACCESS_INVALID, reason="invalid_access_token"
+                    )
+                    break
+                await websocket.send_text(json.dumps(extended))
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await subscribe_hub.disconnect(websocket)
 
 
 @app.websocket("/ws/events")

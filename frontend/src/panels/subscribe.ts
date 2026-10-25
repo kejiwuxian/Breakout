@@ -1,5 +1,5 @@
 /**
- * Community subscribe panel: two-token email confirm (no webhook).
+ * Community subscribe panel: access + refresh tokens over /ws/subscribe.
  */
 import strings from "../copy/strings.json";
 
@@ -11,6 +11,11 @@ type SubRow = {
   created_utc?: string;
 };
 
+const WS_URL =
+  typeof location !== "undefined"
+    ? `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/subscribe`
+    : "ws://localhost:8000/ws/subscribe";
+
 export function mountSubscribePanel(host: HTMLElement): () => void {
   host.innerHTML = `
     <section class="panel subscribe-panel" aria-labelledby="subscribe-title">
@@ -18,147 +23,138 @@ export function mountSubscribePanel(host: HTMLElement): () => void {
         <h2 id="subscribe-title">${strings.subscribeTitle}</h2>
       </header>
       <p class="panel-hint">${strings.subscribeHint}</p>
-      <form class="subscribe-form" data-role="request-form">
-        <p class="subscribe-step">${strings.subscribeStep1}</p>
+      <form class="subscribe-form" data-role="issue-form">
         <label>
           <span>${strings.subscribeEmail}</span>
-          <input name="email" type="email" required placeholder="you@observatory.edu" autocomplete="email" />
+          <input name="email" type="email" placeholder="you@observatory.edu" autocomplete="email" />
         </label>
         <label>
           <span>${strings.subscribeLabel}</span>
           <input name="label" type="text" placeholder="My 0.3m scope" autocomplete="off" />
         </label>
-        <button type="submit">${strings.subscribeRequest}</button>
+        <button type="submit">${strings.subscribeIssue}</button>
       </form>
-      <div class="subscribe-dry-tokens" data-role="dry-tokens" hidden></div>
-      <form class="subscribe-form" data-role="confirm-form">
-        <p class="subscribe-step">${strings.subscribeStep2}</p>
-        <label>
-          <span>${strings.subscribeRequestToken}</span>
-          <input name="request_token" type="text" required autocomplete="off" spellcheck="false" />
-        </label>
-        <label>
-          <span>${strings.subscribeConfirmToken}</span>
-          <input name="confirm_token" type="text" required autocomplete="off" spellcheck="false" />
-        </label>
-        <button type="submit">${strings.subscribeConfirm}</button>
-      </form>
+      <div class="subscribe-dry-tokens" data-role="tokens" hidden></div>
       <p class="subscribe-status" data-role="status" hidden></p>
+      <p class="panel-hint" data-role="ws-status"></p>
       <p class="panel-hint">${strings.subscribeFeedHint}</p>
       <ul class="subscribe-list" data-role="list"></ul>
     </section>
   `;
 
-  const requestForm = host.querySelector<HTMLFormElement>("[data-role=request-form]")!;
-  const confirmForm = host.querySelector<HTMLFormElement>("[data-role=confirm-form]")!;
+  const form = host.querySelector<HTMLFormElement>("[data-role=issue-form]")!;
   const status = host.querySelector<HTMLElement>("[data-role=status]")!;
-  const dryTokens = host.querySelector<HTMLElement>("[data-role=dry-tokens]")!;
+  const tokensEl = host.querySelector<HTMLElement>("[data-role=tokens]")!;
+  const wsStatus = host.querySelector<HTMLElement>("[data-role=ws-status]")!;
   const list = host.querySelector<HTMLUListElement>("[data-role=list]")!;
+  let ws: WebSocket | null = null;
+  let refreshToken = "";
+  let refreshTimer: number | null = null;
 
-  async function refresh(): Promise<void> {
+  function showStatus(ok: boolean, text: string): void {
+    status.hidden = false;
+    status.textContent = text;
+    status.classList.toggle("is-error", !ok);
+  }
+
+  async function refreshList(): Promise<void> {
     try {
-      const resp = await fetch("/subscribe");
+      const resp = await fetch("/subscribe", { cache: "no-store" });
       if (!resp.ok) return;
-      const data = (await resp.json()) as {
-        subscribers?: SubRow[];
-        notify_dry_run?: boolean;
-      };
+      const data = (await resp.json()) as { subscribers?: SubRow[] };
       const rows = data.subscribers ?? [];
-      list.innerHTML = rows
-        .map((r) => {
-          const bits = [
-            r.label || r.id?.slice(0, 8) || "subscriber",
-            r.email_masked || (r.has_email ? "email" : ""),
-          ].filter(Boolean);
-          return `<li>${bits.join(" · ")}</li>`;
-        })
-        .join("");
-      if (!rows.length) {
-        list.innerHTML = `<li class="muted">${strings.subscribeEmpty}</li>`;
-      }
-      if (data.notify_dry_run) {
-        status.hidden = false;
-        status.textContent = strings.subscribeDryRun;
-      }
+      list.innerHTML = rows.length
+        ? rows
+            .map((r) => `<li>${r.label || r.id?.slice(0, 8)} · ${r.email_masked || ""}</li>`)
+            .join("")
+        : `<li class="muted">${strings.subscribeEmpty}</li>`;
     } catch {
-      /* offline panel — ignore */
+      /* ignore */
     }
   }
 
-  requestForm.addEventListener("submit", async (ev) => {
+  async function refreshAndExtend(socket: WebSocket): Promise<void> {
+    if (!refreshToken) return;
+    const resp = await fetch("/subscribe/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const data = (await resp.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+      access_ttl_sec?: number;
+    };
+    if (!resp.ok || !data.access_token || !data.refresh_token) return;
+    refreshToken = data.refresh_token;
+    socket.send(JSON.stringify({ type: "access_token", access_token: data.access_token }));
+    if (typeof data.access_ttl_sec === "number") {
+      if (refreshTimer != null) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        void refreshAndExtend(socket);
+      }, Math.max(1000, (data.access_ttl_sec - 30) * 1000));
+    }
+  }
+
+  form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const fd = new FormData(requestForm);
-    const email = String(fd.get("email") || "").trim();
+    const fd = new FormData(form);
+    const email = String(fd.get("email") || "").trim() || null;
     const label = String(fd.get("label") || "").trim() || null;
-    status.hidden = false;
-    status.textContent = strings.subscribeWorking;
-    dryTokens.hidden = true;
-    dryTokens.innerHTML = "";
+    showStatus(true, strings.subscribeWorking);
     try {
-      const resp = await fetch("/subscribe/request", {
+      const resp = await fetch("/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, label }),
       });
-      const data = await resp.json();
-      if (!resp.ok) {
-        status.textContent = String(data.detail || strings.subscribeFailed);
+      const data = (await resp.json()) as {
+        access_token?: string;
+        refresh_token?: string;
+        access_expires_utc?: string;
+        access_ttl_sec?: number;
+        detail?: string;
+      };
+      if (!resp.ok || !data.access_token || !data.refresh_token) {
+        showStatus(false, data.detail || strings.subscribeFailed);
         return;
       }
-      const dry = data.dry_run as
-        | { label?: string; request_token?: string; confirm_token?: string }
-        | undefined;
-      if (dry?.request_token && dry?.confirm_token) {
-        dryTokens.hidden = false;
-        dryTokens.innerHTML = `
-          <p>${dry.label || strings.subscribeDryTokensTitle}</p>
-          <p><code>${dry.request_token}</code></p>
-          <p><code>${dry.confirm_token}</code></p>
-        `;
-        (confirmForm.elements.namedItem("request_token") as HTMLInputElement).value =
-          dry.request_token;
-        (confirmForm.elements.namedItem("confirm_token") as HTMLInputElement).value =
-          dry.confirm_token;
-        status.textContent = strings.subscribeRequestOkDry;
-      } else {
-        status.textContent = strings.subscribeRequestOk;
-      }
-    } catch {
-      status.textContent = strings.subscribeFailed;
-    }
-  });
-
-  confirmForm.addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const fd = new FormData(confirmForm);
-    const request_token = String(fd.get("request_token") || "").trim();
-    const confirm_token = String(fd.get("confirm_token") || "").trim();
-    status.hidden = false;
-    status.textContent = strings.subscribeConfirmWorking;
-    try {
-      const resp = await fetch("/subscribe/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request_token, confirm_token }),
+      refreshToken = data.refresh_token;
+      tokensEl.hidden = false;
+      tokensEl.textContent = `${strings.subscribeAccessToken}: ${data.access_token.slice(0, 12)}… · ${strings.subscribeRefreshToken}: ${data.refresh_token.slice(0, 12)}…`;
+      showStatus(true, strings.subscribeIssueOk);
+      if (ws) ws.close();
+      ws = new WebSocket(`${WS_URL}?access_token=${encodeURIComponent(data.access_token)}`);
+      ws.addEventListener("open", () => {
+        wsStatus.textContent = strings.subscribeWsOpen;
       });
-      const data = await resp.json();
-      if (!resp.ok) {
-        status.textContent = String(data.detail || strings.subscribeConfirmFailed);
-        return;
-      }
-      status.textContent = strings.subscribeConfirmOk;
-      dryTokens.hidden = true;
-      dryTokens.innerHTML = "";
-      confirmForm.reset();
-      requestForm.reset();
-      await refresh();
+      ws.addEventListener("close", () => {
+        wsStatus.textContent = strings.subscribeWsClosed;
+      });
+      ws.addEventListener("message", (msg) => {
+        try {
+          const frame = JSON.parse(String(msg.data)) as { type?: string; expires_in_sec?: number };
+          if (frame.type === "subscribe_hello" || frame.type === "access_extended") {
+            if (typeof frame.expires_in_sec === "number" && ws) {
+              if (refreshTimer != null) window.clearTimeout(refreshTimer);
+              refreshTimer = window.setTimeout(() => {
+                if (ws) void refreshAndExtend(ws);
+              }, Math.max(1000, (frame.expires_in_sec - 30) * 1000));
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      });
+      await refreshList();
     } catch {
-      status.textContent = strings.subscribeConfirmFailed;
+      showStatus(false, strings.subscribeFailed);
     }
   });
 
-  void refresh();
+  void refreshList();
   return () => {
-    /* no WS subscription */
+    if (refreshTimer != null) window.clearTimeout(refreshTimer);
+    if (ws) ws.close();
   };
 }

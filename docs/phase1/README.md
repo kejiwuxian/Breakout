@@ -18,8 +18,8 @@ This bundle consolidates the unique Phase 1 files created during the conversatio
 ## Community subscribe (Phase 1)
 
 Ranked-candidate push is Phase 1 (not sponsor Phase 2): two-token email
-confirm (`POST /subscribe/request` → `POST /subscribe/confirm`), email-only
-dispatch to active subscribers (no webhook), `GET /alerts/latest`, classic +
+access + refresh tokens (`POST /subscribe` / `/subscribe/refresh`), WebSocket
+dispatch on `/ws/subscribe`, `GET /alerts/latest`, classic +
 **frontend-v2** subscribe panels. See
 [`docs/community-subscribe.md`](../community-subscribe.md) and
 [`data/subscribers/README.md`](../../data/subscribers/README.md).
