@@ -102,6 +102,29 @@ DEFAULT_T_ERR_MS: dict[str, float] = {
 # HEALPix resolution for localization maps (NESTED ordering).
 HEALPIX_NSIDE: int = 64
 
+# ---------------------------------------------------------------------------
+# Breakout countdown class windows (UI labels; estimates, not star-specific
+# inventions). countdown_from is always the burst t0 from the Alert.
+#
+# Citations (ADS bibcodes — no bibcode, no claim):
+# - WR → "minutes": compact/stripped envelopes yield short shock-breakout and
+#   early-emission timescales (Nakar & Sari 2010, ADS 2010ApJ...725..904N).
+# - BSG → "hours": SN 1987A (BSG progenitor) — neutrino burst then optical
+#   discovery on an hours-scale timeline (Hirata et al. 1987,
+#   ADS 1987PhRvL..58.1490H; Bionta et al. 1987, ADS 1987PhRvL..58.1494B).
+# - RSG → "about 1 day": extended RSG envelopes imply longer diffusion /
+#   early optical rise than compact progenitors (Nakar & Sari 2010,
+#   ADS 2010ApJ...725..904N).
+# YSG/LBV inherit the hours-scale BSG-like label as a conservative plan default
+# (same Nakar & Sari compact-vs-extended framing; not a separate measurement).
+CLASS_WINDOWS: dict[str, str] = {
+    "WR": "minutes",
+    "BSG": "hours",
+    "YSG": "hours",
+    "RSG": "about 1 day",
+    "LBV": "hours",
+}
+
 
 class Settings(BaseModel):
     """Application settings read once at process start."""
@@ -145,11 +168,8 @@ class Settings(BaseModel):
         description="HEALPix Nside for NESTED localization maps.",
     )
     class_windows: dict[str, str] = Field(
-        default_factory=lambda: {
-            "WR": "minutes",
-            "BSG": "hours",
-            "RSG": "about 1 day",
-        }
+        default_factory=lambda: dict(CLASS_WINDOWS),
+        description="Progenitor class → breakout window label (estimates).",
     )
     ranking_weights: dict[str, float] = Field(default_factory=dict)
 
