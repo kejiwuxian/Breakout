@@ -125,6 +125,18 @@ CLASS_WINDOWS: dict[str, str] = {
     "LBV": "hours",
 }
 
+# IR follow-up when catalog A_V is high enough that optical discovery is likely
+# suppressed. Operational BREAKOUT threshold — not a universal published cutoff
+# and never used to invent a missing A_V (null → no IR flag).
+# Source note: dust-obscured CCSNe motivate IR searches; see e.g. the review
+# context in Jencson et al. 2019 (ADS 2019ApJ...886...40J) on IR-selected
+# obscured SNe. Threshold value itself is BREAKOUT's follow-up heuristic.
+AV_IR_THRESHOLD_MAG: float = 1.0
+AV_IR_THRESHOLD_SOURCE: str = (
+    "BREAKOUT operational A_V>=1.0 mag heuristic; context ADS 2019ApJ...886...40J; "
+    "null extinction_av_mag never invented"
+)
+
 
 class Settings(BaseModel):
     """Application settings read once at process start."""
@@ -170,6 +182,10 @@ class Settings(BaseModel):
     class_windows: dict[str, str] = Field(
         default_factory=lambda: dict(CLASS_WINDOWS),
         description="Progenitor class → breakout window label (estimates).",
+    )
+    av_ir_threshold_mag: float = Field(
+        default=AV_IR_THRESHOLD_MAG,
+        description="A_V (mag) at/above which ir_followup is recommended.",
     )
     ranking_weights: dict[str, float] = Field(default_factory=dict)
 
