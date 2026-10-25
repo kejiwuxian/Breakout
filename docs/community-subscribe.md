@@ -1,7 +1,7 @@
 # Subscribe to events (open access + refresh over WebSocket)
 
-Anyone can subscribe for ranked progenitor coordinates when BREAKOUT localizes
-an `SN_BURST` / `HE_NEUTRINO` candidate set. **No account and no prior
+Anyone can subscribe for ranked progenitor coordinates when **Project Supernova**
+localizes an `SN_BURST` / `HE_NEUTRINO` candidate set. **No account and no prior
 credentials** — `POST /subscribe` mints tokens for any caller (rate-limited).
 
 This is **community follow-up**, not an official GCN notice and not a confirmed

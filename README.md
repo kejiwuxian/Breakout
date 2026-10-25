@@ -1,89 +1,85 @@
-# BREAKOUT
+# Project Supernova
 
-Neutrino-first supernova interceptor for **Cal Hacks 13.0**, SpaceXAI **Make it Legendary** track.
+**Neutrinos arrive first. We aim telescopes before the light.**
 
-When the next galactic supernova goes off, neutrinos reach Earth first. BREAKOUT fuses detector signals into a sky map, ranks likely progenitors from a precomputed literature index, and drafts telescope requests before optical breakout.
+When a nearby star dies, a neutrino burst can reach Earth minutes to hours
+ahead of optical shock breakout. Project Supernova turns that head start into
+a sky localization, a ranked list of likely progenitor stars, and live alerts
+observers can act on — before the flash.
 
-## Built with Cursor + Grok Bot
+Internal code and package names still say `breakout`; the product you demo is
+**Project Supernova**.
 
-- Cursor's agent builds modules from the plan Page; conventions live in `.cursor/rules/astro-conventions.mdc`.
-- Prompt history: `docs/prompt-log.md`.
-- Planning and team coordination: Grok Bot (plan Page + check-ins).
-- **Grok Voice** announcer and spoken judge Q&A (required for Make it Legendary).
+## What it does
 
-## Phase 1 / Phase 2
+1. Ingests supernova / high-energy neutrino alerts (cached IceCube & galactic
+   CCSN replays offline; live GCN / SNEWS-style channels when configured).
+2. Draws a localization on an all-sky map and ranks stars inside the area of
+   interest against a precomputed literature inventory.
+3. Pushes ranked ICRS coordinates to anyone who **Subscribes to events** —
+   campus scopes and backyard instruments included — over a live WebSocket.
 
-MVP gate: `bash scripts/mvp_gate.sh` must print PASS. Phase 2 sponsor integrations sit behind flags that default to **False** (`DROID_ENABLED`, `CONVEX_ENABLED`, `APIFY_ENABLED`, `TIGER_ENABLED`). With every flag off the core loop is unchanged (`tests/test_flags_off.py`).
+No invented bibcodes. Simulated runs wear a **Simulated** badge. Community
+packages are follow-up helpers, not official GCN notices.
 
-**Community alerts are in Phase 1.** Anyone with a telescope can subscribe today for ranked progenitor coordinates when BREAKOUT localizes a neutrino burst — so small instruments can chase a potential optical counterpart before large facilities respond. Packages are honest: `simulated=true` when applicable, ADS bibcodes only when already on the candidate, and they are not official GCN notices.
+## Why it matters
 
-## After MVP gate
+Core collapse releases neutrinos promptly; the explosion shock still has to
+climb through the stellar envelope before light escapes. That gap is the race:
+localize, prioritize known massive stars, and get coordinates onto real
+instruments while the optical breakout window is still open. Class-dependent
+models put that window from tens of seconds (compact WR) to about a day
+(some RSG cases) — estimates, not countdown clocks for any one star.
 
-Full post-gate index: [`docs/post-mvp.md`](docs/post-mvp.md) — idle live-waiting default, BSC5 all-sky SVG skymap + outer-AOI ranking, progenitor inventory / enrich-replay (CandidateScore v1.1), Subscribe to events (access + refresh over WebSocket), DiffPointing / live channels, Apify behind flags.
+## Demo in five steps
 
-## Quick start
+1. **Idle** — cold start listens (`live_waiting`); full Yale BSC5 sky, empty
+   ranked list. Nothing auto-plays.
+2. **Replay** — run IceCube-170922A or the galactic CCSN / Betelgeuse scenario
+   from the UI rail (or `POST /scenario/.../start`).
+3. **Skymap AOI** — dual red outlines appear; the view zooms to the outer
+   aperture; field + ranked stars light up.
+4. **Ranked progenitors** — posterior-sorted candidates with class life
+   window, confidence, and ADS-backed evidence where the index already has it.
+5. **Subscribe** — mint access + refresh tokens, open `/ws/subscribe`, watch
+   the next candidate package land (also mirrored at `/alerts/latest`).
 
-```bash
-cp .env.example .env
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-uvicorn backend.app:app --reload          # idle / listening — no auto scenario
-npm --prefix frontend-v2 install && npm --prefix frontend-v2 run dev   # :5174
-# optional classic UI:
-npm --prefix frontend install && npm --prefix frontend run dev         # :5173
-```
+Mission UI: `frontend-v2` on port **5174**. Classic dashboard remains on **5173**.
 
-Offline capability (`USE_CACHED_STREAM=True`): fixtures under `data/cache/` are available, with **no network** on the trigger path — but scenarios do **not** auto-play. Cold start is idle / listening (hello `scenario=live_waiting`); use the UI **Replay** rail or `POST /scenario/{name}/start` to inject simulated events. Opt-in auto-replay only with `BREAKOUT_AUTOSTART=1`. Keys may stay empty. Label every simulated number (`simulated=true` in JSON; Simulated badge in the UI).
+## Built for Cal Hacks & SpaceX
 
-**Skymap:** pure SVG Mollweide; **background field** = Yale Bright Star Catalogue 5th Ed. (Hoffleit+1991 / CDS V/50 / NASA HEASARC BSC5P, V≤6.5, ~8.4k stars — rebuild with `python scripts/build_sky_background_catalog.py`); **ranked overlay** = curated inventory ∪ AOI-filtered BSC5 (pure red, magnitude-matched radius; outer AOI aperture; dual translucent red outlines). No galactic-plane line; no default Betelgeuse auto-select. Wheel zoom + drag pan; auto zoom to the localization oval on event.
+**Cal Hacks (main track)**
 
-## Community alerts (Phase 1) — catch potential SNe today
+- Clear problem → working demo path → measurable surface (skymap, ranking,
+  subscribe).
+- End-to-end product in one loop: alert → localization → ranked stars →
+  actionable feed.
+- Stack at a glance: FastAPI + Vite/TypeScript, SVG Mollweide skymap, offline
+  progenitor inventory + optional Grok ranking, WebSocket community alerts.
 
-**UI:** frontend-v2 (`:5174`) rail **Subscribe to events**, or the classic dashboard (`:5173`) **Community alerts** panel — **access + refresh** tokens over WebSocket, honesty note, link to `/alerts/latest`.
+**SpaceXAI — Make it Legendary**
 
-Issue tokens, connect `/ws/subscribe`, and receive ranked ICRS targets on the next SN_BURST / HE_NEUTRINO candidate set:
+- Real astrophysics data paths: SNEWS-style timing, IceCube historical alerts,
+  Yale BSC5 sky field.
+- Latency is the product: neutrino lead time becomes follow-up urgency.
+- Actionable alerts for human observers — coordinates on the wire, not a
+  slideshow. Grok Voice for announcer / judge Q&A when keys allow.
 
-```bash
-curl -X POST http://127.0.0.1:8000/subscribe \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"you@observatory.edu","label":"campus-0.3m"}'
-# → access_token + refresh_token; open ws://127.0.0.1:8000/ws/subscribe?access_token=…
-# Refresh: POST /subscribe/refresh {"refresh_token":"…"} then send the new access_token on the live WS.
-curl http://127.0.0.1:8000/alerts/latest
-```
+## What’s inside
 
-Default live push is WebSocket (`/ws/subscribe`) with access + refresh tokens. `NOTIFY_DRY_RUN=True` logs optional email mirrors (no SMTP). This is community follow-up for potential counterparts, not a confirmed supernova detection service. Full walkthrough: [`docs/community-subscribe.md`](docs/community-subscribe.md).
-
-## Layout
-
-See the plan Page **Repo layout** section. Backend is FastAPI (`backend/`); classic dashboard is Vite + TypeScript (`frontend/`, port 5173). Redesigned mission UI lives in **`frontend-v2/`** (port 5174) — same APIs, separate app; see `frontend-v2/README.md`.
-
-## Tests / gate
-
-```bash
-pytest
-bash scripts/preflight.sh
-bash scripts/mvp_gate.sh
-```
-
-## Team
-
-| Person | Role |
+| Surface | Role |
 | --- | --- |
-| Light | Backend pipeline + voice backend |
-| Tony | Ranking + dashboard + voice frontend |
-| Vincent | Literature index content |
-| Barron | Story + submission |
+| **SVG skymap** | Yale BSC5 all-sky background; curated ∪ outer-AOI ranked overlay; dual red outlines; wheel zoom / drag pan. |
+| **Progenitor ranking** | Offline inventory + enrich-replay; CandidateScore v1.1; Grok scoring when cached or keyed. |
+| **Subscribe to events** | Open access + refresh tokens → `/ws/subscribe`; honesty labels preserved. |
+| **Replay scenarios** | Galactic CCSN, IceCube-170922A and siblings under `data/cache/`. |
+| **Actions / voice** | LCOGT / ToO / GCN draft builders; optional Grok Voice mission control. |
 
-## Apify: star literature actor
+Deeper post-MVP feature index: [`docs/post-mvp.md`](docs/post-mvp.md).  
+Science judge sheet: [`docs/BREAKOUT_judge_science_QA.md`](docs/BREAKOUT_judge_science_QA.md).
 
-Phase 2.3 (Vincent). Actor: `actors/breakout-star-literature/` (from
-`apify create … --template python-start`, Cal Hacks 13.0).
+## For developers / setup
 
-- **Offline only.** Set `APIFY_ENABLED=True`, `APIFY_TOKEN`, and `APIFY_ACTOR_ID`, then either
-  `python -m backend.integrations.apify_literature` or a live
-  `python -m backend.literature.build_index` run (Apify runs before Grok scoring).
-- Saves `data/index/apify/<star_id>.json`. `build_index.py` adds those items to
-  what Grok reads, resolves each through the ADS API, and **drops any without a bibcode**.
-- Local Actor check: `cd actors/breakout-star-literature && apify run` (3-star `INPUT.json`).
-- With `APIFY_ENABLED=False` (default) the MVP never imports `apify_client` and the core loop is unchanged.
+Install, ports, env flags, scenarios, `mvp_gate`, schemas, and Apify notes live in
+**[`docs/developers.md`](docs/developers.md)** — kept out of this page so the
+story stays scannable.

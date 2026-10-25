@@ -1,12 +1,15 @@
-# BREAKOUT frontend-v2
+# Project Supernova — frontend-v2
 
 Redesigned mission UI for the same product and backend as `frontend/`.
 **Does not replace the classic dashboard** — run both side by side if you want.
+Public brand: **Project Supernova** (internal packages remain `breakout`).
+
+Setup details: [`docs/developers.md`](../docs/developers.md).
 
 ## Design intent
 
 - One composition: skymap as the dominant visual plane; controls on a side rail
-- Brand-first: **BREAKOUT** is the hero signal
+- Brand-first: **Project Supernova** is the hero signal
 - Expressive type: Syne + IBM Plex Sans / Mono
 - Atmospheric night field (gradients + sparse star dust), not a flat fill
 - Interactive localization: **pure SVG** Mollweide with Yale BSC5 all-sky field

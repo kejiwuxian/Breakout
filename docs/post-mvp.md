@@ -1,5 +1,9 @@
 # After MVP gate — feature index
 
+Public product name: **Project Supernova** (internal packages still `breakout`).
+Story README: [`../README.md`](../README.md). Developer setup:
+[`developers.md`](developers.md).
+
 `scripts/mvp_gate.sh` printed **PASS**. Everything below landed on `main` after that
 gate (including the post-merge stack through **#35**). Honesty rules unchanged:
 never invent numbers/bibcodes; label `simulated=true`.
@@ -61,6 +65,7 @@ BREAKOUT_AUTOSTART=1 uvicorn backend.app:app --reload
 
 | Doc | Topic |
 | --- | --- |
+| [`developers.md`](developers.md) | Setup, ports, env, scenarios, gate |
 | [`community-subscribe.md`](community-subscribe.md) | Subscribe UI + API |
 | [`schemas.md`](schemas.md) | CandidateScore v1.1 |
 | [`BREAKOUT_judge_science_QA.md`](BREAKOUT_judge_science_QA.md) | Judge Q&A |
