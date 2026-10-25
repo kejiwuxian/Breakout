@@ -16,6 +16,8 @@ planning collaboration, and steady commits. Log each prompt that builds a module
 | Sat 24 Oct 2026, ~5:05–5:20 PM PT | Tony + Cursor agent | Implement OFFLINE `literature/build_index.py`: ADS + arXiv retrieval, Grok Literature JSON, drop unknown bibcodes, resume/rate-limit, raw reasoning under `data/index/raw/`, index.parquet for curated stars; tests with recorded responses; one commit per step | commits implement → tests → curated index |
 | Sat 24 Oct 2026, ~5:14 PM PT | Tony + Cursor agent | Implement `breakout_window`, `extinction`, `rerank` with config weights; normalized posteriors; tests for ordering / class windows / IR flag | commits physics + rerank; H7 ranking path done |
 | Sat 24 Oct 2026, ~5:20 PM PT | Light + Cursor agent | Integrate Tony H7 PRs (#2 catalog/filter, #3 build_index, #4 rerank/physics) onto Betelgeuse scenario branch; fix catalog distance assertions for Joyce 0.168 kpc; full pytest green | commit `integrate: Tony H7` |
+| Sat 24 Oct 2026, ~5:29–5:45 PM PT | Tony + Cursor agent | Dashboard panels (sky map, candidates+ADS, scenario buttons, Simulated/Real badges); WS `/ws/events`; copy in `strings.json`; one commit per panel | frontend dashboard (H8) |
+| Sat 24 Oct 2026, ~5:38 PM PT | Light + Cursor agent | Review and merge all open PRs after Tony H8; integrate dashboard + ranking contract onto mainline | merge stack to main |
 
 Notes:
 

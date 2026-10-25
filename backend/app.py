@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 
 from backend.config import ROOT, settings
 from backend.ingest.cache import replay_scenario
@@ -175,6 +176,87 @@ async def start_scenario(name: str, speed: float = 0.0) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Missing {alerts}")
     await _start_scenario_task(name, speed=speed)
     return {"status": "started", "scenario": name, "speed": speed}
+
+
+def _safe_alert_dir(alert_id: str) -> Path:
+    """Resolve data/run/<alert_id> without path traversal."""
+    import re
+
+    if not re.fullmatch(r"[A-Za-z0-9._\-+:]+", alert_id):
+        raise HTTPException(status_code=400, detail="Invalid alert_id")
+    path = (_out_root / alert_id).resolve()
+    root = _out_root.resolve()
+    if root not in path.parents and path != root:
+        raise HTTPException(status_code=400, detail="Invalid alert_id")
+    return path
+
+
+@app.get("/api/skymap/{alert_id}/png")
+def skymap_png(alert_id: str) -> FileResponse:
+    """Serve the Mollweide PNG written by localize/fuse for the dashboard."""
+    png = _safe_alert_dir(alert_id) / "skymap.png"
+    if not png.is_file():
+        raise HTTPException(status_code=404, detail=f"No skymap.png for {alert_id}")
+    return FileResponse(png, media_type="image/png")
+
+
+def _star_id_slug(star_id: str) -> str:
+    import re
+
+    cleaned = re.sub(r"[^\w.\-]+", "_", star_id.strip(), flags=re.UNICODE)
+    return cleaned.strip("._") or "unknown"
+
+
+@app.get("/api/literature/raw/{star_id:path}")
+def literature_raw(star_id: str) -> dict[str, Any]:
+    """Return offline Grok raw JSON for a star (reasoning + evidence).
+
+    Never invents claims: serves ``data/index/raw/<slug>.json`` when present;
+    otherwise returns evidence from ``index.parquet`` only (no synthetic reasoning).
+    """
+    from backend.literature.build_index import INDEX_PATH, RAW_DIR
+
+    slug = _star_id_slug(star_id)
+    raw_path = RAW_DIR / f"{slug}.json"
+    if raw_path.is_file():
+        return json.loads(raw_path.read_text(encoding="utf-8"))
+
+    # Fallback: evidence from the offline index only — no invented reasoning text.
+    evidence: list[dict[str, Any]] = []
+    lit: dict[str, Any] = {
+        "mass_loss": 0.0,
+        "variability": 0.0,
+        "evolved_stage": 0.0,
+        "confidence": 0.0,
+        "evidence": [],
+    }
+    if INDEX_PATH.is_file():
+        import pandas as pd
+
+        df = pd.read_parquet(INDEX_PATH)
+        hit = df.loc[df["star_id"].astype(str) == str(star_id)]
+        if len(hit) == 0:
+            # Try common_name-less match on stripped ids.
+            hit = df.loc[df["star_id"].astype(str).str.contains(star_id.replace("*", ""), regex=False)]
+        if len(hit) > 0:
+            row = hit.iloc[0].to_dict()
+            raw_ev = row.get("evidence_json") or "[]"
+            evidence = json.loads(raw_ev) if isinstance(raw_ev, str) else list(raw_ev or [])
+            lit = {
+                "mass_loss": float(row.get("mass_loss", 0.0) or 0.0),
+                "variability": float(row.get("variability", 0.0) or 0.0),
+                "evolved_stage": float(row.get("evolved_stage", 0.0) or 0.0),
+                "confidence": float(row.get("confidence", 0.0) or 0.0),
+                "evidence": evidence,
+            }
+    return {
+        "star_id": star_id,
+        "reasoning": None,
+        "literature": lit,
+        "raw_missing": True,
+        "note": "No data/index/raw file for this star; evidence from index.parquet only.",
+        "simulated": False,
+    }
 
 
 @app.websocket("/ws/events")
