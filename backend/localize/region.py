@@ -34,6 +34,56 @@ SVG_RENDER_VERSION = "svg_v2"
 CURATED_STARS_PATH = ROOT / "data" / "stars" / "curated_stars.json"
 SKY_BACKGROUND_PATH = ROOT / "data" / "stars" / "sky_background.json"
 
+# IceCube-scale peak ring: angular radius tied to the drawn outer mark in
+# frontend-v2 sky.ts (PEAK_RING_AOI_RADIUS_DEG). When the credible ellipse is
+# smaller than PEAK_RING_MAJOR_THRESHOLD_DEG, the peak ring is the visual outer
+# AOI — ranking/filter membership expands to this aperture.
+PEAK_RING_AOI_RADIUS_DEG = 4.5
+PEAK_RING_MAJOR_THRESHOLD_DEG = 8.0
+
+
+def outer_aoi_radius_deg(
+    ellipse: dict[str, float],
+    *,
+    nested_ellipses: list[dict[str, Any]] | None = None,
+) -> float:
+    """Angular radius (deg) of the outer AOI used for star ranking.
+
+    Takes the larger of: 90% credible semi-major, any nested ellipse
+    semi-major, and (when the ellipse is tiny enough that the peak ring is
+    drawn) the peak-ring ranking aperture. Geometry — not CSS class names —
+    decides which mark is outer.
+    """
+    majors: list[float] = []
+    try:
+        majors.append(float(ellipse.get("semi_major_deg") or 0.0))
+    except (TypeError, ValueError):
+        majors.append(0.0)
+    if nested_ellipses:
+        for item in nested_ellipses:
+            if not isinstance(item, dict):
+                continue
+            ell = item.get("ellipse")
+            if not isinstance(ell, dict):
+                continue
+            try:
+                majors.append(float(ell.get("semi_major_deg") or 0.0))
+            except (TypeError, ValueError):
+                continue
+    outer = max(majors) if majors else 0.0
+    if outer < PEAK_RING_MAJOR_THRESHOLD_DEG:
+        outer = max(outer, float(PEAK_RING_AOI_RADIUS_DEG))
+    return float(outer)
+
+
+def peak_ring_drawn(ellipse: dict[str, float]) -> bool:
+    """True when the UI draws the IceCube-scale peak ring (tiny ellipse)."""
+    try:
+        major = float(ellipse.get("semi_major_deg") or 0.0)
+    except (TypeError, ValueError):
+        major = 0.0
+    return not (major > 0) or major < PEAK_RING_MAJOR_THRESHOLD_DEG
+
 
 def _unwrap_ra(ras: np.ndarray, *, center_deg: float) -> np.ndarray:
     """Unwrap RA (deg) around ``center_deg`` so differences do not wrap at 0/360."""
@@ -376,6 +426,7 @@ def build_region_payload(
     # Do not embed the full ~8k-star background in every region.json — the UI
     # loads field stars once from ``/api/sky/base``. Keep an empty list so
     # older clients still see the key.
+    outer_r = outer_aoi_radius_deg(ellipse, nested_ellipses=nested)
     return {
         "alert_id": alert_id,
         "level": level,
@@ -390,6 +441,8 @@ def build_region_payload(
         "shape": "ellipse",
         "render": SVG_RENDER_VERSION,
         "nested_ellipses": nested,
+        "outer_aoi_radius_deg": float(outer_r),
+        "peak_ring": bool(peak_ring_drawn(ellipse)),
         "prob_cells": healpix_prob_cells(prob, level=level),
         "field_stars": [],
         "field_stars_via": "/api/sky/base",

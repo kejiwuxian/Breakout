@@ -34,6 +34,73 @@ export function starStyleFromVmag(vmag: number | null | undefined): {
   };
 }
 
+/**
+ * Angular radius of the IceCube-scale peak ring — must match backend
+ * ``PEAK_RING_AOI_RADIUS_DEG`` (outer AOI ranking floor).
+ */
+export const PEAK_RING_AOI_RADIUS_DEG = 4.5;
+/** Draw peak ring when credible semi-major is below this (matches backend). */
+export const PEAK_RING_MAJOR_THRESHOLD_DEG = 8;
+
+const AOI_STROKE_OUTER = "rgba(255, 0, 0, 0.4)";
+const AOI_STROKE_INNER = "#ff0000";
+
+/** Projected SVG radius of the peak ring at ``(ra, dec)``. */
+export function peakRingRadiusPx(
+  raDeg: number,
+  decDeg: number,
+  width: number,
+  height: number,
+  radiusDeg = PEAK_RING_AOI_RADIUS_DEG,
+): number | null {
+  const center = raDecToMollweide(raDeg, decDeg, width, height);
+  if (!center) return null;
+  const edgeDec = Math.max(-90, Math.min(90, decDeg + radiusDeg));
+  const edge = raDecToMollweide(raDeg, edgeDec, width, height);
+  const projected = edge
+    ? Math.hypot(edge.x - center.x, edge.y - center.y)
+    : Math.min(width, height) * 0.022;
+  return Math.max(10, projected);
+}
+
+/** Max distance from ``(cx, cy)`` to points in an SVG ``points`` string. */
+export function projectedOutlineRadiusPx(
+  points: string,
+  cx: number,
+  cy: number,
+): number {
+  let maxR = 0;
+  for (const token of points.trim().split(/\s+/)) {
+    if (!token) continue;
+    const [xs, ys] = token.split(",");
+    const x = Number(xs);
+    const y = Number(ys);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    maxR = Math.max(maxR, Math.hypot(x - cx, y - cy));
+  }
+  return maxR;
+}
+
+/** Assign outer (translucent) vs inner (opaque) strokes by projected size. */
+export function assignAoiStrokeBySize(
+  marks: Array<{ el: Element; sizePx: number }>,
+): void {
+  if (marks.length === 0) return;
+  let outerIdx = 0;
+  for (let i = 1; i < marks.length; i++) {
+    if (marks[i]!.sizePx > marks[outerIdx]!.sizePx) outerIdx = i;
+  }
+  marks.forEach((m, i) => {
+    const outer = i === outerIdx;
+    // Inline style beats stylesheet `stroke: #ff0000` so geometry wins.
+    const el = m.el as HTMLElement & SVGElement;
+    el.setAttribute("fill", "none");
+    el.setAttribute("data-aoi-role", outer ? "outer" : "inner");
+    el.style.fill = "none";
+    el.style.stroke = outer ? AOI_STROKE_OUTER : AOI_STROKE_INNER;
+  });
+}
+
 export type EllipsePayload = {
   ra_deg: number;
   dec_deg: number;
@@ -190,10 +257,13 @@ function candidateHover(row: CandidateRow, rank: number): HoverInfo {
     distance_kpc: row.distance_kpc,
     rank_confidence: row.rank_confidence ?? row.lit?.confidence ?? null,
     composition: row.composition ?? row.spectral_type ?? null,
-    life_window:
-      row.life_expectancy?.optical_breakout_window ??
-      row.breakout?.class_window ??
-      null,
+    life_window: (() => {
+      const life = row.life_expectancy?.optical_breakout_window;
+      if (life && life !== "n/a" && life !== "") return life;
+      const bw = row.breakout?.class_window;
+      if (bw && bw !== "n/a" && bw !== "") return bw;
+      return null;
+    })(),
     life_note: row.life_expectancy?.stellar_stage_note ?? null,
     rank_reasoning: row.rank_reasoning ?? null,
   };
@@ -652,34 +722,61 @@ export function mountSky(host: HTMLElement): () => void {
 
     if (reg) {
       // Two intentional red AOI marks only — no HEALPix fills or nested light
-      // ellipses (those were the green/white clutter). Outer localization
-      // ellipse + readable peak ring for tiny IceCube-scale regions.
+      // ellipses (those were the green/white clutter). Opacity is assigned by
+      // projected size (larger/outer = translucent; smaller/inner = opaque),
+      // never by CSS class name — IceCube's peak ring is visually outer.
       const ring = outlineRing(reg);
       const ovalPts = projectRing(ring, w, h);
+      const aoiMarks: Array<{ el: Element; sizePx: number }> = [];
+      const peakPt = reg.peak
+        ? raDecToMollweide(reg.peak.ra_deg, reg.peak.dec_deg, w, h)
+        : null;
+      const ovalCenter = peakPt
+        ? peakPt
+        : reg.ellipse
+          ? raDecToMollweide(reg.ellipse.ra_deg, reg.ellipse.dec_deg, w, h)
+          : null;
+
       if (ovalPts) {
         const oval = createSvgEl("polygon");
         oval.setAttribute("points", ovalPts);
         oval.setAttribute("class", "sky-outline");
         oval.setAttribute("vector-effect", "non-scaling-stroke");
+        oval.setAttribute("fill", "none");
         root.appendChild(oval);
+        const cx = ovalCenter?.x ?? w / 2;
+        const cy = ovalCenter?.y ?? h / 2;
+        aoiMarks.push({
+          el: oval,
+          sizePx: projectedOutlineRadiusPx(ovalPts, cx, cy),
+        });
       }
-      // Tiny IceCube-scale ellipses (~few px on full-sky) get a readable red ring
-      // at the peak so the AOI is visible before / without zoom.
-      const major = Number(reg.ellipse?.semi_major_deg ?? reg.fov_deg ?? 0);
-      const needsPeakRing = !ovalPts || !(major > 0) || major < 8;
+      // Tiny IceCube-scale ellipses get a readable peak ring sized to the
+      // shared outer-AOI angular radius (ranking aperture).
+      const major = Number(reg.ellipse?.semi_major_deg ?? 0);
+      const needsPeakRing =
+        !ovalPts || !(major > 0) || major < PEAK_RING_MAJOR_THRESHOLD_DEG;
       if (reg.peak && needsPeakRing) {
-        const peak = raDecToMollweide(reg.peak.ra_deg, reg.peak.dec_deg, w, h);
-        if (peak) {
-          const rPx = Math.max(10, Math.min(w, h) * 0.022);
+        const peak = peakPt;
+        const rPx = peakRingRadiusPx(
+          reg.peak.ra_deg,
+          reg.peak.dec_deg,
+          w,
+          h,
+        );
+        if (peak && rPx != null) {
           const ringEl = createSvgEl("circle");
           ringEl.setAttribute("cx", String(peak.x));
           ringEl.setAttribute("cy", String(peak.y));
           ringEl.setAttribute("r", String(rPx));
           ringEl.setAttribute("class", "sky-outline-peak");
           ringEl.setAttribute("vector-effect", "non-scaling-stroke");
+          ringEl.setAttribute("fill", "none");
           root.appendChild(ringEl);
+          aoiMarks.push({ el: ringEl, sizePx: rPx });
         }
       }
+      assignAoiStrokeBySize(aoiMarks);
     }
 
     const fieldById = new Map(

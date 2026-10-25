@@ -172,3 +172,82 @@ def test_empty_outside_region(tmp_path: Path) -> None:
     ids = {h["star_id"] for h in hits}
     assert "far-star" in ids
     assert "* alf Ori" not in ids
+
+
+def test_outer_aoi_expands_beyond_tiny_credible_ellipse(tmp_path: Path) -> None:
+    """IceCube-scale maps: rank stars under the outer peak-ring aperture.
+
+    A tight pointing (σ≪peak-ring floor) yields a tiny credible ellipse; stars
+    a few degrees from the peak must still enter the candidate set.
+    """
+    from backend.localize.region import PEAK_RING_AOI_RADIUS_DEG, outer_aoi_radius_deg
+    from backend.localize.region import credible_region_ellipse
+
+    # Tiny localization around Betelgeuse (IceCube-like).
+    skymap, prob = _gaussian_skymap(tmp_path, BETEL_RA, BETEL_DEC, sigma_deg=0.6)
+    ell = credible_region_ellipse(prob, level=0.9)
+    assert ell["semi_major_deg"] < PEAK_RING_AOI_RADIUS_DEG
+    outer_r = outer_aoi_radius_deg(ell)
+    assert outer_r == pytest.approx(PEAK_RING_AOI_RADIUS_DEG)
+
+    # Neighbor just outside the tiny ellipse but inside the outer ring.
+    neighbor_ra = BETEL_RA + 3.2
+    neighbor_dec = BETEL_DEC
+    rows = [
+        {
+            "star_id": "* alf Ori",
+            "common_name": "Betelgeuse",
+            "ra_deg": BETEL_RA,
+            "dec_deg": BETEL_DEC,
+            "class": "RSG",
+            "spectral_type": "M1-M2Ia-Iab",
+            "luminosity_class": "Iab",
+            "teff_k": None,
+            "distance_kpc": None,
+            "extinction_av_mag": None,
+            "field_sources": "{}",
+            "catalog_refs": "[]",
+            "notes": "peak",
+            "simulated": False,
+        },
+        {
+            "star_id": "neighbor-3deg",
+            "common_name": None,
+            "ra_deg": neighbor_ra,
+            "dec_deg": neighbor_dec,
+            "class": "UNK",
+            "spectral_type": "",
+            "luminosity_class": None,
+            "teff_k": None,
+            "distance_kpc": None,
+            "extinction_av_mag": None,
+            "field_sources": "{}",
+            "catalog_refs": "[]",
+            "notes": "inside outer AOI ring",
+            "simulated": False,
+        },
+        {
+            "star_id": "far-star",
+            "common_name": None,
+            "ra_deg": FAR_RA,
+            "dec_deg": FAR_DEC,
+            "class": "WR",
+            "spectral_type": "WN4",
+            "luminosity_class": None,
+            "teff_k": None,
+            "distance_kpc": None,
+            "extinction_av_mag": None,
+            "field_sources": "{}",
+            "catalog_refs": "[]",
+            "notes": "outside outer AOI",
+            "simulated": False,
+        },
+    ]
+    table = tmp_path / "outer_aoi_stars.parquet"
+    pd.DataFrame(rows).to_parquet(table, index=False)
+
+    hits = candidates_in_region(skymap, table, level=0.9, prob=prob)
+    ids = {h["star_id"] for h in hits}
+    assert "* alf Ori" in ids
+    assert "neighbor-3deg" in ids
+    assert "far-star" not in ids
