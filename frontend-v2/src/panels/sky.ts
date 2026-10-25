@@ -361,8 +361,19 @@ export function mountSky(host: HTMLElement): () => void {
       return;
     }
 
+    // Always paint the offline focus map first (zoom + red outline + hover).
+    // Then try Aladin DSS/HiPS as a progressive upgrade when the CDN/tiles work.
+    await useFallback(skymap, region, candidates);
+    if (seq !== renderSeq) return;
     try {
       await useAladin(skymap, region, candidates);
+      // If Aladin mounted but produced no canvas (blocked tiles/CORS), keep fallback.
+      await new Promise((r) => window.setTimeout(r, 600));
+      if (seq !== renderSeq) return;
+      const canvas = aladinHost.querySelector("canvas");
+      if (!canvas) {
+        await useFallback(skymap, region, candidates);
+      }
     } catch {
       if (seq !== renderSeq) return;
       await useFallback(skymap, region, candidates);
