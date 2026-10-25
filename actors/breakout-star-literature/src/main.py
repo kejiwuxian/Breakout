@@ -54,7 +54,7 @@ def run_collect(
     items: list[dict[str, Any]] = []
     for star in cfg["stars"]:
         if not isinstance(star, dict) or not str(star.get("star_id") or "").strip():
-            Actor.log.warning("Skipping star without star_id: %r", star)
+            logger.warning("Skipping star without star_id: %r", star)
             continue
         star_items = collect_for_star(
             star,
