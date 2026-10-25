@@ -14,7 +14,7 @@ Ignore Phase 2 until `scripts/mvp_gate.sh` prints PASS.
 | H6–H8 | Sat 8:46–10:46 PM | Dashboard: skymap + candidate list + Simulated badges | **Done** |
 | H8–H10 | Sat 10:46 PM–12:46 AM | Grok Voice frontend + judge Q&A wiring | **Done** |
 | H10–H11 | Sun 12:46–1:46 AM | MVP gate rehearsal; fix FAIL items only | **Done** (`mvp_gate.sh` PASS) |
-| H11+ | after gate PASS | Phase 2 Page only | Unblocked (code freeze on main) |
+| H11+ | after gate PASS | Phase 2 Page + post-MVP product (skymap, inventory, notify UI, idle default) | **Done** — see `docs/post-mvp.md` |
 
 ## Implementation checklist
 

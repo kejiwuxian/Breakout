@@ -24,6 +24,11 @@ dispatch to active subscribers (no webhook), `GET /alerts/latest`, classic +
 [`docs/community-subscribe.md`](../community-subscribe.md) and
 [`data/subscribers/README.md`](../../data/subscribers/README.md).
 
+## After MVP gate
+
+Features merged after `mvp_gate.sh` PASS are indexed in
+[`docs/post-mvp.md`](../post-mvp.md).
+
 ## Important notes
 
 - The curated star data has not been modified in this packaging pass.
