@@ -21,6 +21,9 @@ type RawLitResponse = {
   note?: string;
 };
 
+const rawCache = new Map<string, RawLitResponse | null>();
+const rawInflight = new Map<string, Promise<RawLitResponse | null>>();
+
 function fmtDistance(kpc: number | null | undefined): string {
   if (kpc === null || kpc === undefined || Number.isNaN(Number(kpc))) {
     return strings.distanceUnknown;
@@ -29,13 +32,32 @@ function fmtDistance(kpc: number | null | undefined): string {
 }
 
 async function fetchRaw(starId: string): Promise<RawLitResponse | null> {
-  try {
-    const res = await fetch(`/api/literature/raw/${encodeURIComponent(starId)}`);
-    if (!res.ok) return null;
-    return (await res.json()) as RawLitResponse;
-  } catch {
-    return null;
-  }
+  if (rawCache.has(starId)) return rawCache.get(starId) ?? null;
+  const pending = rawInflight.get(starId);
+  if (pending) return pending;
+
+  const req = (async () => {
+    try {
+      const res = await fetch(
+        `/api/literature/raw/${encodeURIComponent(starId)}`,
+      );
+      if (!res.ok) {
+        rawCache.set(starId, null);
+        return null;
+      }
+      const body = (await res.json()) as RawLitResponse;
+      rawCache.set(starId, body);
+      return body;
+    } catch {
+      rawCache.set(starId, null);
+      return null;
+    } finally {
+      rawInflight.delete(starId);
+    }
+  })();
+
+  rawInflight.set(starId, req);
+  return req;
 }
 
 export function mountCandidatesPanel(host: HTMLElement): () => void {
@@ -85,34 +107,21 @@ export function mountCandidatesPanel(host: HTMLElement): () => void {
 
   let tickTimer = 0;
   let detailSeq = 0;
+  let detailStarId: string | null = null;
+  let lastCandidateKey = "";
 
-  const renderDetail = async (row: CandidateRow) => {
-    const seq = ++detailSeq;
-    detail.hidden = false;
-    detailStar.textContent = `${row.star_id} · ${row.class} · ${row.spectral_type}`;
-    reasoningEl.textContent = strings.detailNoReasoning;
+  const paintEvidence = (row: CandidateRow, raw: RawLitResponse | null) => {
     evidenceEl.innerHTML = "";
-
-    const evidence = row.lit?.evidence ?? [];
-    const raw = await fetchRaw(row.star_id);
-    if (seq !== detailSeq) return;
-
-    if (raw?.reasoning) {
-      reasoningEl.textContent = raw.reasoning;
-    } else {
-      reasoningEl.textContent = raw?.note || strings.detailNoReasoning;
-    }
-
-    const merged = evidence.length
-      ? evidence
+    const evidence = row.lit?.evidence?.length
+      ? row.lit.evidence
       : raw?.literature?.evidence ?? [];
-    if (!merged.length) {
+    if (!evidence.length) {
       const li = document.createElement("li");
       li.textContent = strings.detailNoEvidence;
       evidenceEl.appendChild(li);
       return;
     }
-    for (const ev of merged) {
+    for (const ev of evidence) {
       if (!ev.bibcode || !ev.claim) continue;
       const li = document.createElement("li");
       const a = document.createElement("a");
@@ -129,7 +138,48 @@ export function mountCandidatesPanel(host: HTMLElement): () => void {
     }
   };
 
-  const renderTable = () => {
+  const renderDetail = async (row: CandidateRow) => {
+    const seq = ++detailSeq;
+    const starChanged = detailStarId !== row.star_id;
+    detailStarId = row.star_id;
+    detail.hidden = false;
+    detailStar.textContent = `${row.star_id} · ${row.class} · ${row.spectral_type}`;
+
+    const cached = rawCache.has(row.star_id)
+      ? (rawCache.get(row.star_id) ?? null)
+      : undefined;
+
+    if (starChanged) {
+      if (cached === undefined) {
+        reasoningEl.textContent = strings.detailLoading;
+        evidenceEl.innerHTML = "";
+        paintEvidence(row, null);
+      } else if (cached?.reasoning) {
+        reasoningEl.textContent = cached.reasoning;
+        paintEvidence(row, cached);
+      } else {
+        reasoningEl.textContent = cached?.note || strings.detailNoReasoning;
+        paintEvidence(row, cached);
+      }
+    }
+
+    if (cached !== undefined) return;
+
+    const raw = await fetchRaw(row.star_id);
+    if (seq !== detailSeq || detailStarId !== row.star_id) return;
+
+    if (raw?.reasoning) {
+      reasoningEl.textContent = raw.reasoning;
+    } else {
+      reasoningEl.textContent = raw?.note || strings.detailNoReasoning;
+    }
+    paintEvidence(row, raw);
+  };
+
+  const candidateKey = (rows: CandidateRow[]) =>
+    rows.map((r) => `${r.star_id}:${r.posterior.toFixed(4)}`).join("|");
+
+  const renderTable = (opts: { tickOnly: boolean }) => {
     const { candidates, candidatesSimulated, selectedStarId } = getState();
     simBadge.hidden = !candidatesSimulated;
 
@@ -137,48 +187,66 @@ export function mountCandidatesPanel(host: HTMLElement): () => void {
       empty.hidden = false;
       wrap.hidden = true;
       detail.hidden = true;
+      detailStarId = null;
+      lastCandidateKey = "";
       return;
     }
 
     empty.hidden = true;
     wrap.hidden = false;
     const now = Date.now();
-    tbody.innerHTML = "";
+    const key = candidateKey(candidates);
+    const structureChanged = key !== lastCandidateKey;
+    lastCandidateKey = key;
 
-    candidates.forEach((row, i) => {
-      const tr = document.createElement("tr");
-      if (row.star_id === selectedStarId) tr.classList.add("selected");
-      if (row.simulated) tr.classList.add("is-sim");
-      tr.tabIndex = 0;
-      tr.innerHTML = `
-        <td>${i + 1}</td>
-        <td class="star-id">${escapeHtml(row.star_id)}</td>
-        <td>${escapeHtml(row.class)}</td>
-        <td>${escapeHtml(fmtDistance(row.distance_kpc))}</td>
-        <td>${row.posterior.toFixed(3)}</td>
-        <td class="breakout" title="${strings.countdownEstimate}">
-          <span class="bw">${escapeHtml(windowLabel(row.breakout.class_window))}</span>
-          <span class="elapsed">${formatElapsed(row.breakout.countdown_from, now)} ${strings.countdownSince}</span>
-        </td>
-        <td>${row.ir_followup ? strings.irYes : strings.irNo}</td>
-      `;
-      tr.addEventListener("click", () => selectStar(row.star_id));
-      tr.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") {
-          ev.preventDefault();
-          selectStar(row.star_id);
+    if (!opts.tickOnly || structureChanged) {
+      tbody.innerHTML = "";
+      candidates.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        if (row.star_id === selectedStarId) tr.classList.add("selected");
+        if (row.simulated) tr.classList.add("is-sim");
+        tr.tabIndex = 0;
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td class="star-id">${escapeHtml(row.star_id)}</td>
+          <td>${escapeHtml(row.class)}</td>
+          <td>${escapeHtml(fmtDistance(row.distance_kpc))}</td>
+          <td>${row.posterior.toFixed(3)}</td>
+          <td class="breakout" title="${strings.countdownEstimate}">
+            <span class="bw">${escapeHtml(windowLabel(row.breakout.class_window))}</span>
+            <span class="elapsed" data-role="elapsed">${formatElapsed(row.breakout.countdown_from, now)} ${strings.countdownSince}</span>
+          </td>
+          <td>${row.ir_followup ? strings.irYes : strings.irNo}</td>
+        `;
+        tr.addEventListener("click", () => selectStar(row.star_id));
+        tr.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            selectStar(row.star_id);
+          }
+        });
+        tbody.appendChild(tr);
+      });
+    } else {
+      const rows = tbody.querySelectorAll("tr");
+      candidates.forEach((row, i) => {
+        const tr = rows[i];
+        if (!tr) return;
+        tr.classList.toggle("selected", row.star_id === selectedStarId);
+        const elapsed = tr.querySelector<HTMLElement>("[data-role=elapsed]");
+        if (elapsed) {
+          elapsed.textContent = `${formatElapsed(row.breakout.countdown_from, now)} ${strings.countdownSince}`;
         }
       });
-      tbody.appendChild(tr);
-    });
+    }
 
     const selected =
-      candidates.find((c) => c.star_id === selectedStarId) ?? candidates[0];
+      candidates.find((c) => c.star_id === selectedStarId) ?? candidates[0]!;
     void renderDetail(selected);
   };
 
-  const unsub = subscribe(renderTable);
-  tickTimer = window.setInterval(renderTable, 1000);
+  const unsub = subscribe(() => renderTable({ tickOnly: false }));
+  tickTimer = window.setInterval(() => renderTable({ tickOnly: true }), 1000);
 
   return () => {
     unsub();

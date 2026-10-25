@@ -29,6 +29,7 @@
   "detailTitle": "Evidence",
   "detailReasoning": "Reasoning",
   "detailEvidence": "ADS claims",
+  "detailLoading": "Loading offline literature…",
   "detailNoReasoning": "No offline raw reasoning file — showing index evidence only.",
   "detailNoEvidence": "No ADS evidence on this row.",
   "adsLinkLabel": "ADS",

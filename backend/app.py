@@ -351,61 +351,31 @@ def skymap_png(alert_id: str) -> FileResponse:
     return FileResponse(png, media_type="image/png")
 
 
-def _star_id_slug(star_id: str) -> str:
-    import re
-
-    cleaned = re.sub(r"[^\w.\-]+", "_", star_id.strip(), flags=re.UNICODE)
-    return cleaned.strip("._") or "unknown"
-
-
 @app.get("/api/literature/raw/{star_id:path}")
 def literature_raw(star_id: str) -> dict[str, Any]:
     """Return offline Grok raw JSON for a star (reasoning + evidence).
 
-    Never invents claims: serves ``data/index/raw/<slug>.json`` when present;
-    otherwise returns evidence from ``index.parquet`` only (no synthetic reasoning).
+    Never invents claims: serves ``data/index/raw/<slug>.json`` when present,
+    otherwise materializes it from recorded ADS/arXiv fixtures or index.parquet.
     """
-    from backend.literature.build_index import INDEX_PATH, RAW_DIR
+    from backend.literature.build_index import ensure_raw_for_star
 
-    slug = _star_id_slug(star_id)
-    raw_path = RAW_DIR / f"{slug}.json"
-    if raw_path.is_file():
-        return json.loads(raw_path.read_text(encoding="utf-8"))
+    artifact = ensure_raw_for_star(star_id)
+    if artifact is not None:
+        return artifact
 
-    # Fallback: evidence from the offline index only — no invented reasoning text.
-    evidence: list[dict[str, Any]] = []
-    lit: dict[str, Any] = {
-        "mass_loss": 0.0,
-        "variability": 0.0,
-        "evolved_stage": 0.0,
-        "confidence": 0.0,
-        "evidence": [],
-    }
-    if INDEX_PATH.is_file():
-        import pandas as pd
-
-        df = pd.read_parquet(INDEX_PATH)
-        hit = df.loc[df["star_id"].astype(str) == str(star_id)]
-        if len(hit) == 0:
-            # Try common_name-less match on stripped ids.
-            hit = df.loc[df["star_id"].astype(str).str.contains(star_id.replace("*", ""), regex=False)]
-        if len(hit) > 0:
-            row = hit.iloc[0].to_dict()
-            raw_ev = row.get("evidence_json") or "[]"
-            evidence = json.loads(raw_ev) if isinstance(raw_ev, str) else list(raw_ev or [])
-            lit = {
-                "mass_loss": float(row.get("mass_loss", 0.0) or 0.0),
-                "variability": float(row.get("variability", 0.0) or 0.0),
-                "evolved_stage": float(row.get("evolved_stage", 0.0) or 0.0),
-                "confidence": float(row.get("confidence", 0.0) or 0.0),
-                "evidence": evidence,
-            }
     return {
         "star_id": star_id,
         "reasoning": None,
-        "literature": lit,
+        "literature": {
+            "mass_loss": 0.0,
+            "variability": 0.0,
+            "evolved_stage": 0.0,
+            "confidence": 0.0,
+            "evidence": [],
+        },
         "raw_missing": True,
-        "note": "No data/index/raw file for this star; evidence from index.parquet only.",
+        "note": "No offline literature artifact for this star yet.",
         "simulated": False,
     }
 
