@@ -6,6 +6,8 @@
 # Runtime outputs
 data/run/*
 !data/run/README.md
+# Derived filter table (regenerated from blazars.json on HE_NEUTRINO path)
+data/cache/**/blazar_table.json
 
 # Python
 __pycache__/
