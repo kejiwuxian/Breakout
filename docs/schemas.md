@@ -1,6 +1,6 @@
-# BREAKOUT data schemas (v1)
+# BREAKOUT data schemas (v1.1)
 
-**Contract version:** `v1` (`backend.schemas.CONTRACT_VERSION`)
+**Contract version:** `v1.1` (`backend.schemas.CONTRACT_VERSION`)
 
 Frozen between Light's pipeline (SkyMap producers) and Tony's ranking code
 (`CandidateScore` consumers). **Any later field change needs a version bump
@@ -89,14 +89,15 @@ See full schema: [`schemas/SkyMap.schema.json`](schemas/SkyMap.schema.json).
 
 ---
 
-## CandidateScore (v1 — frozen)
+## CandidateScore (v1.1)
 
-One row per star; output of `literature/rerank.py`.
+One row per star; output of `literature/rerank.py` and `progenitors/rank_runtime.py`.
 Pydantic: `backend.schemas.CandidateScore` with nested:
 
 - `Evidence` — `{ bibcode, claim }` (no bibcode → no claim)
 - `Literature` — `{ mass_loss, variability, evolved_stage, confidence }` each in `[0, 1]`, plus `evidence: list[Evidence]`
 - `Breakout` — `{ class_window: minutes | hours | about 1 day, countdown_from }`
+- `LifeExpectancyInfo` (v1.1, optional) — class optical-breakout window + optional ADS stage note
 
 ```json
 {
@@ -122,9 +123,17 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
     "countdown_from": "ISO-8601"
   },
   "ir_followup": false,
-  "simulated": false
+  "simulated": false,
+  "rank_confidence": null,
+  "rank_reasoning": null,
+  "life_expectancy": null,
+  "composition": null
 }
 ```
+
+v1.1 additive fields default to `null` so legacy consumers keep working. They are
+filled by `backend.progenitors.rank_runtime.rank_with_grok` from the offline
+inventory (and optional live Grok shortlist rank when keys allow).
 
 Tony imports:
 
@@ -138,6 +147,7 @@ See full schema: [`schemas/CandidateScore.schema.json`](schemas/CandidateScore.s
 
 | Version | Date (PT) | Note |
 | --- | --- | --- |
+| v1.1 | Sun 25 Oct 2026 | Additive CandidateScore fields: `rank_confidence`, `rank_reasoning`, `life_expectancy`, `composition` (progenitor inventory / Grok rank). |
 | v1 | Sat 24 Oct 2026 | Initial freeze: Alert, SkyMap, CandidateScore (+ Evidence, Literature, Breakout). |
 
 ---

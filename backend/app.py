@@ -435,6 +435,40 @@ def literature_raw(star_id: str) -> dict[str, Any]:
     }
 
 
+@app.get("/api/progenitors/inventory")
+def progenitors_inventory(limit: int = 100) -> dict[str, Any]:
+    """Offline SN-potential inventory summary (no secrets; no live Grok)."""
+    from backend.progenitors.inventory import inventory_status, load_inventory_rows
+
+    rows = load_inventory_rows()
+    lim = max(1, min(int(limit), 500))
+    preview = [
+        {
+            "star_id": p.star_id,
+            "common_name": p.common_name,
+            "class": p.class_,
+            "ra_deg": p.ra_deg,
+            "dec_deg": p.dec_deg,
+            "distance_kpc": p.distance_kpc,
+            "composition": p.composition,
+            "sn_potential": p.sn_potential,
+            "life_expectancy": p.life_expectancy.model_dump(mode="json"),
+            "lit_confidence": p.lit.confidence,
+            "last_reviewed_utc": p.last_reviewed_utc,
+            "simulated": p.simulated,
+        }
+        for p in sorted(rows, key=lambda x: x.sn_potential, reverse=True)[:lim]
+    ]
+    return {
+        "status": inventory_status(),
+        "candidates": preview,
+        "note": (
+            "Inventory consolidates curated catalog + offline literature. "
+            "Life expectancy optical_breakout_window is a class estimate."
+        ),
+    }
+
+
 @app.get("/api/voice/{alert_id}/{seq}.mp3")
 def voice_clip(alert_id: str, seq: int) -> FileResponse:
     """Serve announcer MP3 written under data/run/<alert_id>/voice/."""
