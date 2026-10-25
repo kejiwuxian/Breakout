@@ -10,6 +10,8 @@ from typing import Any
 import healpy as hp
 import numpy as np
 
+from backend.candidates.blazars import DEFAULT_SCENARIO as BLAZAR_SCENARIO
+from backend.candidates.blazars import blazar_table_for_filter, load_cached_blazars
 from backend.candidates.catalog import CURATED_PATH, STAR_TABLE_PATH, build_star_table, load_curated_stars
 from backend.candidates.filter import candidates_in_region
 from backend.config import ROOT, settings
@@ -49,6 +51,28 @@ def apply_presn_watchlist(alert: Alert) -> set[str]:
     return set(_watchlist)
 
 
+def _candidate_table_for_alert(alert: Alert) -> Path:
+    """SN_BURST → curated/star_table; HE_NEUTRINO → cached regional blazar list."""
+    if alert.kind == "HE_NEUTRINO":
+        # Offline: read blazars.json pulled once with astroquery (no network here).
+        scenario = (
+            str(alert.raw.get("_scenario"))
+            if isinstance(alert.raw, dict) and alert.raw.get("_scenario")
+            else BLAZAR_SCENARIO
+        )
+        load_cached_blazars(scenario)
+        return blazar_table_for_filter(scenario)
+
+    # Trigger path: never hit SIMBAD/VizieR. Prefer existing parquet; otherwise
+    # build from curated only (use_network=False).
+    if STAR_TABLE_PATH.is_file():
+        return STAR_TABLE_PATH
+    table = build_star_table(use_network=False)
+    if not Path(table).is_file():
+        return CURATED_PATH
+    return Path(table)
+
+
 def process_sn_burst(
     alert: Alert,
     *,
@@ -67,14 +91,7 @@ def process_sn_burst(
     prob = np.asarray(hp.read_map(str(fits), nest=True))
 
     t0 = time.perf_counter()
-    # Trigger path: never hit SIMBAD/VizieR. Prefer existing parquet; otherwise
-    # build from curated only (use_network=False).
-    if STAR_TABLE_PATH.is_file():
-        table: Path = STAR_TABLE_PATH
-    else:
-        table = build_star_table(use_network=False)
-        if not Path(table).is_file():
-            table = CURATED_PATH
+    table = _candidate_table_for_alert(alert)
     rows = candidates_in_region(skymap, Path(table), level=0.9, prob=prob)
     latencies["filter_ms"] = _stage("filter", t0)
 

@@ -1,6 +1,6 @@
 # BREAKOUT data schemas (v1)
 
-**Contract version:** `v1` (`backend.schemas.CONTRACT_VERSION`)
+**Contract version:** `v1.1` (`backend.schemas.CONTRACT_VERSION`)
 
 Frozen between Light's pipeline (SkyMap producers) and Tony's ranking code
 (`CandidateScore` consumers). **Any later field change needs a version bump
@@ -96,14 +96,15 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
 
 - `Evidence` — `{ bibcode, claim }` (no bibcode → no claim)
 - `Literature` — `{ mass_loss, variability, evolved_stage, confidence }` each in `[0, 1]`, plus `evidence: list[Evidence]`
-- `Breakout` — `{ class_window: minutes | hours | about 1 day, countdown_from }`
+- `Breakout` — `{ class_window: minutes | hours | about 1 day | n/a, countdown_from }`
+  (`n/a` skips the optical breakout clock for non-stellar sources)
 
 ```json
 {
   "star_id": "string",
   "ra_deg": 0.0,
   "dec_deg": 0.0,
-  "class": "RSG | BSG | YSG | WR | LBV",
+  "class": "RSG | BSG | YSG | WR | LBV | BLAZAR",
   "spectral_type": "string",
   "distance_kpc": null,
   "extinction_av_mag": null,
@@ -118,7 +119,7 @@ Pydantic: `backend.schemas.CandidateScore` with nested:
   "presn_watch": false,
   "posterior": 0.0,
   "breakout": {
-    "class_window": "minutes | hours | about 1 day",
+    "class_window": "minutes | hours | about 1 day | n/a",
     "countdown_from": "ISO-8601"
   },
   "ir_followup": false,
@@ -139,6 +140,7 @@ See full schema: [`schemas/CandidateScore.schema.json`](schemas/CandidateScore.s
 | Version | Date (PT) | Note |
 | --- | --- | --- |
 | v1 | Sat 24 Oct 2026 | Initial freeze: Alert, SkyMap, CandidateScore (+ Evidence, Literature, Breakout). |
+| v1.1 | Sat 24 Oct 2026 | Additive: `StarClass` += `BLAZAR`; `BreakoutClassWindow` += `n/a` (skip breakout for non-stellar HE_NEUTRINO counterparts). |
 
 ---
 

@@ -123,6 +123,8 @@ CLASS_WINDOWS: dict[str, str] = {
     "YSG": "hours",
     "RSG": "about 1 day",
     "LBV": "hours",
+    # Non-stellar HE_NEUTRINO counterparts: skip optical breakout clock.
+    "BLAZAR": "n/a",
 }
 
 # IR follow-up when catalog A_V is high enough that optical discovery is likely
@@ -147,6 +149,7 @@ RANKING_CLASS_WEIGHT: dict[str, float] = {
     "YSG": 0.85,
     "WR": 0.8,
     "LBV": 0.75,
+    "BLAZAR": 1.0,
 }
 RANKING_WATCH_BOOST: float = 2.0  # w_watch for presn_watch / watchlist stars
 RANKING_W_LIT_FLOOR: float = 0.25

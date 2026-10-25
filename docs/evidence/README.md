@@ -7,7 +7,7 @@ Screenshots and clips for Devpost / demo-day tab (Barron owns capture):
 - [ ] `docs/prompt-log.md` filled for each module
 - [ ] Grok Bot plan Page + team check-ins
 - [ ] Betelgeuse run with announcer (`VOICE_MODE=live`) and Simulated badges
-- [ ] IceCube-170922A replay ending on TXS 0506+056
+- [x] IceCube-170922A replay ending on TXS 0506+056
 - [ ] Action tab: LCOGT dry-run JSON, ToO drafts, GCN Circular draft
 - [ ] `scripts/mvp_gate.sh` printing PASS
 

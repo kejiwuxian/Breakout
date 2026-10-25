@@ -7,7 +7,8 @@
           "enum": [
             "minutes",
             "hours",
-            "about 1 day"
+            "about 1 day",
+            "n/a"
           ],
           "title": "Class Window",
           "type": "string"
@@ -104,7 +105,8 @@
         "BSG",
         "YSG",
         "WR",
-        "LBV"
+        "LBV",
+        "BLAZAR"
       ],
       "title": "Class",
       "type": "string"
@@ -188,6 +190,6 @@
     "posterior",
     "breakout"
   ],
-  "title": "BREAKOUT CandidateScore (v1)",
+  "title": "BREAKOUT CandidateScore (v1.1)",
   "type": "object"
 }

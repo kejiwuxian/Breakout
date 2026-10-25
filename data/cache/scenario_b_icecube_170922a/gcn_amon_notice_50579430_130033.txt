@@ -1,0 +1,32 @@
+//////////////////////////////////////////////////////////////////////
+TITLE:            GCN/AMON NOTICE
+NOTICE_DATE:      Fri 22 Sep 17 20:55:13 UT
+NOTICE_TYPE:      AMON ICECUBE EHE 
+RUN_NUM:          130033
+EVENT_NUM:        50579430
+SRC_RA:            77.2853d {+05h 09m 08s} (J2000),
+                   77.5221d {+05h 10m 05s} (current),
+                   76.6176d {+05h 06m 28s} (1950)
+SRC_DEC:           +5.7517d {+05d 45' 06"} (J2000),
+                   +5.7732d {+05d 46' 24"} (current),
+                   +5.6888d {+05d 41' 20"} (1950)
+SRC_ERROR:        14.99 [arcmin radius, stat+sys, 50% containment]
+DISCOVERY_DATE:   18018 TJD;   265 DOY;   17/09/22 (yy/mm/dd)
+DISCOVERY_TIME:   75270 SOD {20:54:30.43} UT
+REVISION:         0
+N_EVENTS:         1 [number of neutrinos]
+STREAM:           2
+DELTA_T:          0.0000 [sec]
+SIGMA_T:          0.0000e+00 [dn]
+ENERGY :          1.1998e+02 [TeV]
+SIGNALNESS:       5.6507e-01 [dn]
+CHARGE:           5784.9552 [pe]
+SUN_POSTN:        180.03d {+12h 00m 08s}   -0.01d {-00d 00' 53"}
+SUN_DIST:         102.45 [deg]   Sun_angle= 6.8 [hr] (West of Sun)
+MOON_POSTN:       211.24d {+14h 04m 58s}   -7.56d {-07d 33' 33"}
+MOON_DIST:        134.02 [deg]
+GAL_COORDS:       195.31,-19.67 [deg] galactic lon,lat of the event
+ECL_COORDS:        76.75,-17.10 [deg] ecliptic lon,lat of the event
+COMMENTS:         AMON_ICECUBE_EHE.  
+ 
+ 

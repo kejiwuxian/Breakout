@@ -14,13 +14,15 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 # Bump this and document the change in docs/schemas.md when fields change.
-CONTRACT_VERSION = "v1"
+CONTRACT_VERSION = "v1.1"
 
 AlertKind = Literal["PRESN", "SN_BURST", "HE_NEUTRINO"]
 AlertSource = Literal["presn", "snews2", "gcn_kafka", "snewpy_sim", "cache"]
 DetectorName = Literal["Super-K", "SNO+", "IceCube", "KamLAND", "JUNO"]
-StarClass = Literal["RSG", "BSG", "YSG", "WR", "LBV"]
-BreakoutClassWindow = Literal["minutes", "hours", "about 1 day"]
+# BLAZAR: non-stellar HE_NEUTRINO counterpart (no optical breakout clock).
+StarClass = Literal["RSG", "BSG", "YSG", "WR", "LBV", "BLAZAR"]
+# "n/a": skip breakout countdown for non-stellar sources.
+BreakoutClassWindow = Literal["minutes", "hours", "about 1 day", "n/a"]
 
 
 class Pointing(BaseModel):

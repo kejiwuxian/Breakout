@@ -27,7 +27,7 @@ from backend.config import (
     settings,
 )
 from backend.literature.build_index import INDEX_PATH
-from backend.physics.breakout_window import breakout_countdown
+from backend.physics.breakout_window import breakout_countdown, is_non_stellar
 from backend.physics.extinction import apply_extinction_flag, extinction_decision
 from backend.schemas import CandidateScore, Evidence, Literature, SkyMap
 
@@ -214,6 +214,8 @@ def rerank(
         dec = float(row["dec_deg"])
         star_class = str(row.get("class", "RSG"))
         if star_class not in class_w:
+            # Unknown stellar labels default to RSG; never invent a stellar class
+            # for catalog rows that already declare BLAZAR.
             star_class = "RSG"
 
         lit = _lit_from_row(row, index_rows)
@@ -253,7 +255,8 @@ def rerank(
         decision = extinction_decision(
             ra_deg=ra, dec_deg=dec, extinction_av_mag=score.extinction_av_mag
         )
-        score = apply_extinction_flag(score)
+        if not is_non_stellar(star_class):
+            score = apply_extinction_flag(score)
         meta = {
             "weight": weight,
             "w_class": w_class,

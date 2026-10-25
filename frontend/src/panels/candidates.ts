@@ -9,7 +9,11 @@ import {
   type CandidateRow,
 } from "../state/store";
 import { adsUrl } from "../util/ads";
-import { formatElapsed, windowLabel } from "../util/countdown";
+import {
+  formatElapsed,
+  isBreakoutSkipped,
+  windowLabel,
+} from "../util/countdown";
 
 type RawLitResponse = {
   star_id?: string;
@@ -156,9 +160,17 @@ export function mountCandidatesPanel(host: HTMLElement): () => void {
         <td>${escapeHtml(row.class)}</td>
         <td>${escapeHtml(fmtDistance(row.distance_kpc))}</td>
         <td>${row.posterior.toFixed(3)}</td>
-        <td class="breakout" title="${strings.countdownEstimate}">
+        <td class="breakout" title="${
+          isBreakoutSkipped(row.breakout.class_window)
+            ? strings.countdownSkipped
+            : strings.countdownEstimate
+        }">
           <span class="bw">${escapeHtml(windowLabel(row.breakout.class_window))}</span>
-          <span class="elapsed">${formatElapsed(row.breakout.countdown_from, now)} ${strings.countdownSince}</span>
+          ${
+            isBreakoutSkipped(row.breakout.class_window)
+              ? `<span class="elapsed">${escapeHtml(strings.countdownSkipped)}</span>`
+              : `<span class="elapsed">${formatElapsed(row.breakout.countdown_from, now)} ${strings.countdownSince}</span>`
+          }
         </td>
         <td>${row.ir_followup ? strings.irYes : strings.irNo}</td>
       `;

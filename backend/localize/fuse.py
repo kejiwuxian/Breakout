@@ -16,7 +16,11 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np
 
 from backend.config import HEALPIX_NSIDE, ROOT, settings
-from backend.localize.pointing import extract_superk_pointing, pointing_map
+from backend.localize.pointing import (
+    extract_he_neutrino_pointing,
+    extract_superk_pointing,
+    pointing_map,
+)
 from backend.localize.triangulate import pairwise_baselines, ring_map
 from backend.schemas import Alert, SkyMap, SkyPeak
 
@@ -147,10 +151,33 @@ def build_component_maps(
     nside: int | None = None,
     include_pointing: bool = True,
 ) -> tuple[list[np.ndarray], list[str]]:
-    """Build timing-ring (+ optional Super-K pointing) maps for one Alert."""
+    """Build localization component maps for one Alert.
+
+    SN_BURST: timing rings + optional Super-K pointing.
+    HE_NEUTRINO: IceCube published error region as a pointing map (no
+    multi-detector timing when only IceCube contributes).
+    """
     nside = int(nside if nside is not None else getattr(settings, "healpix_nside", HEALPIX_NSIDE))
     maps: list[np.ndarray] = []
     components: list[str] = []
+
+    if alert.kind == "HE_NEUTRINO":
+        pointing = extract_he_neutrino_pointing(alert)
+        if pointing is None:
+            raise ValueError("HE_NEUTRINO Alert missing IceCube/Super-K pointing")
+        # IceCube 90% PSF is ~degree-scale; nside=64 pixels (~0.9°) cannot
+        # separate nearby catalog matches. Use at least 128 for HE_NEUTRINO.
+        he_nside = max(int(nside), 128)
+        maps.append(
+            pointing_map(
+                pointing.ra_deg,
+                pointing.dec_deg,
+                pointing.err_deg,
+                nside=he_nside,
+            )
+        )
+        components.append("icecube_pointing")
+        return maps, components
 
     for pair in pairwise_baselines(alert):
         # Skip near-degenerate baselines (e.g. Super-K ↔ KamLAND ~km).
@@ -192,20 +219,25 @@ def fuse(
     out_root: Path | None = None,
     include_pointing: bool = True,
 ) -> SkyMap:
-    """Fuse timing rings (+ Super-K pointing) for Alert(s) into a SkyMap.
+    """Fuse timing rings and/or detector pointing for Alert(s) into a SkyMap.
 
     Writes ``data/run/<alert_id>/skymap.fits`` and ``skymap.png``.
-    When multiple Alerts are passed, uses the first SN_BURST (else the first).
+    When multiple Alerts are passed, prefers SN_BURST, else HE_NEUTRINO,
+    else the first.
     """
     alert_list = [alerts] if isinstance(alerts, Alert) else list(alerts)
     if not alert_list:
         raise ValueError("fuse() requires at least one Alert")
 
-    alert = next((a for a in alert_list if a.kind == "SN_BURST"), alert_list[0])
+    alert = next((a for a in alert_list if a.kind == "SN_BURST"), None)
+    if alert is None:
+        alert = next((a for a in alert_list if a.kind == "HE_NEUTRINO"), alert_list[0])
     nside = int(nside if nside is not None else getattr(settings, "healpix_nside", HEALPIX_NSIDE))
     maps, components = build_component_maps(
         alert, nside=nside, include_pointing=include_pointing
     )
+    # Component maps may bump Nside (HE_NEUTRINO ≥ 128); keep SkyMap consistent.
+    map_nside = int(hp.npix2nside(len(maps[0])))
 
     root = Path(out_root) if out_root is not None else ROOT / "data" / "run"
     out_dir = root / alert.alert_id
@@ -214,5 +246,5 @@ def fuse(
         alert=alert,
         components=components,
         out_dir=out_dir,
-        nside=nside,
+        nside=map_nside,
     )

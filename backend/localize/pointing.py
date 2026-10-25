@@ -61,3 +61,19 @@ def extract_superk_pointing(alert: Alert) -> Pointing | None:
         if det.name == "Super-K" and det.pointing is not None:
             return det.pointing
     return None
+
+
+def extract_icecube_pointing(alert: Alert) -> Pointing | None:
+    """Return the IceCube pointing from an Alert, if present."""
+    for det in alert.detectors:
+        if det.name == "IceCube" and det.pointing is not None:
+            return det.pointing
+    return None
+
+
+def extract_he_neutrino_pointing(alert: Alert) -> Pointing | None:
+    """Prefer IceCube pointing for HE_NEUTRINO; fall back to Super-K."""
+    ice = extract_icecube_pointing(alert)
+    if ice is not None:
+        return ice
+    return extract_superk_pointing(alert)

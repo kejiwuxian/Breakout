@@ -33,6 +33,7 @@
   "adsLinkLabel": "ADS",
   "countdownEstimate": "Estimate from class window",
   "countdownSince": "since burst t0",
+  "countdownSkipped": "n/a (non-stellar)",
   "scenariosTitle": "Scenarios",
   "scenarioA": "Scenario A — galactic CCSN (Betelgeuse)",
   "scenarioB": "Scenario B — IceCube-170922A",
