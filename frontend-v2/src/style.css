@@ -286,38 +286,24 @@ body::before {
   fill: #fff6d6;
 }
 
-.sky-prob-cell {
-  fill: #3ecf8e;
-  stroke: none;
-}
-
-.sky-nest-inner {
-  fill: rgba(62, 207, 142, 0.12);
-  stroke: rgba(62, 207, 142, 0.45);
-  stroke-width: 1;
-}
-
-.sky-nest-outer {
-  fill: rgba(62, 207, 142, 0.06);
-  stroke: rgba(62, 207, 142, 0.35);
-  stroke-width: 1;
-}
-
+/* Outer localization ellipse — semi-transparent pure red, no fill/glow. */
 .sky-outline {
-  fill: rgba(255, 0, 0, 0.12);
-  stroke: #ff0000;
+  fill: none;
+  stroke: rgba(255, 0, 0, 0.4);
   stroke-width: 2.25;
   stroke-linejoin: round;
   stroke-linecap: round;
-  fill-rule: evenodd;
   vector-effect: non-scaling-stroke;
+  filter: none;
 }
 
+/* Peak ring — solid opaque pure red (IceCube-scale readability). */
 .sky-outline-peak {
   fill: none;
   stroke: #ff0000;
   stroke-width: 2.5;
   vector-effect: non-scaling-stroke;
+  filter: none;
 }
 
 .sky-star {

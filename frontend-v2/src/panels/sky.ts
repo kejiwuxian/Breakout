@@ -651,34 +651,9 @@ export function mountSky(host: HTMLElement): () => void {
     root.appendChild(fieldG);
 
     if (reg) {
-      const cellsG = createSvgEl("g");
-      cellsG.setAttribute("class", "sky-prob-cells");
-      for (const cell of reg.prob_cells ?? []) {
-        const pts = projectRing(cell.corners, w, h);
-        if (!pts) continue;
-        const poly = createSvgEl("polygon");
-        poly.setAttribute("points", pts);
-        poly.setAttribute("class", "sky-prob-cell");
-        poly.setAttribute(
-          "fill-opacity",
-          String(Math.min(0.75, 0.12 + 0.65 * (cell.weight || 0))),
-        );
-        cellsG.appendChild(poly);
-      }
-      root.appendChild(cellsG);
-
-      for (const nest of reg.nested_ellipses ?? []) {
-        const pts = projectRing(nest.outline, w, h);
-        if (!pts) continue;
-        const poly = createSvgEl("polygon");
-        poly.setAttribute("points", pts);
-        poly.setAttribute(
-          "class",
-          nest.level >= 0.85 ? "sky-nest-outer" : "sky-nest-inner",
-        );
-        root.appendChild(poly);
-      }
-
+      // Two intentional red AOI marks only — no HEALPix fills or nested light
+      // ellipses (those were the green/white clutter). Outer localization
+      // ellipse + readable peak ring for tiny IceCube-scale regions.
       const ring = outlineRing(reg);
       const ovalPts = projectRing(ring, w, h);
       if (ovalPts) {
@@ -700,7 +675,7 @@ export function mountSky(host: HTMLElement): () => void {
           ringEl.setAttribute("cx", String(peak.x));
           ringEl.setAttribute("cy", String(peak.y));
           ringEl.setAttribute("r", String(rPx));
-          ringEl.setAttribute("class", "sky-outline sky-outline-peak");
+          ringEl.setAttribute("class", "sky-outline-peak");
           ringEl.setAttribute("vector-effect", "non-scaling-stroke");
           root.appendChild(ringEl);
         }
