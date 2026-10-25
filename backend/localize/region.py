@@ -2,8 +2,8 @@
 
 Derives a **smooth oval** (probability-weighted covariance ellipse) for the
 90% credible region from the fused NESTED HEALPix map, plus public-catalog
-field stars and a galactic-plane guide. Also writes ``region.json`` (and a
-legacy focus PNG for classic UI).
+field stars. Also writes ``region.json`` (and a legacy focus PNG for classic
+UI). The galactic-plane (b=0) guide is intentionally omitted from the skymap.
 
 Never invents coordinates: localization from the fused map; background star
 positions from the committed Yale Bright Star Catalogue subset
@@ -30,7 +30,7 @@ from backend.localize.fuse import credible_region_area_deg2, credible_region_pix
 
 logger = logging.getLogger("breakout.localize.region")
 
-SVG_RENDER_VERSION = "svg_v1"
+SVG_RENDER_VERSION = "svg_v2"
 CURATED_STARS_PATH = ROOT / "data" / "stars" / "curated_stars.json"
 SKY_BACKGROUND_PATH = ROOT / "data" / "stars" / "sky_background.json"
 
@@ -327,18 +327,19 @@ def healpix_prob_cells(
 
 
 def public_sky_base() -> dict[str, Any]:
-    """Layers that do not require an alert: BSC5 background + galactic plane."""
+    """Layers that do not require an alert: BSC5 background field stars."""
     field = load_public_field_stars()
     source = (
-        "yale_bsc5_v50+astropy_galactic"
+        "yale_bsc5_v50"
         if field and field[0].get("source") == "yale_bsc5_v50"
-        else "curated_fallback+astropy_galactic"
+        else "curated_fallback"
     )
     return {
         "frame": "ICRS",
         "render": SVG_RENDER_VERSION,
         "field_stars": field,
-        "galactic_plane": galactic_plane_icrs(),
+        # Galactic plane guide removed from the skymap (no dashed b=0 line).
+        "galactic_plane": [],
         "source": source,
         "field_catalog": (
             "Yale Bright Star Catalogue 5th Ed. (Hoffleit+1991) V<=6.5"
@@ -393,7 +394,7 @@ def build_region_payload(
         "field_stars": [],
         "field_stars_via": "/api/sky/base",
         "n_field_stars_base": int(base.get("n_field_stars") or 0),
-        "galactic_plane": base["galactic_plane"],
+        "galactic_plane": [],
         "simulated": bool(simulated),
         "survey_hint": "yale_bsc5_svg",
     }

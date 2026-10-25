@@ -135,7 +135,8 @@ async function fetchSkyBase(): Promise<SkyBase> {
     const body = (await res.json()) as SkyBase;
     return {
       field_stars: body.field_stars ?? [],
-      galactic_plane: body.galactic_plane ?? [],
+      // Intentionally unused — galactic plane guide removed from the skymap.
+      galactic_plane: [],
     };
   } catch {
     return { field_stars: [], galactic_plane: [] };
@@ -678,33 +679,60 @@ export function mountSky(host: HTMLElement): () => void {
         root.appendChild(poly);
       }
 
-      const ovalPts = projectRing(outlineRing(reg), w, h);
+      const ring = outlineRing(reg);
+      const ovalPts = projectRing(ring, w, h);
       if (ovalPts) {
         const oval = createSvgEl("polygon");
         oval.setAttribute("points", ovalPts);
         oval.setAttribute("class", "sky-outline");
+        oval.setAttribute("vector-effect", "non-scaling-stroke");
         root.appendChild(oval);
+      }
+      // Tiny IceCube-scale ellipses (~few px on full-sky) get a readable red ring
+      // at the peak so the AOI is visible before / without zoom.
+      const major = Number(reg.ellipse?.semi_major_deg ?? reg.fov_deg ?? 0);
+      const needsPeakRing = !ovalPts || !(major > 0) || major < 8;
+      if (reg.peak && needsPeakRing) {
+        const peak = raDecToMollweide(reg.peak.ra_deg, reg.peak.dec_deg, w, h);
+        if (peak) {
+          const rPx = Math.max(10, Math.min(w, h) * 0.022);
+          const ringEl = createSvgEl("circle");
+          ringEl.setAttribute("cx", String(peak.x));
+          ringEl.setAttribute("cy", String(peak.y));
+          ringEl.setAttribute("r", String(rPx));
+          ringEl.setAttribute("class", "sky-outline sky-outline-peak");
+          ringEl.setAttribute("vector-effect", "non-scaling-stroke");
+          root.appendChild(ringEl);
+        }
       }
     }
 
     const fieldById = new Map(
       field.map((s) => [s.star_id, s] as const),
     );
+    const fieldElById = new Map<string, Element>();
+    for (const el of Array.from(fieldG.querySelectorAll("[data-id]"))) {
+      const id = el.getAttribute("data-id");
+      if (id) fieldElById.set(id, el);
+    }
+    const nRanked = Math.max(candidates.length, 1);
     candidates.forEach((row, idx) => {
       const p = raDecToMollweide(row.ra_deg, row.dec_deg, w, h);
       if (!p) return;
+      // Hide the matching field-star underlay so size does not visually double.
+      const under = fieldById.get(row.star_id);
+      const underEl = fieldElById.get(row.star_id);
+      if (underEl) underEl.setAttribute("visibility", "hidden");
       const g = createSvgEl("g");
-      g.setAttribute("class", idx === 0 ? "sky-star sky-star-top" : "sky-star");
+      g.setAttribute("class", "sky-star");
       const c = createSvgEl("circle");
       c.setAttribute("cx", String(p.x));
       c.setAttribute("cy", String(p.y));
-      const fromField = fieldById.get(row.star_id);
       let vmag =
         (row as CandidateRow & { vmag?: number | null }).vmag ??
-        fromField?.vmag ??
+        under?.vmag ??
         null;
       if (vmag == null) {
-        // Nearest field star within ~0.05° for magnitude when ids differ.
         let best: { d: number; v: number } | null = null;
         for (const s of field) {
           if (s.vmag == null) continue;
@@ -719,9 +747,14 @@ export function mountSky(host: HTMLElement): () => void {
         }
         vmag = best?.v ?? null;
       }
-      const { r, opacity } = starStyleFromVmag(vmag);
+      // Same magnitude radius as field stars — do not enlarge after replay.
+      const { r } = starStyleFromVmag(vmag);
+      // Pure red; opacity by rank (1st most opaque → lower ranks more transparent).
+      const opacity = Math.max(0.22, 1 - (idx / nRanked) * 0.78);
       c.setAttribute("r", String(r));
+      c.setAttribute("fill", "#ff0000");
       c.setAttribute("fill-opacity", String(opacity));
+      c.setAttribute("stroke", "none");
       g.appendChild(c);
       wireStar(g, row, idx + 1);
       root.appendChild(g);

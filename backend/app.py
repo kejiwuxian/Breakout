@@ -461,11 +461,12 @@ def skymap_png(alert_id: str) -> FileResponse:
 
 @app.get("/api/sky/base")
 def sky_base_layers() -> dict[str, Any]:
-    """Public SVG sky layers (Yale BSC5 background + galactic plane) with no alert.
+    """Public SVG sky layers (Yale BSC5 background) with no alert.
 
     Background stars come from ``data/stars/sky_background.json`` (Hoffleit+1991
     / CDS V/50 / NASA HEASARC BSC5P, V<=6.5). Ranked SN progenitors are a
-    separate CandidateScore overlay — not this field catalog.
+    separate CandidateScore overlay — not this field catalog. No galactic-plane
+    guide is included.
     """
     from backend.localize.region import public_sky_base
 
@@ -474,7 +475,7 @@ def sky_base_layers() -> dict[str, Any]:
 
 @app.get("/api/skymap/{alert_id}/region")
 def skymap_region(alert_id: str) -> dict[str, Any]:
-    """SVG sky layers: ellipse, HEALPix cells, public field stars, galactic plane.
+    """SVG sky layers: ellipse, HEALPix cells, public field stars.
 
     Regenerates ``region.json`` / ``skymap_focus.png`` when the fused FITS is
     newer so the UI always sees the latest localization.

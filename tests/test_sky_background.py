@@ -55,7 +55,8 @@ def test_public_sky_base_reports_bsc5() -> None:
     assert base["n_field_stars"] == len(base["field_stars"]) >= 1000
     assert "yale_bsc5" in base["source"]
     assert "Hoffleit" in base["field_catalog"]
-    assert len(base["galactic_plane"]) >= 2
+    assert base.get("galactic_plane") == []
+    assert base.get("render") == "svg_v2"
 
 
 def test_build_script_parse_helpers() -> None:

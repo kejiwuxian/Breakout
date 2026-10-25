@@ -304,33 +304,37 @@ body::before {
 }
 
 .sky-outline {
-  fill: rgba(226, 59, 59, 0.14);
-  stroke: #ff4d4d;
-  stroke-width: 2.5;
+  fill: rgba(255, 0, 0, 0.12);
+  stroke: #ff0000;
+  stroke-width: 2.25;
   stroke-linejoin: round;
   stroke-linecap: round;
-  paint-order: stroke fill;
+  fill-rule: evenodd;
+  vector-effect: non-scaling-stroke;
+}
+
+.sky-outline-peak {
+  fill: none;
+  stroke: #ff0000;
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
 }
 
 .sky-star {
   pointer-events: auto;
 }
 
-/* Same magnitude sizing as field stars; stroke marks ranked AOI hits. */
+/* Ranked AOI stars: same magnitude radius as field; pure red, no border/glow. */
 .sky-star circle {
-  fill: var(--signal);
-  stroke: #071018;
-  stroke-width: 1.1;
-}
-
-.sky-star-top circle {
-  stroke: #e23b3b;
-  stroke-width: 1.4;
+  fill: #ff0000;
+  stroke: none;
+  filter: none;
 }
 
 .sky-star:hover circle {
-  fill: #ffd166;
-  stroke: #e23b3b;
+  fill: #ff0000;
+  stroke: none;
+  filter: none;
 }
 
 .sky-hover {

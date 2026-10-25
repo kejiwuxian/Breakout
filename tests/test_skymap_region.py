@@ -63,11 +63,12 @@ def test_outline_is_closed_and_near_true_position(tmp_path: Path) -> None:
     assert max(steps) < 25.0
     payload = build_region_payload(prob, alert_id=alert.alert_id, simulated=True)
     assert payload["shape"] == "ellipse"
-    assert payload["render"] == "svg_v1"
+    assert payload["render"] == "svg_v2"
     assert "ellipse" in payload
     assert payload["prob_cells"]
     # Full BSC5 field lives on /api/sky/base; region keeps the key empty.
     assert payload["field_stars"] == []
+    assert payload.get("galactic_plane") == []
     assert payload.get("n_field_stars_base", 0) >= 1000
     assert payload["nested_ellipses"]
     assert payload["fov_deg"] == pytest.approx(focus_fov_deg(payload["ellipse"]))
@@ -96,14 +97,18 @@ def test_ensure_region_and_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         body = r.json()
         assert body["alert_id"] == alert.alert_id
         assert body["shape"] == "ellipse"
-        assert body["render"] == "svg_v1"
+        assert body["render"] == "svg_v2"
         assert body["ellipse"]["semi_major_deg"] >= body["ellipse"]["semi_minor_deg"]
         assert len(body["outline"]) >= 4
         assert body["prob_cells"]
         assert body["field_stars"] == []
+        assert body.get("galactic_plane") == []
         base = client.get("/api/sky/base")
         assert base.status_code == 200
-        field = base.json()["field_stars"]
+        base_body = base.json()
+        field = base_body["field_stars"]
+        assert base_body.get("galactic_plane") == []
+        assert base_body.get("render") == "svg_v2"
         assert len(field) >= 1000
         assert all("ra_deg" in s and "dec_deg" in s for s in field[:20])
         f = client.get(f"/api/skymap/{alert.alert_id}/focus.png")

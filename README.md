@@ -35,7 +35,7 @@ npm --prefix frontend install && npm --prefix frontend run dev         # :5173
 
 Offline capability (`USE_CACHED_STREAM=True`): fixtures under `data/cache/` are available, with **no network** on the trigger path — but scenarios do **not** auto-play. Cold start is idle / listening (hello `scenario=live_waiting`); use the UI **Replay** rail or `POST /scenario/{name}/start` to inject simulated events. Opt-in auto-replay only with `BREAKOUT_AUTOSTART=1`. Keys may stay empty. Label every simulated number (`simulated=true` in JSON; Simulated badge in the UI).
 
-**Skymap:** pure SVG Mollweide; **background field** = Yale Bright Star Catalogue 5th Ed. (Hoffleit+1991 / CDS V/50 / NASA HEASARC BSC5P, V≤6.5, ~8.4k stars — rebuild with `python scripts/build_sky_background_catalog.py`); **ranked progenitors** stay a separate curated-inventory overlay. Dashed line = galactic plane; wheel zoom + drag pan; auto zoom to the localization oval on event.
+**Skymap:** pure SVG Mollweide; **background field** = Yale Bright Star Catalogue 5th Ed. (Hoffleit+1991 / CDS V/50 / NASA HEASARC BSC5P, V≤6.5, ~8.4k stars — rebuild with `python scripts/build_sky_background_catalog.py`); **ranked progenitors** stay a separate curated-inventory overlay (pure red, magnitude-matched radius). Wheel zoom + drag pan; auto zoom to the localization oval on event.
 
 ## Community alerts (Phase 1) — catch potential SNe today
 
