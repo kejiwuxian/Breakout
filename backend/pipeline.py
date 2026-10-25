@@ -10,8 +10,8 @@ from typing import Any
 import healpy as hp
 import numpy as np
 
-from backend.candidates.catalog import CURATED_PATH, build_star_table, load_curated_stars
-from backend.candidates.filter import filter_candidates
+from backend.candidates.catalog import CURATED_PATH, STAR_TABLE_PATH, build_star_table, load_curated_stars
+from backend.candidates.filter import candidates_in_region
 from backend.config import ROOT, settings
 from backend.literature.rerank import rerank
 from backend.localize.fuse import fuse
@@ -67,17 +67,23 @@ def process_sn_burst(
     prob = np.asarray(hp.read_map(str(fits), nest=True))
 
     t0 = time.perf_counter()
-    table = build_star_table(use_network=False)
-    if not Path(table).is_file():
-        table = CURATED_PATH
-    rows = filter_candidates(skymap, Path(table), prob=prob)
+    # Trigger path: never hit SIMBAD/VizieR. Prefer existing parquet; otherwise
+    # build from curated only (use_network=False).
+    if STAR_TABLE_PATH.is_file():
+        table: Path = STAR_TABLE_PATH
+    else:
+        table = build_star_table(use_network=False)
+        if not Path(table).is_file():
+            table = CURATED_PATH
+    rows = candidates_in_region(skymap, Path(table), level=0.9, prob=prob)
     latencies["filter_ms"] = _stage("filter", t0)
 
     t0 = time.perf_counter()
     scores = rerank(
         rows,
-        skymap,
-        watchlist=_watchlist,
+        None,  # default index.parquet
+        _watchlist,
+        skymap=skymap,
         t0_utc=alert.t0_utc,
         prob=prob,
     )

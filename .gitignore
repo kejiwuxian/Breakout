@@ -42,3 +42,4 @@ npm-debug.log*
 !data/fixtures/**
 .python-version
 data/stars/star_table.parquet
+frontend/tsconfig.tsbuildinfo

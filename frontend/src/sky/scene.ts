@@ -1,8 +1,10 @@
 /**
- * Three.js / WebGL sky map host. Geometry and HEALPix overlay come later.
+ * Optional Three.js host kept for future WebGL HEALPix; dashboard sky panel
+ * uses the Mollweide PNG + SVG overlay in panels/skyMap.ts instead.
  */
 import * as THREE from "three";
 
+/** @deprecated Prefer mountSkyMapPanel — retained for WebGL experiments. */
 export function mountSkyPlaceholder(container: HTMLElement): () => void {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);

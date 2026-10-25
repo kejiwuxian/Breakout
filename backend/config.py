@@ -102,6 +102,56 @@ DEFAULT_T_ERR_MS: dict[str, float] = {
 # HEALPix resolution for localization maps (NESTED ordering).
 HEALPIX_NSIDE: int = 64
 
+# ---------------------------------------------------------------------------
+# Breakout countdown class windows (UI labels; estimates, not star-specific
+# inventions). countdown_from is always the burst t0 from the Alert.
+#
+# Citations (ADS bibcodes — no bibcode, no claim):
+# - WR → "minutes": compact/stripped envelopes yield short shock-breakout and
+#   early-emission timescales (Nakar & Sari 2010, ADS 2010ApJ...725..904N).
+# - BSG → "hours": SN 1987A (BSG progenitor) — neutrino burst then optical
+#   discovery on an hours-scale timeline (Hirata et al. 1987,
+#   ADS 1987PhRvL..58.1490H; Bionta et al. 1987, ADS 1987PhRvL..58.1494B).
+# - RSG → "about 1 day": extended RSG envelopes imply longer diffusion /
+#   early optical rise than compact progenitors (Nakar & Sari 2010,
+#   ADS 2010ApJ...725..904N).
+# YSG/LBV inherit the hours-scale BSG-like label as a conservative plan default
+# (same Nakar & Sari compact-vs-extended framing; not a separate measurement).
+CLASS_WINDOWS: dict[str, str] = {
+    "WR": "minutes",
+    "BSG": "hours",
+    "YSG": "hours",
+    "RSG": "about 1 day",
+    "LBV": "hours",
+}
+
+# IR follow-up when catalog A_V is high enough that optical discovery is likely
+# suppressed. Operational BREAKOUT threshold — not a universal published cutoff
+# and never used to invent a missing A_V (null → no IR flag).
+# Source note: dust-obscured CCSNe motivate IR searches; see e.g. the review
+# context in Jencson et al. 2019 (ADS 2019ApJ...886...40J) on IR-selected
+# obscured SNe. Threshold value itself is BREAKOUT's follow-up heuristic.
+AV_IR_THRESHOLD_MAG: float = 1.0
+AV_IR_THRESHOLD_SOURCE: str = (
+    "BREAKOUT operational A_V>=1.0 mag heuristic; context ADS 2019ApJ...886...40J; "
+    "null extinction_av_mag never invented"
+)
+
+# Ranking priors for literature/rerank.py (dimensionless; NOT observational rates).
+# Posterior ∝ p_sky × w_class × w_lit × w_watch, then normalized over candidates.
+# w_lit = RANKING_W_LIT_FLOOR + RANKING_W_LIT_SCALE * index.confidence
+# so zero-confidence stars stay alive but rank below high-confidence ones.
+RANKING_CLASS_WEIGHT: dict[str, float] = {
+    "RSG": 1.0,
+    "BSG": 0.9,
+    "YSG": 0.85,
+    "WR": 0.8,
+    "LBV": 0.75,
+}
+RANKING_WATCH_BOOST: float = 2.0  # w_watch for presn_watch / watchlist stars
+RANKING_W_LIT_FLOOR: float = 0.25
+RANKING_W_LIT_SCALE: float = 0.75
+
 
 class Settings(BaseModel):
     """Application settings read once at process start."""
@@ -145,13 +195,22 @@ class Settings(BaseModel):
         description="HEALPix Nside for NESTED localization maps.",
     )
     class_windows: dict[str, str] = Field(
-        default_factory=lambda: {
-            "WR": "minutes",
-            "BSG": "hours",
-            "RSG": "about 1 day",
-        }
+        default_factory=lambda: dict(CLASS_WINDOWS),
+        description="Progenitor class → breakout window label (estimates).",
     )
-    ranking_weights: dict[str, float] = Field(default_factory=dict)
+    av_ir_threshold_mag: float = Field(
+        default=AV_IR_THRESHOLD_MAG,
+        description="A_V (mag) at/above which ir_followup is recommended.",
+    )
+    ranking_weights: dict[str, float] = Field(
+        default_factory=lambda: {
+            "watch_boost": RANKING_WATCH_BOOST,
+            "w_lit_floor": RANKING_W_LIT_FLOOR,
+            "w_lit_scale": RANKING_W_LIT_SCALE,
+            **{f"class_{k}": v for k, v in RANKING_CLASS_WEIGHT.items()},
+        },
+        description="Dimensionless ranking priors for rerank (not rates).",
+    )
 
 
 def load_settings() -> Settings:

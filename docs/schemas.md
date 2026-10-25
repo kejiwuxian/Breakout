@@ -591,3 +591,13 @@ See full schema: [`schemas/CandidateScore.schema.json`](schemas/CandidateScore.s
 Reserved for post-MVP schema extensions. Do not implement until
 `scripts/mvp_gate.sh` prints PASS (Phase 2 is out of scope until then).
 Any v2 work starts by bumping `CONTRACT_VERSION` and adding a changelog row above.
+
+### Requests from Tony (ranking / UI) — do not implement on v1
+
+| Proposed field | Why |
+| --- | --- |
+| `ir_followup_reason: string` | Extinction module already records why IR was recommended (`ExtinctionDecision.reason`); UI needs it on the wire without a side channel. |
+| `ranking_terms: { w_class, w_lit, w_watch, weight }` | Explainability for the posterior (config weights × p_sky); useful for judge Q&A / dashboard. |
+| `common_name: string \| null` | Catalog display name (e.g. Betelgeuse) separate from `star_id` / SIMBAD main_id. |
+
+These stay off `CandidateScore` v1. Ranking keeps reasons/weights in logs until Light freezes v2.
