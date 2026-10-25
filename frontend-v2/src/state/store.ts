@@ -166,7 +166,11 @@ export function applyEvent(event: PipelineEvent): void {
   if (event.type === "hello") {
     const flat = event as PipelineEvent & { scenario?: string };
     const scenario = flat.scenario ?? (event.payload?.scenario as string | undefined);
-    if (typeof scenario === "string") state.scenario = scenario;
+    if (typeof scenario === "string" && scenario !== "live_waiting") {
+      state.scenario = scenario;
+    } else if (scenario === "live_waiting") {
+      state.scenario = null;
+    }
   }
 
   if (event.type === "alert" && event.payload) {

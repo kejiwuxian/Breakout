@@ -48,9 +48,22 @@ function normalizeCandidates(rows: CommunityCandidate[] | undefined): CandidateR
   });
 }
 
-/** Load the latest community alert so the sky panel has a default Mollweide. */
+/** True when URL asks to seed UI from a prior /alerts/latest package. */
+function wantsHydrateFromLatest(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get("hydrate") === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Optionally seed skymap + candidates from /alerts/latest.
+ * Default cold start stays empty (listening) — only hydrate with ?hydrate=1
+ * or after a manual Replay start (onStarted).
+ */
 async function hydrateFromLatest(opts?: {
-  /** Default true for page load; false after Scenario Run so AOI zoom plays. */
+  /** Default true for page-load hydrate; false after Scenario Run so AOI zoom plays. */
   suppressZoom?: boolean;
 }): Promise<void> {
   try {
@@ -94,8 +107,16 @@ async function hydrateFromLatest(opts?: {
       suppressZoom: opts?.suppressZoom,
     });
   } catch {
-    // Offline / empty feed — sky stays on empty state until a scenario runs.
+    // Offline / empty feed — sky stays on waiting/empty until a live alert or Replay.
   }
+}
+
+function isIdleScenario(scen: string | null | undefined): boolean {
+  return !scen || scen === "live_waiting";
+}
+
+function statusListening(): string {
+  return strings.listening ?? strings.connected;
 }
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -170,7 +191,9 @@ mountCandidates(document.querySelector("#panel-candidates")!);
 mountSubscribe(document.querySelector("#panel-subscribe")!);
 mountVoice(document.querySelector("#panel-voice")!);
 
-void hydrateFromLatest();
+if (wantsHydrateFromLatest()) {
+  void hydrateFromLatest();
+}
 
 connectEvents(
   (event) => {
@@ -178,9 +201,14 @@ connectEvents(
     if (event.type === "voice") handleVoiceEvent(event);
 
     if (event.type === "hello") {
-      statusEl.textContent = strings.connected;
       const scen = (event as { scenario?: string }).scenario;
-      if (scen) activeScenario = scen;
+      if (!isIdleScenario(scen)) {
+        activeScenario = scen ?? null;
+        statusEl.textContent = strings.connected;
+      } else {
+        activeScenario = null;
+        statusEl.textContent = statusListening();
+      }
     } else if (event.type === "alert") {
       statusEl.textContent = `${strings.statusAlert}: ${String(
         (event.payload as { kind?: string })?.kind ?? "",
@@ -205,7 +233,11 @@ connectEvents(
     setConnected(state === "open");
     statusDot.classList.toggle("is-live", state === "open");
     if (state === "connecting") statusEl.textContent = strings.connecting;
-    if (state === "open") statusEl.textContent = strings.connected;
+    if (state === "open") {
+      statusEl.textContent = isIdleScenario(activeScenario)
+        ? statusListening()
+        : strings.connected;
+    }
     if (state === "closed") statusEl.textContent = strings.disconnected;
   },
 );

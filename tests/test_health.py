@@ -19,10 +19,13 @@ def test_health_ok() -> None:
 
 
 def test_ws_events_hello() -> None:
+    import backend.app as app_mod
+
+    app_mod._active_scenario = None
     client = TestClient(app)
     with client.websocket_connect("/ws/events") as ws:
         hello = ws.receive_json()
     assert hello["type"] == "hello"
     assert hello["service"] == "breakout"
     assert "use_cached_stream" in hello
-    assert "scenario" in hello
+    assert hello["scenario"] == "live_waiting"

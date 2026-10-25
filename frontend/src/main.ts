@@ -75,7 +75,11 @@ connectEvents(
     applyBadgeFromEvent(badges, event);
 
     if (event.type === "hello") {
-      statusEl.textContent = strings.connected;
+      const scen = (event as { scenario?: string }).scenario;
+      statusEl.textContent =
+        !scen || scen === "live_waiting"
+          ? (strings.listening ?? strings.connected)
+          : strings.connected;
     } else if (event.type === "alert") {
       statusEl.textContent = `${strings.statusAlert}: ${String((event.payload as { kind?: string })?.kind ?? "")}`;
     } else if (event.type === "skymap") {
@@ -95,7 +99,9 @@ connectEvents(
   (state) => {
     setConnected(state === "open");
     if (state === "connecting") statusEl.textContent = strings.connecting;
-    if (state === "open") statusEl.textContent = strings.connected;
+    if (state === "open") {
+      statusEl.textContent = strings.listening ?? strings.connected;
+    }
     if (state === "closed") statusEl.textContent = strings.disconnected;
   },
 );
