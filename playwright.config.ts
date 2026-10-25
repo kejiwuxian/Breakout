@@ -21,7 +21,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "USE_CACHED_STREAM=True SCENARIO=scenario_a_galactic_ccsn BREAKOUT_DISABLE_AUTOSTART=1 python3 -m uvicorn backend.app:app --host 127.0.0.1 --port 8000",
+        "USE_CACHED_STREAM=True SCENARIO=scenario_a_galactic_ccsn VOICE_MODE=off BREAKOUT_DISABLE_AUTOSTART=1 python3 -m uvicorn backend.app:app --host 127.0.0.1 --port 8000",
       url: "http://127.0.0.1:8000/health",
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
