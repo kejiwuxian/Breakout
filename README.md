@@ -19,7 +19,7 @@ MVP gate: `bash scripts/mvp_gate.sh` must print PASS. Phase 2 sponsor integratio
 
 ## After MVP gate
 
-Full post-gate index: [`docs/post-mvp.md`](docs/post-mvp.md) — idle live-waiting default, SVG skymap zoom/pan, progenitor inventory (CandidateScore v1.1), two-token community push, DiffPointing / live channels, Apify behind flags.
+Full post-gate index: [`docs/post-mvp.md`](docs/post-mvp.md) — idle live-waiting default, SVG skymap zoom/pan, progenitor inventory (CandidateScore v1.1), Subscribe to events (access + refresh over WebSocket), DiffPointing / live channels, Apify behind flags.
 
 ## Quick start
 
@@ -39,7 +39,7 @@ Offline capability (`USE_CACHED_STREAM=True`): fixtures under `data/cache/` are 
 
 ## Community alerts (Phase 1) — catch potential SNe today
 
-**UI:** frontend-v2 (`:5174`) rail **Community push**, or the classic dashboard (`:5173`) **Community alerts** panel — **access + refresh** tokens over WebSocket, honesty note, link to `/alerts/latest`.
+**UI:** frontend-v2 (`:5174`) rail **Subscribe to events**, or the classic dashboard (`:5173`) **Community alerts** panel — **access + refresh** tokens over WebSocket, honesty note, link to `/alerts/latest`.
 
 Issue tokens, connect `/ws/subscribe`, and receive ranked ICRS targets on the next SN_BURST / HE_NEUTRINO candidate set:
 

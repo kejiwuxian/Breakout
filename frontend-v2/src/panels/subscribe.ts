@@ -1,36 +1,53 @@
 /**
- * Community subscribe rail: access + refresh tokens over /ws/subscribe.
- * POST /subscribe → tokens → open WS → refresh + send access_token to extend.
+ * Subscribe to events — open access + refresh tokens over /ws/subscribe.
+ * No prior credentials: POST /subscribe issues tokens to anyone.
  */
 import strings from "../copy/strings.json";
-
-type SubRow = {
-  id?: string;
-  label?: string | null;
-  email_masked?: string | null;
-  has_email?: boolean;
-  status?: string;
-};
 
 const WS_URL =
   typeof location !== "undefined"
     ? `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/subscribe`
     : "ws://localhost:8000/ws/subscribe";
 
+const API_ORIGIN =
+  typeof location !== "undefined" ? `${location.protocol}//${location.host}` : "http://127.0.0.1:8000";
+
 export function mountSubscribe(host: HTMLElement): () => void {
   host.innerHTML = `
     <div class="rail-block subscribe">
       <h2 class="rail-title">${strings.subscribeTitle}</h2>
       <p class="rail-hint">${strings.subscribeHint}</p>
+      <p class="rail-hint subscribe-open">${strings.subscribeOpen}</p>
       <p class="rail-hint subscribe-honesty">${strings.subscribeHonesty}</p>
-      <p class="rail-hint subscribe-dry" data-role="dry" hidden></p>
+
+      <div class="subscribe-docs" data-role="docs">
+        <h3 class="subscribe-docs-title">${strings.subscribeDocsTitle}</h3>
+        <ol class="subscribe-docs-list">
+          <li>
+            <strong>${strings.subscribeDocsIssueTitle}</strong>
+            <p>${strings.subscribeDocsIssueBody}</p>
+            <pre class="subscribe-code" data-role="code-issue"></pre>
+          </li>
+          <li>
+            <strong>${strings.subscribeDocsRefreshTitle}</strong>
+            <p>${strings.subscribeDocsRefreshBody}</p>
+            <pre class="subscribe-code" data-role="code-refresh"></pre>
+          </li>
+          <li>
+            <strong>${strings.subscribeDocsWsTitle}</strong>
+            <p>${strings.subscribeDocsWsBody}</p>
+            <pre class="subscribe-code" data-role="code-ws"></pre>
+          </li>
+        </ol>
+        <p class="rail-hint">
+          ${strings.subscribeDocsLink}
+          ·
+          <a class="subscribe-feed-link" href="/alerts/latest" target="_blank" rel="noopener noreferrer">${strings.subscribeFeedLink}</a>
+        </p>
+      </div>
 
       <form class="subscribe-form" data-role="issue-form">
-        <p class="subscribe-step">${strings.subscribeStep1}</p>
-        <label class="subscribe-field">
-          <span>${strings.subscribeEmail}</span>
-          <input name="email" type="email" placeholder="you@observatory.edu" autocomplete="email" />
-        </label>
+        <p class="subscribe-step">${strings.subscribeStepStart}</p>
         <label class="subscribe-field">
           <span>${strings.subscribeLabel}</span>
           <input name="label" type="text" placeholder="campus-0.3m" autocomplete="off" />
@@ -40,28 +57,52 @@ export function mountSubscribe(host: HTMLElement): () => void {
 
       <div class="subscribe-tokens" data-role="tokens" hidden></div>
       <p class="subscribe-ws-status" data-role="ws-status" aria-live="polite"></p>
-      <div class="subscribe-alerts" data-role="alerts"></div>
-
+      <div class="subscribe-alerts" data-role="alerts" aria-live="polite"></div>
       <p class="subscribe-status" data-role="status" aria-live="polite" hidden></p>
-      <p class="rail-hint">
-        ${strings.subscribeFeedHint}
-        <a class="subscribe-feed-link" href="/alerts/latest" target="_blank" rel="noopener noreferrer">${strings.subscribeFeedLink}</a>
-      </p>
-      <ul class="subscribe-list" data-role="list"></ul>
+      <ul class="subscribe-list" data-role="list" hidden></ul>
     </div>
   `;
 
   const issueForm = host.querySelector<HTMLFormElement>("[data-role=issue-form]")!;
   const status = host.querySelector<HTMLElement>("[data-role=status]")!;
-  const dryNote = host.querySelector<HTMLElement>("[data-role=dry]")!;
   const tokensEl = host.querySelector<HTMLElement>("[data-role=tokens]")!;
   const wsStatus = host.querySelector<HTMLElement>("[data-role=ws-status]")!;
   const alertsEl = host.querySelector<HTMLElement>("[data-role=alerts]")!;
-  const list = host.querySelector<HTMLUListElement>("[data-role=list]")!;
+
+  const codeIssue = host.querySelector<HTMLElement>("[data-role=code-issue]")!;
+  const codeRefresh = host.querySelector<HTMLElement>("[data-role=code-refresh]")!;
+  const codeWs = host.querySelector<HTMLElement>("[data-role=code-ws]")!;
+
+  codeIssue.textContent = `POST ${API_ORIGIN}/subscribe
+Content-Type: application/json
+
+{} 
+# optional: {"label":"campus-0.3m"}
+# → access_token (~5 min) + refresh_token (~7 days)
+# No account or prior credentials required.`;
+
+  codeRefresh.textContent = `POST ${API_ORIGIN}/subscribe/refresh
+Content-Type: application/json
+
+{"refresh_token":"<refresh_token>"}
+# → new access_token (+ rotated refresh_token)
+# Then send on the live WS before access expires.`;
+
+  codeWs.textContent = `WS  ${WS_URL}?access_token=<access_token>
+
+# first frame alternative:
+{"type":"auth","access_token":"<access_token>"}
+
+# extend before expiry:
+{"type":"access_token","access_token":"<new_access_token>"}
+
+# server pushes:
+{"type":"community_alert","payload":{…}}
+
+# access expired → close code 4001`;
 
   let accessToken = "";
   let refreshToken = "";
-  let subscriberId = "";
   let ws: WebSocket | null = null;
   let refreshTimer: number | null = null;
   let closed = false;
@@ -78,10 +119,11 @@ export function mountSubscribe(host: HTMLElement): () => void {
     tokensEl.innerHTML = `
       <p class="subscribe-dry-label">${strings.subscribeTokensTitle}</p>
       <p class="subscribe-token-line"><span>${strings.subscribeAccessToken}</span>
-        <code>${access.slice(0, 12)}…</code></p>
+        <code title="${access}">${access.slice(0, 16)}…</code></p>
       <p class="subscribe-token-line"><span>${strings.subscribeRefreshToken}</span>
-        <code>${refresh.slice(0, 12)}…</code></p>
-      <p class="rail-hint">${strings.subscribeExpires}: ${expiresUtc}</p>
+        <code title="${refresh}">${refresh.slice(0, 16)}…</code></p>
+      <p class="rail-hint">${strings.subscribeExpires}: ${expiresUtc || "—"}</p>
+      <p class="rail-hint">${strings.subscribeTokensStore}</p>
     `;
   }
 
@@ -98,7 +140,6 @@ export function mountSubscribe(host: HTMLElement): () => void {
 
   function scheduleRefresh(expiresInSec: number): void {
     clearRefreshTimer();
-    // Refresh a bit before expiry so the wire stays up.
     const waitMs = Math.max(1_000, (expiresInSec - 30) * 1000);
     refreshTimer = window.setTimeout(() => {
       void refreshAndExtend();
@@ -118,7 +159,6 @@ export function mountSubscribe(host: HTMLElement): () => void {
         refresh_token?: string;
         access_expires_utc?: string;
         access_ttl_sec?: number;
-        detail?: string;
       };
       if (!resp.ok || !data.access_token || !data.refresh_token) {
         setWsStatus(strings.subscribeRefreshFailed);
@@ -163,7 +203,6 @@ export function mountSubscribe(host: HTMLElement): () => void {
         const data = JSON.parse(String(msg.data)) as {
           type?: string;
           expires_in_sec?: number;
-          access_expires_utc?: string;
           payload?: { alert_id?: string; n_candidates?: number; simulated?: boolean };
         };
         if (data.type === "subscribe_hello" || data.type === "access_extended") {
@@ -177,12 +216,12 @@ export function mountSubscribe(host: HTMLElement): () => void {
         }
         if (data.type === "community_alert") {
           const p = data.payload || {};
-          const li = document.createElement("p");
-          li.className = "subscribe-alert-line";
-          li.textContent = `${strings.subscribeAlertPrefix} ${p.alert_id || "?"} · n=${
+          const line = document.createElement("p");
+          line.className = "subscribe-alert-line";
+          line.textContent = `${strings.subscribeAlertPrefix} ${p.alert_id || "?"} · n=${
             p.n_candidates ?? "?"
           }${p.simulated ? " · simulated" : ""}`;
-          alertsEl.prepend(li);
+          alertsEl.prepend(line);
           while (alertsEl.childElementCount > 5) {
             alertsEl.lastElementChild?.remove();
           }
@@ -191,39 +230,6 @@ export function mountSubscribe(host: HTMLElement): () => void {
         /* ignore */
       }
     });
-  }
-
-  async function refreshList(): Promise<void> {
-    try {
-      const resp = await fetch("/subscribe", { cache: "no-store" });
-      if (!resp.ok) return;
-      const data = (await resp.json()) as {
-        subscribers?: SubRow[];
-        notify_dry_run?: boolean;
-      };
-      const rows = data.subscribers ?? [];
-      if (!rows.length) {
-        list.innerHTML = `<li class="muted">${strings.subscribeEmpty}</li>`;
-      } else {
-        list.innerHTML = rows
-          .map((r) => {
-            const bits = [
-              r.label || r.id?.slice(0, 8) || "subscriber",
-              r.email_masked || (r.has_email ? "email" : ""),
-            ].filter(Boolean);
-            return `<li>${bits.join(" · ")}</li>`;
-          })
-          .join("");
-      }
-      if (data.notify_dry_run) {
-        dryNote.hidden = false;
-        dryNote.textContent = strings.subscribeDryRun;
-      } else {
-        dryNote.hidden = true;
-      }
-    } catch {
-      /* ignore */
-    }
   }
 
   function detailMessage(data: { detail?: string | { msg?: string }[] }, fallback: string): string {
@@ -236,14 +242,14 @@ export function mountSubscribe(host: HTMLElement): () => void {
   issueForm.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const fd = new FormData(issueForm);
-    const email = String(fd.get("email") || "").trim() || null;
     const label = String(fd.get("label") || "").trim() || null;
     showStatus("info", strings.subscribeWorking);
     try {
+      // Open subscribe: empty body is enough — no account or prior credentials.
       const resp = await fetch("/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, label }),
+        body: JSON.stringify({ label }),
       });
       const data = (await resp.json()) as {
         detail?: string | { msg?: string }[];
@@ -251,7 +257,7 @@ export function mountSubscribe(host: HTMLElement): () => void {
         refresh_token?: string;
         access_expires_utc?: string;
         access_ttl_sec?: number;
-        subscriber?: { id?: string; email_masked?: string };
+        subscriber?: { id?: string };
       };
       if (!resp.ok || !data.access_token || !data.refresh_token) {
         showStatus("error", detailMessage(data, strings.subscribeFailed));
@@ -259,25 +265,17 @@ export function mountSubscribe(host: HTMLElement): () => void {
       }
       accessToken = data.access_token;
       refreshToken = data.refresh_token;
-      subscriberId = data.subscriber?.id || "";
       showTokens(accessToken, refreshToken, data.access_expires_utc || "");
-      showStatus(
-        "ok",
-        `${strings.subscribeIssueOk}${
-          data.subscriber?.email_masked ? ` (${data.subscriber.email_masked})` : ""
-        }`,
-      );
+      showStatus("ok", strings.subscribeIssueOk);
       connectWs(accessToken);
       if (typeof data.access_ttl_sec === "number") {
         scheduleRefresh(data.access_ttl_sec);
       }
-      await refreshList();
     } catch {
       showStatus("error", strings.subscribeFailed);
     }
   });
 
-  void refreshList();
   return () => {
     closed = true;
     clearRefreshTimer();

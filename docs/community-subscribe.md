@@ -1,90 +1,111 @@
-# Community event push (access + refresh over WebSocket)
+# Subscribe to events (open access + refresh over WebSocket)
 
-Phase 1 lets anyone with a telescope opt in for ranked progenitor coordinates
-when BREAKOUT localizes an `SN_BURST` / `HE_NEUTRINO` candidate set. This is
-**community follow-up**, not an official GCN notice and not a confirmed
+Anyone can subscribe for ranked progenitor coordinates when BREAKOUT localizes
+an `SN_BURST` / `HE_NEUTRINO` candidate set. **No account and no prior
+credentials** — `POST /subscribe` mints tokens for any caller (rate-limited).
+
+This is **community follow-up**, not an official GCN notice and not a confirmed
 supernova detection service.
 
-**Two-token auth** means **access token** + **refresh token** (not an email
-confirm dance). Live delivery is over **WebSocket** (`/ws/subscribe`).
+**Two-token auth** = **access token** + **refresh token**. Live delivery is
+over **WebSocket** (`/ws/subscribe`).
 
-## Token + WebSocket flow
+## 1. Issue tokens
 
-1. **Issue** — `POST /subscribe` with optional `email` / `label`.
-   Server creates an **active** subscriber and returns:
-   - `access_token` (short-lived, default ~5 minutes)
-   - `refresh_token` (longer-lived, default ~7 days; rotated on use)
-   Tokens are **hashed at rest**.
-2. **Connect** — open `ws(s)://…/ws/subscribe?access_token=…`
-   (or send `{ "type": "auth", "access_token": "…" }` as the first frame).
-   Server replies with `subscribe_hello` including `access_expires_utc`.
-3. **Extend** — before access expiry, `POST /subscribe/refresh` with
-   `refresh_token`, then send the new access token on the **live** socket:
-   `{ "type": "access_token", "access_token": "…" }`.
-   Server replies `access_extended` and reschedules the close timer.
-4. **Auto-close** — if the access token expires without a successful extend,
-   the server closes the wire with code **4001** (`access_token_expired`).
-5. **Dispatch** — ranked packages are pushed as `{ "type": "community_alert", "payload": … }`
-   to connected sockets. Optional email mirror remains dry-run unless SMTP is configured.
+```bash
+curl -X POST http://127.0.0.1:8000/subscribe \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+# optional label: {"label":"campus-0.3m"}
+```
 
-Abuse controls: in-memory rate limit by email + IP, hashed tokens at rest,
-masked emails on the public list, refresh rotation.
+Response includes:
+
+| Field | Meaning |
+| --- | --- |
+| `access_token` | Short-lived (~5 min). Required to open `/ws/subscribe`. |
+| `refresh_token` | Longer-lived (~7 days). Exchange for a new access token. |
+| `access_expires_utc` | When the current access token dies. |
+| `ws` | `/ws/subscribe` |
+
+Tokens are **hashed at rest**. Empty body is enough — email is optional and not required to listen.
+
+## 2. Refresh access
+
+```bash
+curl -X POST http://127.0.0.1:8000/subscribe/refresh \
+  -H 'Content-Type: application/json' \
+  -d '{"refresh_token":"…"}'
+```
+
+Returns a new `access_token` and a **rotated** `refresh_token`. Old refresh
+tokens cannot be reused.
+
+## 3. WebSocket
+
+```text
+ws://127.0.0.1:8000/ws/subscribe?access_token=<access_token>
+```
+
+Or connect without a query string and send as the first frame:
+
+```json
+{"type":"auth","access_token":"<access_token>"}
+```
+
+Server hello:
+
+```json
+{"type":"subscribe_hello","subscriber_id":"…","access_expires_utc":"…","expires_in_sec":…}
+```
+
+**Extend** a live session after refresh — send the new access token on the same wire:
+
+```json
+{"type":"access_token","access_token":"<new_access_token>"}
+```
+
+Server replies `access_extended` and reschedules the close timer.
+
+**Auto-close:** if access expires without a successful extend, the socket closes
+with code **4001** (`access_token_expired`).
+
+**Events:** ranked packages arrive as:
+
+```json
+{"type":"community_alert","payload":{…},"simulated":true}
+```
 
 ## Subscribe from the UI
 
 | UI | Port | Where |
 | --- | --- | --- |
-| **frontend-v2** (primary) | `5174` | Rail block **Community push** |
-| Classic `frontend/` | `5173` | **Community alerts** panel |
+| **frontend-v2** (primary) | `5174` | Rail **Subscribe to events** |
+| Classic `frontend/` | `5173` | **Subscribe to events** panel |
 
-1. Start the API (`uvicorn backend.app:app`, typically `:8000`). Cold start is
-   **idle / listening** — no auto Scenario A unless `BREAKOUT_AUTOSTART=1`.
+1. Start the API (`uvicorn backend.app:app`, typically `:8000`).
 2. Open frontend-v2 at http://127.0.0.1:5174 (Vite proxies `/subscribe`, `/alerts`, `/ws`).
-3. Enter optional email/label → **Subscribe**.
-4. The panel opens `/ws/subscribe` and auto-refreshes access before expiry.
-5. Browse the JSON feed at [`GET /alerts/latest`](http://127.0.0.1:8000/alerts/latest).
-6. To exercise a push locally, manually **Run** a Replay scenario.
+3. Optional label → **Get tokens & connect**. The panel documents the three
+   endpoints inline, opens `/ws/subscribe`, and auto-refreshes before expiry.
+4. Browse [`GET /alerts/latest`](http://127.0.0.1:8000/alerts/latest).
+5. Exercise a push with a manual Replay scenario (`simulated=true` when applicable).
 
 ## What gets pushed
 
-Feed packages (`breakout.community_alert.v1`) include:
+Feed packages (`breakout.community_alert.v1`) include alert metadata, skymap
+peak RA/Dec, ranked ICRS candidates, `simulated=true` when applicable, and ADS
+bibcodes **only** when already on the candidate.
 
-- Alert metadata (`alert_id`, `kind`, `source`, `t0_utc`, …)
-- Skymap peak RA/Dec and credible region size
-- Ranked candidates with **ICRS** `ra_deg` / `dec_deg`, posterior, class window
-- `simulated=true` when any field is simulated
-- ADS bibcodes **only** when already present on the candidate (never invented)
-
-Registry and append-only feed live under `data/subscribers/` (see
-[`data/subscribers/README.md`](../data/subscribers/README.md)).
-
-## API
-
-```bash
-# Issue access + refresh
-curl -X POST http://127.0.0.1:8000/subscribe \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"you@observatory.edu","label":"campus-0.3m"}'
-
-# Refresh access (then send new access_token on the live WS)
-curl -X POST http://127.0.0.1:8000/subscribe/refresh \
-  -H 'Content-Type: application/json' \
-  -d '{"refresh_token":"…"}'
-
-# WebSocket (websocat / wscat)
-# wscat -c "ws://127.0.0.1:8000/ws/subscribe?access_token=…"
-
-curl http://127.0.0.1:8000/alerts/latest
-# Optional: ?token=<access_token> or Authorization: Bearer <access_token>
-```
+## API summary
 
 | Method | Path | Role |
 | --- | --- | --- |
-| `POST` | `/subscribe` | Issue access + refresh tokens |
+| `POST` | `/subscribe` | Issue access + refresh (no prior credentials) |
 | `POST` | `/subscribe/refresh` | New access token (+ rotated refresh) |
-| `GET` | `/subscribe` | Active subscriber metadata (masked email) |
+| `WS` | `/ws/subscribe` | Live event push (access-gated; auto-close on expiry) |
+| `GET` | `/subscribe` | Active subscriber metadata (masked) |
 | `DELETE` | `/subscribe/{id}` | Unsubscribe |
-| `WS` | `/ws/subscribe` | Live community alert push (access-gated) |
-| `GET` | `/alerts/latest` | Recent ranked-candidate packages |
+| `GET` | `/alerts/latest` | Recent packages (optional Bearer / `?token=`) |
 
-Implementation: `backend/notify/` (`subscribers.py`, `ws_hub.py`, `dispatch.py`, `payload.py`).
+Abuse controls: in-memory rate limit by IP (and email if provided), hashed
+tokens, refresh rotation. Implementation: `backend/notify/`.

@@ -1,15 +1,7 @@
 /**
- * Community subscribe panel: access + refresh tokens over /ws/subscribe.
+ * Subscribe to events: open access + refresh tokens over /ws/subscribe.
  */
 import strings from "../copy/strings.json";
-
-type SubRow = {
-  id?: string;
-  label?: string | null;
-  email_masked?: string | null;
-  has_email?: boolean;
-  created_utc?: string;
-};
 
 const WS_URL =
   typeof location !== "undefined"
@@ -23,11 +15,8 @@ export function mountSubscribePanel(host: HTMLElement): () => void {
         <h2 id="subscribe-title">${strings.subscribeTitle}</h2>
       </header>
       <p class="panel-hint">${strings.subscribeHint}</p>
+      <p class="panel-hint">${strings.subscribeFeedHint}</p>
       <form class="subscribe-form" data-role="issue-form">
-        <label>
-          <span>${strings.subscribeEmail}</span>
-          <input name="email" type="email" placeholder="you@observatory.edu" autocomplete="email" />
-        </label>
         <label>
           <span>${strings.subscribeLabel}</span>
           <input name="label" type="text" placeholder="My 0.3m scope" autocomplete="off" />
@@ -37,8 +26,6 @@ export function mountSubscribePanel(host: HTMLElement): () => void {
       <div class="subscribe-dry-tokens" data-role="tokens" hidden></div>
       <p class="subscribe-status" data-role="status" hidden></p>
       <p class="panel-hint" data-role="ws-status"></p>
-      <p class="panel-hint">${strings.subscribeFeedHint}</p>
-      <ul class="subscribe-list" data-role="list"></ul>
     </section>
   `;
 
@@ -46,7 +33,6 @@ export function mountSubscribePanel(host: HTMLElement): () => void {
   const status = host.querySelector<HTMLElement>("[data-role=status]")!;
   const tokensEl = host.querySelector<HTMLElement>("[data-role=tokens]")!;
   const wsStatus = host.querySelector<HTMLElement>("[data-role=ws-status]")!;
-  const list = host.querySelector<HTMLUListElement>("[data-role=list]")!;
   let ws: WebSocket | null = null;
   let refreshToken = "";
   let refreshTimer: number | null = null;
@@ -55,22 +41,6 @@ export function mountSubscribePanel(host: HTMLElement): () => void {
     status.hidden = false;
     status.textContent = text;
     status.classList.toggle("is-error", !ok);
-  }
-
-  async function refreshList(): Promise<void> {
-    try {
-      const resp = await fetch("/subscribe", { cache: "no-store" });
-      if (!resp.ok) return;
-      const data = (await resp.json()) as { subscribers?: SubRow[] };
-      const rows = data.subscribers ?? [];
-      list.innerHTML = rows.length
-        ? rows
-            .map((r) => `<li>${r.label || r.id?.slice(0, 8)} · ${r.email_masked || ""}</li>`)
-            .join("")
-        : `<li class="muted">${strings.subscribeEmpty}</li>`;
-    } catch {
-      /* ignore */
-    }
   }
 
   async function refreshAndExtend(socket: WebSocket): Promise<void> {
@@ -99,14 +69,13 @@ export function mountSubscribePanel(host: HTMLElement): () => void {
   form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const fd = new FormData(form);
-    const email = String(fd.get("email") || "").trim() || null;
     const label = String(fd.get("label") || "").trim() || null;
     showStatus(true, strings.subscribeWorking);
     try {
       const resp = await fetch("/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, label }),
+        body: JSON.stringify({ label }),
       });
       const data = (await resp.json()) as {
         access_token?: string;
@@ -133,26 +102,29 @@ export function mountSubscribePanel(host: HTMLElement): () => void {
       });
       ws.addEventListener("message", (msg) => {
         try {
-          const frame = JSON.parse(String(msg.data)) as { type?: string; expires_in_sec?: number };
-          if (frame.type === "subscribe_hello" || frame.type === "access_extended") {
-            if (typeof frame.expires_in_sec === "number" && ws) {
-              if (refreshTimer != null) window.clearTimeout(refreshTimer);
-              refreshTimer = window.setTimeout(() => {
-                if (ws) void refreshAndExtend(ws);
-              }, Math.max(1000, (frame.expires_in_sec - 30) * 1000));
-            }
+          const frame = JSON.parse(String(msg.data)) as {
+            type?: string;
+            expires_in_sec?: number;
+          };
+          if (
+            (frame.type === "subscribe_hello" || frame.type === "access_extended") &&
+            typeof frame.expires_in_sec === "number" &&
+            ws
+          ) {
+            if (refreshTimer != null) window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(() => {
+              if (ws) void refreshAndExtend(ws);
+            }, Math.max(1000, (frame.expires_in_sec - 30) * 1000));
           }
         } catch {
           /* ignore */
         }
       });
-      await refreshList();
     } catch {
       showStatus(false, strings.subscribeFailed);
     }
   });
 
-  void refreshList();
   return () => {
     if (refreshTimer != null) window.clearTimeout(refreshTimer);
     if (ws) ws.close();
