@@ -1,18 +1,26 @@
-"""Community notify: webhook (and optional email) fan-out of ranked candidates.
+"""Community notify: two-token email opt-in for ranked-candidate alerts.
 
-Phase 1 MVP path so scientists and enthusiasts can point instruments at
-BREAKOUT-ranked progenitors before large facilities are on board.
-Never invents coordinates or bibcodes; every simulated field stays labeled.
+Phase 1 MVP path so scientists and enthusiasts can confirm an email, then
+receive ranked progenitors before large facilities are on board.
+No webhook delivery. Never invents coordinates or bibcodes; simulated stays labeled.
 """
 
 from backend.notify.dispatch import dispatch_ranked_alert
 from backend.notify.payload import build_community_alert
-from backend.notify.subscribers import add_subscriber, list_subscribers, remove_subscriber
+from backend.notify.subscribers import (
+    confirm_subscribe,
+    list_subscribers,
+    remove_subscriber,
+    request_subscribe,
+    verify_access_token,
+)
 
 __all__ = [
-    "add_subscriber",
     "build_community_alert",
+    "confirm_subscribe",
     "dispatch_ranked_alert",
     "list_subscribers",
     "remove_subscriber",
+    "request_subscribe",
+    "verify_access_token",
 ]

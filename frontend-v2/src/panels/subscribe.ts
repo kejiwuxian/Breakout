@@ -1,15 +1,15 @@
 /**
- * Community subscribe rail: webhook/email opt-in for ranked-candidate alerts.
- * Same POST /subscribe contract as classic frontend/.
+ * Community subscribe rail: two-token email confirm (no webhook).
+ * POST /subscribe/request → dry-run tokens → POST /subscribe/confirm.
  */
 import strings from "../copy/strings.json";
 
 type SubRow = {
   id?: string;
   label?: string | null;
-  webhook_host?: string;
-  has_webhook?: boolean;
+  email_masked?: string | null;
   has_email?: boolean;
+  status?: string;
 };
 
 export function mountSubscribe(host: HTMLElement): () => void {
@@ -19,21 +19,35 @@ export function mountSubscribe(host: HTMLElement): () => void {
       <p class="rail-hint">${strings.subscribeHint}</p>
       <p class="rail-hint subscribe-honesty">${strings.subscribeHonesty}</p>
       <p class="rail-hint subscribe-dry" data-role="dry" hidden></p>
-      <form class="subscribe-form" data-role="form">
-        <label class="subscribe-field">
-          <span>${strings.subscribeWebhook}</span>
-          <input name="webhook_url" type="url" placeholder="https://example.com/hook" autocomplete="off" />
-        </label>
+
+      <form class="subscribe-form" data-role="request-form">
+        <p class="subscribe-step">${strings.subscribeStep1}</p>
         <label class="subscribe-field">
           <span>${strings.subscribeEmail}</span>
-          <input name="email" type="email" placeholder="you@observatory.edu" autocomplete="off" />
+          <input name="email" type="email" required placeholder="you@observatory.edu" autocomplete="email" />
         </label>
         <label class="subscribe-field">
           <span>${strings.subscribeLabel}</span>
           <input name="label" type="text" placeholder="campus-0.3m" autocomplete="off" />
         </label>
-        <button type="submit" class="scenario-btn subscribe-btn">${strings.subscribeSubmit}</button>
+        <button type="submit" class="scenario-btn subscribe-btn">${strings.subscribeRequest}</button>
       </form>
+
+      <div class="subscribe-dry-tokens" data-role="dry-tokens" hidden></div>
+
+      <form class="subscribe-form subscribe-confirm-form" data-role="confirm-form">
+        <p class="subscribe-step">${strings.subscribeStep2}</p>
+        <label class="subscribe-field">
+          <span>${strings.subscribeRequestToken}</span>
+          <input name="request_token" type="text" required autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="subscribe-field">
+          <span>${strings.subscribeConfirmToken}</span>
+          <input name="confirm_token" type="text" required autocomplete="off" spellcheck="false" />
+        </label>
+        <button type="submit" class="scenario-btn subscribe-btn">${strings.subscribeConfirm}</button>
+      </form>
+
       <p class="subscribe-status" data-role="status" aria-live="polite" hidden></p>
       <p class="rail-hint">
         ${strings.subscribeFeedHint}
@@ -43,10 +57,38 @@ export function mountSubscribe(host: HTMLElement): () => void {
     </div>
   `;
 
-  const form = host.querySelector<HTMLFormElement>("[data-role=form]")!;
+  const requestForm = host.querySelector<HTMLFormElement>("[data-role=request-form]")!;
+  const confirmForm = host.querySelector<HTMLFormElement>("[data-role=confirm-form]")!;
   const status = host.querySelector<HTMLElement>("[data-role=status]")!;
   const dryNote = host.querySelector<HTMLElement>("[data-role=dry]")!;
+  const dryTokens = host.querySelector<HTMLElement>("[data-role=dry-tokens]")!;
   const list = host.querySelector<HTMLUListElement>("[data-role=list]")!;
+
+  function showStatus(kind: "ok" | "error" | "info", text: string): void {
+    status.hidden = false;
+    status.classList.remove("is-error", "is-ok", "is-info");
+    status.classList.add(`is-${kind}`);
+    status.textContent = text;
+  }
+
+  function fillConfirmTokens(requestToken: string, confirmToken: string): void {
+    const rt = confirmForm.elements.namedItem("request_token") as HTMLInputElement | null;
+    const ct = confirmForm.elements.namedItem("confirm_token") as HTMLInputElement | null;
+    if (rt) rt.value = requestToken;
+    if (ct) ct.value = confirmToken;
+  }
+
+  function showDryTokens(requestToken: string, confirmToken: string, label: string): void {
+    dryTokens.hidden = false;
+    dryTokens.innerHTML = `
+      <p class="subscribe-dry-label">${label || strings.subscribeDryTokensTitle}</p>
+      <p class="subscribe-token-line"><span>${strings.subscribeRequestToken}</span>
+        <code data-role="rt">${requestToken}</code></p>
+      <p class="subscribe-token-line"><span>${strings.subscribeConfirmToken}</span>
+        <code data-role="ct">${confirmToken}</code></p>
+    `;
+    fillConfirmTokens(requestToken, confirmToken);
+  }
 
   async function refresh(): Promise<void> {
     try {
@@ -64,14 +106,12 @@ export function mountSubscribe(host: HTMLElement): () => void {
           .map((r) => {
             const bits = [
               r.label || r.id?.slice(0, 8) || "subscriber",
-              r.webhook_host ? `hook:${r.webhook_host}` : "",
-              r.has_email ? "email" : "",
+              r.email_masked || (r.has_email ? "email" : ""),
             ].filter(Boolean);
             return `<li>${bits.join(" · ")}</li>`;
           })
           .join("");
       }
-      // Keep dry-run on its own line so submit success/error status is not overwritten.
       if (data.notify_dry_run) {
         dryNote.hidden = false;
         dryNote.textContent = strings.subscribeDryRun;
@@ -84,49 +124,91 @@ export function mountSubscribe(host: HTMLElement): () => void {
     }
   }
 
-  form.addEventListener("submit", async (ev) => {
+  function detailMessage(data: { detail?: string | { msg?: string }[] }, fallback: string): string {
+    const detail = data.detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) return detail.map((d) => d.msg ?? String(d)).join("; ");
+    return fallback;
+  }
+
+  requestForm.addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const fd = new FormData(form);
-    const webhook_url = String(fd.get("webhook_url") || "").trim() || null;
-    const email = String(fd.get("email") || "").trim() || null;
+    const fd = new FormData(requestForm);
+    const email = String(fd.get("email") || "").trim();
     const label = String(fd.get("label") || "").trim() || null;
-    status.hidden = false;
-    status.classList.remove("is-error", "is-ok", "is-info");
-    status.textContent = strings.subscribeWorking;
+    showStatus("info", strings.subscribeWorking);
+    dryTokens.hidden = true;
+    dryTokens.innerHTML = "";
     try {
-      const resp = await fetch("/subscribe", {
+      const resp = await fetch("/subscribe/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ webhook_url, email, label }),
+        body: JSON.stringify({ email, label }),
       });
       const data = (await resp.json()) as {
         detail?: string | { msg?: string }[];
         notify_dry_run?: boolean;
-        status?: string;
+        pending?: boolean;
+        request_id?: string;
+        dry_run?: {
+          label?: string;
+          request_token?: string;
+          confirm_token?: string;
+        };
       };
       if (!resp.ok) {
-        status.classList.add("is-error");
-        const detail = data.detail;
-        const msg =
-          typeof detail === "string"
-            ? detail
-            : Array.isArray(detail)
-              ? detail.map((d) => d.msg ?? String(d)).join("; ")
-              : strings.subscribeFailed;
-        status.textContent = msg || strings.subscribeFailed;
+        showStatus("error", detailMessage(data, strings.subscribeFailed));
         return;
       }
-      status.classList.add("is-ok");
-      const dry =
-        data.notify_dry_run === true
-          ? ` ${strings.subscribeDryRunShort}`
-          : "";
-      status.textContent = `${strings.subscribeOk}${dry}`;
-      form.reset();
+      const dry = data.dry_run;
+      if (dry?.request_token && dry?.confirm_token) {
+        showDryTokens(
+          dry.request_token,
+          dry.confirm_token,
+          dry.label || strings.subscribeDryTokensTitle,
+        );
+        showStatus("ok", strings.subscribeRequestOkDry);
+      } else {
+        showStatus("ok", strings.subscribeRequestOk);
+      }
+    } catch {
+      showStatus("error", strings.subscribeFailed);
+    }
+  });
+
+  confirmForm.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(confirmForm);
+    const request_token = String(fd.get("request_token") || "").trim();
+    const confirm_token = String(fd.get("confirm_token") || "").trim();
+    showStatus("info", strings.subscribeConfirmWorking);
+    try {
+      const resp = await fetch("/subscribe/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_token, confirm_token }),
+      });
+      const data = (await resp.json()) as {
+        detail?: string | { msg?: string }[];
+        status?: string;
+        access_token?: string;
+        subscriber?: { email_masked?: string };
+      };
+      if (!resp.ok) {
+        showStatus("error", detailMessage(data, strings.subscribeConfirmFailed));
+        return;
+      }
+      const masked = data.subscriber?.email_masked
+        ? ` (${data.subscriber.email_masked})`
+        : "";
+      showStatus("ok", `${strings.subscribeConfirmOk}${masked}`);
+      dryTokens.hidden = true;
+      dryTokens.innerHTML = "";
+      confirmForm.reset();
+      requestForm.reset();
       await refresh();
     } catch {
-      status.classList.add("is-error");
-      status.textContent = strings.subscribeFailed;
+      showStatus("error", strings.subscribeConfirmFailed);
     }
   });
 
