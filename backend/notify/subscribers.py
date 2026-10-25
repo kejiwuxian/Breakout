@@ -1,8 +1,13 @@
-"""Local subscriber registry with two-token email confirmation (no webhooks).
+"""Access + refresh token registry for community WebSocket subscribe.
 
 Stored under ``data/subscribers/registry.json`` (gitignored runtime file).
-Flow: request (email) → pending + short-lived tokens → confirm → active + access_token.
-Tokens are hashed at rest; plaintext is returned only in dry-run / no-SMTP responses.
+
+Two-token auth (OAuth-style):
+  - **access_token** — short-lived; required to open/extend ``/ws/subscribe``
+  - **refresh_token** — longer-lived; exchanged via ``POST /subscribe/refresh``
+    for a new access token (client may push the new access token on a live WS)
+
+Tokens are hashed at rest; plaintext is returned only at issue/refresh time.
 """
 
 from __future__ import annotations
@@ -23,11 +28,12 @@ REGISTRY_PATH = REGISTRY_DIR / "registry.json"
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
-PENDING_TTL = timedelta(hours=1)
-RATE_LIMIT_WINDOW_SEC = 3600
-RATE_LIMIT_MAX_PER_KEY = 5
+ACCESS_TTL = timedelta(minutes=5)
+REFRESH_TTL = timedelta(days=7)
 
-# In-memory rate windows: key → list of unix timestamps.
+RATE_LIMIT_WINDOW_SEC = 3600
+RATE_LIMIT_MAX_PER_KEY = 10
+
 _rate_hits: dict[str, list[float]] = {}
 
 
@@ -35,8 +41,8 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(microsecond=0)
 
 
-def _utcnow_iso() -> str:
-    return _utcnow().isoformat().replace("+00:00", "Z")
+def _iso(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _hash_token(token: str) -> str:
@@ -97,24 +103,6 @@ def _parse_iso(value: str | None) -> datetime | None:
         return None
 
 
-def purge_expired_pending(*, now: datetime | None = None) -> int:
-    """Drop pending rows past expires_utc. Returns count removed."""
-    now = now or _utcnow()
-    rows = _load()
-    kept: list[dict[str, Any]] = []
-    removed = 0
-    for row in rows:
-        if row.get("status") == "pending":
-            exp = _parse_iso(row.get("expires_utc"))
-            if exp is not None and exp <= now:
-                removed += 1
-                continue
-        kept.append(row)
-    if removed:
-        _save(kept)
-    return removed
-
-
 def check_rate_limit(*keys: str) -> None:
     """Raise ValueError if any key exceeds the Phase-1 window budget."""
     now = time.time()
@@ -134,166 +122,156 @@ def clear_rate_limits() -> None:
     _rate_hits.clear()
 
 
+def _public_row(row: dict[str, Any]) -> dict[str, Any]:
+    email = row.get("email")
+    return {
+        "id": row.get("id"),
+        "label": row.get("label"),
+        "created_utc": row.get("created_utc"),
+        "status": row.get("status"),
+        "has_email": bool(email),
+        "email_masked": _mask_email(str(email)) if email else None,
+        "access_expires_utc": row.get("access_expires_utc"),
+        "refresh_expires_utc": row.get("refresh_expires_utc"),
+    }
+
+
 def list_subscribers(*, public: bool = True, active_only: bool = True) -> list[dict[str, Any]]:
     """Return registry rows. Public view masks email and omits token hashes."""
-    purge_expired_pending()
     rows = _load()
     if active_only:
         rows = [r for r in rows if r.get("status") == "active"]
     if not public:
         return rows
-    out: list[dict[str, Any]] = []
-    for row in rows:
-        email = row.get("email")
-        item = {
-            "id": row.get("id"),
-            "label": row.get("label"),
-            "created_utc": row.get("created_utc"),
-            "confirmed_utc": row.get("confirmed_utc"),
-            "status": row.get("status"),
-            "has_email": bool(email),
-            "email_masked": _mask_email(str(email)) if email else None,
-        }
-        out.append(item)
-    return out
+    return [_public_row(row) for row in rows]
 
 
-def request_subscribe(
+def _issue_pair(row: dict[str, Any], *, now: datetime | None = None) -> dict[str, str]:
+    """Write new access + refresh hashes/expiries onto ``row``; return plaintext."""
+    now = now or _utcnow()
+    access_token = _new_token()
+    refresh_token = _new_token()
+    access_exp = now + ACCESS_TTL
+    refresh_exp = now + REFRESH_TTL
+    row["access_token_hash"] = _hash_token(access_token)
+    row["refresh_token_hash"] = _hash_token(refresh_token)
+    row["access_expires_utc"] = _iso(access_exp)
+    row["refresh_expires_utc"] = _iso(refresh_exp)
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "access_expires_utc": row["access_expires_utc"],
+        "refresh_expires_utc": row["refresh_expires_utc"],
+    }
+
+
+def issue_tokens(
     *,
-    email: str,
+    email: str | None = None,
     label: str | None = None,
     client_ip: str | None = None,
-    dry_run: bool = True,
-    smtp_configured: bool = False,
 ) -> dict[str, Any]:
-    """Create a pending subscriber and issue request + confirm tokens.
+    """Create an active subscriber and return access + refresh tokens."""
+    em = validate_email(email) if email else None
+    lab = (label or "").strip() or None
+    check_rate_limit(
+        f"email:{em}" if em else "",
+        f"ip:{client_ip or 'unknown'}",
+    )
 
-    Does not activate push delivery. Plaintext tokens appear in the response
-    only when ``dry_run`` or SMTP is not configured (demo / local path).
-    """
-    em = validate_email(email)
-    check_rate_limit(f"email:{em}", f"ip:{client_ip or 'unknown'}")
-    purge_expired_pending()
-
-    request_token = _new_token()
-    confirm_token = _new_token()
     now = _utcnow()
-    expires = now + PENDING_TTL
-    request_id = str(uuid.uuid4())
-
-    row = {
-        "id": request_id,
+    row: dict[str, Any] = {
+        "id": str(uuid.uuid4()),
         "email": em,
-        "label": (label or "").strip() or None,
-        "status": "pending",
-        "created_utc": now.isoformat().replace("+00:00", "Z"),
-        "expires_utc": expires.isoformat().replace("+00:00", "Z"),
-        "request_token_hash": _hash_token(request_token),
-        "confirm_token_hash": _hash_token(confirm_token),
+        "label": lab,
+        "status": "active",
+        "created_utc": _iso(now),
         "access_token_hash": None,
-        "confirmed_utc": None,
+        "refresh_token_hash": None,
+        "access_expires_utc": None,
+        "refresh_expires_utc": None,
     }
+    tokens = _issue_pair(row, now=now)
     rows = _load()
-    # Replace any existing pending row for the same email.
-    rows = [
-        r
-        for r in rows
-        if not (r.get("status") == "pending" and str(r.get("email") or "").lower() == em)
-    ]
     rows.append(row)
     _save(rows)
 
-    out: dict[str, Any] = {
-        "pending": True,
-        "request_id": request_id,
-        "expires_utc": row["expires_utc"],
-        "email_masked": _mask_email(em),
-        "label": row["label"],
+    return {
+        "status": "active",
+        "subscriber": _public_row(row),
+        **tokens,
+        "access_ttl_sec": int(ACCESS_TTL.total_seconds()),
+        "refresh_ttl_sec": int(REFRESH_TTL.total_seconds()),
+        "ws": "/ws/subscribe",
+        "note": (
+            "Connect WebSocket /ws/subscribe with access_token. "
+            "Refresh via POST /subscribe/refresh; send the new access_token "
+            "on the live socket to extend before expiry auto-closes the wire."
+        ),
     }
-    # Never invent production email delivery — expose tokens only for dry-run / no SMTP.
-    if dry_run or not smtp_configured:
-        out["dry_run"] = {
-            "label": "Simulated/dry-run — tokens returned in API (no email sent)",
-            "request_token": request_token,
-            "confirm_token": confirm_token,
-            "confirm_hint": (
-                "POST /subscribe/confirm with both tokens to activate. "
-                "With SMTP configured and NOTIFY_DRY_RUN=False these would be emailed."
-            ),
-        }
-    return out
 
 
-def confirm_subscribe(
-    *,
-    request_token: str,
-    confirm_token: str,
-) -> dict[str, Any]:
-    """Activate a pending subscriber when both tokens match and are unexpired."""
-    rt = (request_token or "").strip()
-    ct = (confirm_token or "").strip()
-    if not rt or not ct:
-        raise ValueError("request_token and confirm_token required")
+def refresh_access_token(*, refresh_token: str) -> dict[str, Any]:
+    """Exchange a valid refresh_token for a new access_token (refresh rotated)."""
+    text = (refresh_token or "").strip()
+    if not text:
+        raise ValueError("refresh_token required")
 
-    purge_expired_pending()
-    rt_hash = _hash_token(rt)
-    ct_hash = _hash_token(ct)
+    digest = _hash_token(text)
     rows = _load()
     now = _utcnow()
     matched: dict[str, Any] | None = None
     matched_idx = -1
     for idx, row in enumerate(rows):
-        if row.get("status") != "pending":
+        if row.get("status") != "active":
             continue
-        if row.get("request_token_hash") == rt_hash and row.get("confirm_token_hash") == ct_hash:
+        if row.get("refresh_token_hash") == digest:
             matched = row
             matched_idx = idx
             break
 
     if matched is None:
-        raise ValueError("invalid or already-used tokens")
+        raise ValueError("invalid refresh token")
 
-    exp = _parse_iso(matched.get("expires_utc"))
-    if exp is not None and exp <= now:
-        # Drop expired row
-        del rows[matched_idx]
-        _save(rows)
-        raise ValueError("pending request expired")
+    refresh_exp = _parse_iso(matched.get("refresh_expires_utc"))
+    if refresh_exp is not None and refresh_exp <= now:
+        raise ValueError("refresh token expired")
 
-    access_token = _new_token()
-    matched["status"] = "active"
-    matched["confirmed_utc"] = now.isoformat().replace("+00:00", "Z")
-    matched["access_token_hash"] = _hash_token(access_token)
-    # One-time use: clear confirmation hashes so tokens cannot be reused.
-    matched["request_token_hash"] = None
-    matched["confirm_token_hash"] = None
-    matched["expires_utc"] = None
+    tokens = _issue_pair(matched, now=now)
     rows[matched_idx] = matched
     _save(rows)
 
     return {
         "status": "active",
-        "subscriber": {
-            "id": matched["id"],
-            "label": matched.get("label"),
-            "email_masked": _mask_email(str(matched.get("email") or "")),
-            "confirmed_utc": matched["confirmed_utc"],
-            "status": "active",
-        },
-        "access_token": access_token,
+        "subscriber": _public_row(matched),
+        **tokens,
+        "access_ttl_sec": int(ACCESS_TTL.total_seconds()),
+        "refresh_ttl_sec": int(REFRESH_TTL.total_seconds()),
     }
 
 
 def verify_access_token(token: str) -> dict[str, Any] | None:
-    """Return the active subscriber row if ``token`` matches an access_token_hash."""
+    """Return the active subscriber row if ``token`` is a non-expired access token."""
     text = (token or "").strip()
     if not text:
         return None
     digest = _hash_token(text)
+    now = _utcnow()
     for row in _load():
-        if row.get("status") == "active" and row.get("access_token_hash") == digest:
-            return row
+        if row.get("status") != "active":
+            continue
+        if row.get("access_token_hash") != digest:
+            continue
+        exp = _parse_iso(row.get("access_expires_utc"))
+        if exp is not None and exp <= now:
+            return None
+        return row
     return None
+
+
+def access_expires_at(row: dict[str, Any]) -> datetime | None:
+    """Parse access_expires_utc from a registry row."""
+    return _parse_iso(row.get("access_expires_utc") if isinstance(row, dict) else None)
 
 
 def remove_subscriber(subscriber_id: str) -> bool:

@@ -39,22 +39,20 @@ Offline capability (`USE_CACHED_STREAM=True`): fixtures under `data/cache/` are 
 
 ## Community alerts (Phase 1) — catch potential SNe today
 
-**UI:** frontend-v2 (`:5174`) rail **Community push**, or the classic dashboard (`:5173`) **Community alerts** panel — **two-token email** confirm (no webhook), status line, honesty note, link to `/alerts/latest`.
+**UI:** frontend-v2 (`:5174`) rail **Community push**, or the classic dashboard (`:5173`) **Community alerts** panel — **access + refresh** tokens over WebSocket, honesty note, link to `/alerts/latest`.
 
-Confirm an email, then receive ranked ICRS targets by email on the next SN_BURST / HE_NEUTRINO candidate set:
+Issue tokens, connect `/ws/subscribe`, and receive ranked ICRS targets on the next SN_BURST / HE_NEUTRINO candidate set:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/subscribe/request \
+curl -X POST http://127.0.0.1:8000/subscribe \
   -H 'Content-Type: application/json' \
   -d '{"email":"you@observatory.edu","label":"campus-0.3m"}'
-# dry-run returns request_token + confirm_token under dry_run — then:
-curl -X POST http://127.0.0.1:8000/subscribe/confirm \
-  -H 'Content-Type: application/json' \
-  -d '{"request_token":"…","confirm_token":"…"}'
+# → access_token + refresh_token; open ws://127.0.0.1:8000/ws/subscribe?access_token=…
+# Refresh: POST /subscribe/refresh {"refresh_token":"…"} then send the new access_token on the live WS.
 curl http://127.0.0.1:8000/alerts/latest
 ```
 
-Default `NOTIFY_DRY_RUN=True` returns Simulated/dry-run tokens in the API and logs alert emails (no SMTP). Only confirmed subscribers are emailed. This is community follow-up for potential counterparts, not a confirmed supernova detection service. Full walkthrough: [`docs/community-subscribe.md`](docs/community-subscribe.md).
+Default live push is WebSocket (`/ws/subscribe`) with access + refresh tokens. `NOTIFY_DRY_RUN=True` logs optional email mirrors (no SMTP). This is community follow-up for potential counterparts, not a confirmed supernova detection service. Full walkthrough: [`docs/community-subscribe.md`](docs/community-subscribe.md).
 
 ## Layout
 

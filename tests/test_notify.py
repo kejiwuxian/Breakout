@@ -1,4 +1,4 @@
-"""Community notify: two-token subscribe + ranked-candidate email dispatch."""
+"""Community notify: access + refresh tokens over WebSocket subscribe."""
 
 from __future__ import annotations
 
@@ -15,9 +15,10 @@ from backend.notify.payload import build_community_alert
 from backend.notify.subscribers import (
     clear_rate_limits,
     clear_subscribers,
-    confirm_subscribe,
+    issue_tokens,
     list_subscribers,
-    request_subscribe,
+    refresh_access_token,
+    verify_access_token,
 )
 from backend.schemas import Alert, CandidateScore, DetectorHit, SkyMap, SkyPeak
 
@@ -113,77 +114,60 @@ def test_build_community_alert_labels_simulated() -> None:
     assert pkg["candidates"][0]["simulated"] is True
 
 
-def test_request_confirm_activates_and_hashes_tokens() -> None:
-    pending = request_subscribe(
-        email="Obs@Example.EDU",
-        label="campus-0.3m",
-        dry_run=True,
-        smtp_configured=False,
-    )
-    assert pending["pending"] is True
-    assert "request_id" in pending
-    assert "dry_run" in pending
-    rt = pending["dry_run"]["request_token"]
-    ct = pending["dry_run"]["confirm_token"]
+def test_issue_and_refresh_access_refresh_tokens() -> None:
+    issued = issue_tokens(email="Obs@Example.EDU", label="campus-0.3m")
+    assert issued["status"] == "active"
+    assert issued["access_token"]
+    assert issued["refresh_token"]
+    assert issued["access_token"] != issued["refresh_token"]
+    assert issued["subscriber"]["email_masked"].startswith("o***@")
 
     raw = json.loads(subs_mod.REGISTRY_PATH.read_text(encoding="utf-8"))
-    assert raw[0]["status"] == "pending"
+    assert raw[0]["status"] == "active"
     assert raw[0]["email"] == "obs@example.edu"
-    assert raw[0]["request_token_hash"] != rt
-    assert raw[0]["confirm_token_hash"] != ct
+    assert raw[0]["access_token_hash"] != issued["access_token"]
+    assert raw[0]["refresh_token_hash"] != issued["refresh_token"]
     assert "webhook_url" not in raw[0]
 
-    # Pending must not appear in the public active list.
-    assert list_subscribers(public=True, active_only=True) == []
-
-    confirmed = confirm_subscribe(request_token=rt, confirm_token=ct)
-    assert confirmed["status"] == "active"
-    assert confirmed["access_token"]
-    assert confirmed["subscriber"]["email_masked"].startswith("o***@")
+    assert verify_access_token(issued["access_token"]) is not None
+    assert verify_access_token(issued["refresh_token"]) is None
 
     active = list_subscribers(public=True, active_only=True)
     assert len(active) == 1
-    assert active[0]["email_masked"] == "o***@example.edu"
     assert "access_token" not in active[0]
+    assert "refresh_token" not in active[0]
 
-    # Tokens are one-time.
-    with pytest.raises(ValueError, match="invalid|already-used"):
-        confirm_subscribe(request_token=rt, confirm_token=ct)
+    refreshed = refresh_access_token(refresh_token=issued["refresh_token"])
+    assert refreshed["access_token"] != issued["access_token"]
+    assert refreshed["refresh_token"] != issued["refresh_token"]
+    # Old access invalidated by rotation of hashes.
+    assert verify_access_token(issued["access_token"]) is None
+    assert verify_access_token(refreshed["access_token"]) is not None
 
-
-def test_confirm_rejects_bad_and_expired_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
-    pending = request_subscribe(email="a@example.edu", dry_run=True)
-    rt = pending["dry_run"]["request_token"]
-    ct = pending["dry_run"]["confirm_token"]
-
+    # Old refresh cannot be reused.
     with pytest.raises(ValueError, match="invalid"):
-        confirm_subscribe(request_token=rt, confirm_token="wrong-token")
+        refresh_access_token(refresh_token=issued["refresh_token"])
 
-    # Expire the pending row
+
+def test_access_token_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(subs_mod, "ACCESS_TTL", timedelta(seconds=1))
+    issued = issue_tokens(email="a@example.edu")
+    assert verify_access_token(issued["access_token"]) is not None
+
+    # Force expiry on the stored row.
     rows = json.loads(subs_mod.REGISTRY_PATH.read_text(encoding="utf-8"))
-    past = (datetime.now(timezone.utc) - timedelta(minutes=5)).replace(microsecond=0)
-    rows[0]["expires_utc"] = past.isoformat().replace("+00:00", "Z")
+    past = (datetime.now(timezone.utc) - timedelta(seconds=5)).replace(microsecond=0)
+    rows[0]["access_expires_utc"] = past.isoformat().replace("+00:00", "Z")
     subs_mod.REGISTRY_PATH.write_text(json.dumps(rows), encoding="utf-8")
-
-    with pytest.raises(ValueError, match="expired|invalid"):
-        confirm_subscribe(request_token=rt, confirm_token=ct)
+    assert verify_access_token(issued["access_token"]) is None
 
 
-def test_pending_not_dispatched_webhook_gone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dispatch_marks_websocket_channel(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from backend import config as config_mod
     from backend.notify.dispatch import dispatch_ranked_alert
 
     monkeypatch.setattr(config_mod.settings, "notify_dry_run", True)
-
-    pending = request_subscribe(email="pending@example.edu", dry_run=True)
-    assert pending["pending"] is True
-
-    # Confirm a different subscriber so dispatch has someone to email.
-    ok = request_subscribe(email="active@example.edu", label="scope", dry_run=True)
-    confirm_subscribe(
-        request_token=ok["dry_run"]["request_token"],
-        confirm_token=ok["dry_run"]["confirm_token"],
-    )
+    issue_tokens(email="active@example.edu", label="scope")
 
     result = dispatch_ranked_alert(
         _toy_alert(),
@@ -192,22 +176,20 @@ def test_pending_not_dispatched_webhook_gone(tmp_path: Path, monkeypatch: pytest
         run_dir=tmp_path,
     )
     disp = result["dispatch"]
-    assert disp["n_subscribers"] == 1
-    assert disp["channels"] == ["email"]
-    assert "webhook" not in disp["deliveries"][0]
-    assert disp["deliveries"][0]["email"]["dry_run"] is True
+    assert "websocket" in disp["channels"]
+    assert any(d.get("channel") == "websocket" for d in disp["deliveries"])
     assert (tmp_path / "notify-test-1" / "community_alert.json").is_file()
 
 
-def test_rate_limit_by_email() -> None:
+def test_rate_limit_by_ip() -> None:
     clear_rate_limits()
     for i in range(subs_mod.RATE_LIMIT_MAX_PER_KEY):
-        request_subscribe(email=f"r{i}@example.edu", client_ip="10.0.0.1", dry_run=True)
+        issue_tokens(email=f"r{i}@example.edu", client_ip="10.0.0.1")
     with pytest.raises(ValueError, match="rate limit"):
-        request_subscribe(email="extra@example.edu", client_ip="10.0.0.1", dry_run=True)
+        issue_tokens(email="extra@example.edu", client_ip="10.0.0.1")
 
 
-def test_subscribe_api_two_token_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_subscribe_api_access_refresh_and_ws(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("BREAKOUT_DISABLE_AUTOSTART", "1")
     monkeypatch.setenv("USE_CACHED_STREAM", "True")
     monkeypatch.setenv("NOTIFY_DRY_RUN", "True")
@@ -222,69 +204,79 @@ def test_subscribe_api_two_token_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     importlib.reload(app_mod)
 
     with TestClient(app_mod.app) as client:
-        bad = client.post("/subscribe/request", json={})
-        assert bad.status_code == 422
-
-        # Legacy webhook field must not create a webhook subscriber.
-        legacy_webhook = client.post(
+        issued = client.post(
             "/subscribe",
-            json={"webhook_url": "https://hooks.example.edu/a", "label": "x"},
-        )
-        assert legacy_webhook.status_code == 422
-
-        req = client.post(
-            "/subscribe/request",
             json={"email": "scope@example.edu", "label": "campus"},
         )
-        assert req.status_code == 200
-        body = req.json()
-        assert body["pending"] is True
-        assert "dry_run" in body
-        assert body["dry_run"]["request_token"]
-        assert body["dry_run"]["confirm_token"]
-        # Secrets must not be echoed at top level outside dry_run.
-        assert "request_token" not in body
-        assert "confirm_token" not in body
-
-        listed_pending = client.get("/subscribe")
-        assert listed_pending.status_code == 200
-        assert listed_pending.json()["subscribers"] == []
-
-        conf = client.post(
-            "/subscribe/confirm",
-            json={
-                "request_token": body["dry_run"]["request_token"],
-                "confirm_token": body["dry_run"]["confirm_token"],
-            },
-        )
-        assert conf.status_code == 200
-        conf_body = conf.json()
-        assert conf_body["status"] == "active"
-        access = conf_body["access_token"]
-        sid = conf_body["subscriber"]["id"]
+        assert issued.status_code == 200
+        body = issued.json()
+        assert body["status"] == "active"
+        access = body["access_token"]
+        refresh = body["refresh_token"]
+        sid = body["subscriber"]["id"]
+        assert body["ws"] == "/ws/subscribe"
 
         listed = client.get("/subscribe")
+        assert listed.status_code == 200
         assert any(r["id"] == sid for r in listed.json()["subscribers"])
-        assert listed.json()["subscribers"][0]["email_masked"].endswith("@example.edu")
+        assert listed.json()["ws"] == "/ws/subscribe"
 
-        reuse = client.post(
-            "/subscribe/confirm",
-            json={
-                "request_token": body["dry_run"]["request_token"],
-                "confirm_token": body["dry_run"]["confirm_token"],
-            },
-        )
-        assert reuse.status_code == 400
+        bad_refresh = client.post("/subscribe/refresh", json={"refresh_token": "nope"})
+        assert bad_refresh.status_code == 401
+
+        refreshed = client.post("/subscribe/refresh", json={"refresh_token": refresh})
+        assert refreshed.status_code == 200
+        new_access = refreshed.json()["access_token"]
+        assert new_access != access
 
         latest = client.get("/alerts/latest")
         assert latest.status_code == 200
-        assert "packages" in latest.json()
+        assert latest.json()["ws"] == "/ws/subscribe"
 
-        latest_auth = client.get(f"/alerts/latest?token={access}")
+        latest_auth = client.get(f"/alerts/latest?token={new_access}")
         assert latest_auth.status_code == 200
 
         bad_tok = client.get("/alerts/latest?token=not-a-real-token")
         assert bad_tok.status_code == 401
 
+        with client.websocket_connect(f"/ws/subscribe?access_token={new_access}") as ws:
+            hello = ws.receive_json()
+            assert hello["type"] == "subscribe_hello"
+            assert hello["subscriber_id"] == sid
+            assert "access_expires_utc" in hello
+            ws.send_text("ping")
+            assert ws.receive_json()["type"] == "pong"
+
+            # Extend with a freshly refreshed access token.
+            again = client.post(
+                "/subscribe/refresh",
+                json={"refresh_token": refreshed.json()["refresh_token"]},
+            )
+            assert again.status_code == 200
+            ext = again.json()["access_token"]
+            ws.send_json({"type": "access_token", "access_token": ext})
+            extended = ws.receive_json()
+            assert extended["type"] == "access_extended"
+            assert extended["subscriber_id"] == sid
+
         gone = client.delete(f"/subscribe/{sid}")
         assert gone.status_code == 200
+
+
+def test_ws_subscribe_rejects_bad_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BREAKOUT_DISABLE_AUTOSTART", "1")
+    monkeypatch.setenv("USE_CACHED_STREAM", "True")
+    from backend import config as config_mod
+
+    config_mod.settings = config_mod.load_settings()
+    import importlib
+
+    import backend.app as app_mod
+
+    importlib.reload(app_mod)
+
+    with TestClient(app_mod.app) as client:
+        with client.websocket_connect("/ws/subscribe?access_token=bad") as ws:
+            # Accepted then closed with application code 4003.
+            with pytest.raises(Exception):
+                ws.receive_json()

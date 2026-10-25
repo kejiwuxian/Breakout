@@ -44,7 +44,7 @@ def build_actions_payload(
         "simulated": simulated,
         "note": (
             "Drafts only — human approval required before any LCO/HST/JWST/GCN submit. "
-            "Community webhooks receive ranked-candidate JSON for local telescopes."
+            "Community WebSocket subscribers receive ranked-candidate JSON for local telescopes."
         ),
     }
 
