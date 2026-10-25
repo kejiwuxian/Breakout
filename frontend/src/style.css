@@ -797,12 +797,14 @@ body {
 
 .sky-outline[data-aoi-role="outer"],
 .sky-outline-peak[data-aoi-role="outer"] {
-  stroke: rgba(255, 0, 0, 0.4);
+  /* --signal mint @ 75% transparent */
+  stroke: rgba(91, 224, 197, 0.25);
 }
 
 .sky-outline[data-aoi-role="inner"],
 .sky-outline-peak[data-aoi-role="inner"] {
-  stroke: #ff0000;
+  /* --signal mint @ 50% transparent */
+  stroke: rgba(91, 224, 197, 0.5);
 }
 
 .sky-star {
@@ -937,6 +939,62 @@ body {
 
 .subscribe-docs-list p {
   margin: 0.2rem 0 0.35rem;
+}
+
+.subscribe-docs-relay {
+  list-style: decimal;
+}
+
+.subscribe-relay {
+  min-width: 0;
+}
+
+.subscribe-relay > summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+  list-style: none;
+}
+
+.subscribe-relay > summary::-webkit-details-marker {
+  display: none;
+}
+
+.subscribe-relay > summary::before {
+  content: "▸ ";
+  color: var(--signal);
+  font-weight: 400;
+}
+
+.subscribe-relay[open] > summary::before {
+  content: "▾ ";
+}
+
+.subscribe-relay-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0.35rem 0 0.25rem;
+}
+
+.subscribe-copy-btn {
+  appearance: none;
+  border: 1px solid var(--signal-border);
+  border-radius: 6px;
+  background: var(--signal-dim);
+  color: var(--signal);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 0.28rem 0.55rem;
+  cursor: pointer;
+}
+
+.subscribe-copy-btn:hover {
+  border-color: var(--signal);
+}
+
+.subscribe-relay-prompt {
+  max-height: 14rem;
+  overflow: auto;
 }
 
 .subscribe-code {

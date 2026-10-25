@@ -12,6 +12,75 @@ const WS_URL =
 const API_ORIGIN =
   typeof location !== "undefined" ? `${location.protocol}//${location.host}` : "http://127.0.0.1:8000";
 
+/** Copy-paste prompt for a third-party AI to write a subscribe relay script. */
+export function buildRelayPrompt(opts: {
+  apiOrigin: string;
+  wsUrl: string;
+}): string {
+  const { apiOrigin, wsUrl } = opts;
+  return `Write a production-ready Python 3 script that listens to Project Supernova / BREAKOUT community subscribe events and relays each ranked-candidate alert on a notification channel I choose.
+
+Honesty / scope (do not invent otherwise):
+- This is community follow-up for SN_BURST / HE_NEUTRINO candidate sets — NOT an official GCN notice and NOT a confirmed supernova detection service.
+- Packages may include simulated=true (dry-run / replay). Always surface that flag in the relayed message.
+- Schema name: breakout.community_alert.v1 (type breakout.ranked_candidates).
+- No account is required. POST /subscribe mints tokens for any caller (rate-limited). Tokens are hashed at rest.
+
+Parameterize these at the top of the script (CLI flags or env vars):
+- BASE_URL (default ${apiOrigin})
+- Optional LABEL for POST /subscribe (e.g. campus-0.3m)
+- RELAY_CHANNEL ∈ {stdout, webhook, email, sms, phone_call, custom} — implement a clear plugin/hook so I can plug Twilio / SMTP / Pushover / etc. Ask me which channel and credentials before hard-coding secrets.
+- Max candidates to include in the relay body (default 10)
+- Dry-run mode that prints the would-be message without calling the channel API
+
+Auth + keep-alive (two-token model):
+1) Issue tokens:
+   POST {BASE_URL}/subscribe
+   Content-Type: application/json
+   Body: {} or {"label":"<LABEL>"}
+   Response fields: access_token (~5 min), refresh_token (~7 days), access_expires_utc, access_ttl_sec, ws=/ws/subscribe
+2) Refresh before access expires (rotate refresh; old refresh cannot be reused):
+   POST {BASE_URL}/subscribe/refresh
+   Body: {"refresh_token":"<refresh_token>"}
+   → new access_token + rotated refresh_token
+3) Open the live WebSocket (prefer query string; first-frame auth is also OK):
+   ws(s)://{host}/ws/subscribe?access_token=<access_token>
+   Local default: ${wsUrl}
+   Or connect without a query string and send first frame:
+   {"type":"auth","access_token":"<access_token>"}
+4) On subscribe_hello / access_extended, read expires_in_sec and schedule refresh ~30s before expiry.
+5) After refresh, extend the live session without reconnecting:
+   {"type":"access_token","access_token":"<new_access_token>"}
+   Expect {"type":"access_extended", ...}
+6) If access expires without a successful extend, the socket closes with code 4001 (access_token_expired). Re-issue or refresh + reconnect.
+7) Optional REST: GET {BASE_URL}/alerts/latest (recent packages; optional Bearer / ?token=). DELETE {BASE_URL}/subscribe/{id} to unsubscribe. GET {BASE_URL}/subscribe lists masked subscriber metadata.
+
+Events to handle:
+{"type":"community_alert","payload":{…},"simulated":true|false}
+
+Payload (breakout.community_alert.v1) includes:
+- alert_id, kind, source, t0_utc, significance, simulated
+- skymap: peak_ra_deg, peak_dec_deg, credible_90_deg2, components, simulated
+- candidates[]: star_id, ra_deg, dec_deg, class, spectral_type, distance_kpc, p_sky, posterior, breakout, ir_followup, presn_watch, evidence[{bibcode,claim}], simulated, rank_confidence, rank_reasoning, composition, life_expectancy
+- instrument_hint, note
+
+Relay message requirements:
+- Lead with alert_id, simulated flag, peak RA/Dec, n candidates
+- List top ranked ICRS coords (rank, star_id, ra_deg, dec_deg, posterior/p_sky)
+- Include instrument_hint verbatim when present
+- Never invent ADS bibcodes; only forward evidence already on the candidate
+- Log reconnects, refresh failures, and close codes
+
+Implementation notes:
+- Use websocket-client or websockets + requests/httpx
+- Store refresh_token securely (file mode 0600 or OS keychain); never log full tokens
+- Robust reconnect with backoff; re-auth after 4001
+- Default BASE_URL for local dry-run: ${apiOrigin}
+- Default WS for local dry-run: ${wsUrl}
+
+Ask me which RELAY_CHANNEL to implement first and which credentials/env vars to expect, then produce the full script with a short README of how to run a dry-run against a local Breakout API.`;
+}
+
 export function mountSubscribe(host: HTMLElement): () => void {
   host.innerHTML = `
     <div class="rail-block subscribe">
@@ -37,6 +106,16 @@ export function mountSubscribe(host: HTMLElement): () => void {
             <strong>${strings.subscribeDocsWsTitle}</strong>
             <p>${strings.subscribeDocsWsBody}</p>
             <pre class="subscribe-code" data-role="code-ws"></pre>
+          </li>
+          <li class="subscribe-docs-relay">
+            <details class="subscribe-relay" data-role="relay">
+              <summary>${strings.subscribeDocsRelayTitle}</summary>
+              <p>${strings.subscribeDocsRelayHint}</p>
+              <div class="subscribe-relay-toolbar">
+                <button type="button" class="subscribe-copy-btn" data-role="copy-relay">${strings.subscribeDocsRelayCopy}</button>
+              </div>
+              <pre class="subscribe-code subscribe-relay-prompt" data-role="code-relay"></pre>
+            </details>
           </li>
         </ol>
         <p class="rail-hint">
@@ -72,6 +151,8 @@ export function mountSubscribe(host: HTMLElement): () => void {
   const codeIssue = host.querySelector<HTMLElement>("[data-role=code-issue]")!;
   const codeRefresh = host.querySelector<HTMLElement>("[data-role=code-refresh]")!;
   const codeWs = host.querySelector<HTMLElement>("[data-role=code-ws]")!;
+  const codeRelay = host.querySelector<HTMLElement>("[data-role=code-relay]")!;
+  const copyRelayBtn = host.querySelector<HTMLButtonElement>("[data-role=copy-relay]")!;
 
   codeIssue.textContent = `POST ${API_ORIGIN}/subscribe
 Content-Type: application/json
@@ -100,6 +181,29 @@ Content-Type: application/json
 {"type":"community_alert","payload":{…}}
 
 # access expired → close code 4001`;
+
+  const relayPrompt = buildRelayPrompt({ apiOrigin: API_ORIGIN, wsUrl: WS_URL });
+  codeRelay.textContent = relayPrompt;
+
+  copyRelayBtn.addEventListener("click", async () => {
+    const label = strings.subscribeDocsRelayCopy;
+    const done = strings.subscribeDocsRelayCopied;
+    try {
+      await navigator.clipboard.writeText(relayPrompt);
+      copyRelayBtn.textContent = done;
+    } catch {
+      // Fallback for non-secure contexts / denied clipboard.
+      const range = document.createRange();
+      range.selectNodeContents(codeRelay);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      copyRelayBtn.textContent = "Select + ⌘/Ctrl+C";
+    }
+    window.setTimeout(() => {
+      copyRelayBtn.textContent = label;
+    }, 1600);
+  });
 
   let accessToken = "";
   let refreshToken = "";

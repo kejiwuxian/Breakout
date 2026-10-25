@@ -42,8 +42,10 @@ export const PEAK_RING_AOI_RADIUS_DEG = 4.5;
 /** Draw peak ring when credible semi-major is below this (matches backend). */
 export const PEAK_RING_MAJOR_THRESHOLD_DEG = 8;
 
-const AOI_STROKE_OUTER = "rgba(255, 0, 0, 0.4)";
-const AOI_STROKE_INNER = "#ff0000";
+/** Outer AOI: mint `--signal` at 75% transparent (alpha 0.25). */
+const AOI_STROKE_OUTER = "rgba(91, 224, 197, 0.25)";
+/** Inner AOI: mint `--signal` at 50% transparent (alpha 0.50). */
+const AOI_STROKE_INNER = "rgba(91, 224, 197, 0.50)";
 
 /** Projected SVG radius of the peak ring at ``(ra, dec)``. */
 export function peakRingRadiusPx(
@@ -81,7 +83,7 @@ export function projectedOutlineRadiusPx(
   return maxR;
 }
 
-/** Assign outer (translucent) vs inner (opaque) strokes by projected size. */
+/** Assign outer (more transparent) vs inner (less transparent) strokes by size. */
 export function assignAoiStrokeBySize(
   marks: Array<{ el: Element; sizePx: number }>,
 ): void {
@@ -92,7 +94,7 @@ export function assignAoiStrokeBySize(
   }
   marks.forEach((m, i) => {
     const outer = i === outerIdx;
-    // Inline style beats stylesheet `stroke: #ff0000` so geometry wins.
+    // Inline style beats stylesheet stroke so geometry wins over class names.
     const el = m.el as HTMLElement & SVGElement;
     el.setAttribute("fill", "none");
     el.setAttribute("data-aoi-role", outer ? "outer" : "inner");
@@ -140,6 +142,10 @@ export type RegionPayload = {
   outline: number[][];
   ellipse?: EllipsePayload;
   nested_ellipses?: NestedEllipse[];
+  /** Backend outer ranking aperture (deg); optional on older payloads. */
+  outer_aoi_radius_deg?: number;
+  /** True when the UI draws the IceCube-scale peak ring. */
+  peak_ring?: boolean;
   prob_cells?: ProbCell[];
   field_stars?: FieldStar[];
   galactic_plane?: number[][];
@@ -147,6 +153,32 @@ export type RegionPayload = {
   render?: string;
   simulated: boolean;
 };
+
+/**
+ * Angular radius of the outer AOI used for zoom + ranking — larger of the
+ * credible semi-major and the peak-ring floor when the ellipse is IceCube-scale.
+ */
+export function outerAoiRadiusDeg(reg: RegionPayload): number {
+  if (
+    typeof reg.outer_aoi_radius_deg === "number" &&
+    Number.isFinite(reg.outer_aoi_radius_deg) &&
+    reg.outer_aoi_radius_deg > 0
+  ) {
+    return reg.outer_aoi_radius_deg;
+  }
+  const majors: number[] = [];
+  const major = Number(reg.ellipse?.semi_major_deg ?? 0);
+  if (Number.isFinite(major) && major > 0) majors.push(major);
+  for (const nested of reg.nested_ellipses ?? []) {
+    const m = Number(nested.ellipse?.semi_major_deg ?? 0);
+    if (Number.isFinite(m) && m > 0) majors.push(m);
+  }
+  let outer = majors.length ? Math.max(...majors) : 0;
+  if (outer < PEAK_RING_MAJOR_THRESHOLD_DEG) {
+    outer = Math.max(outer, PEAK_RING_AOI_RADIUS_DEG);
+  }
+  return outer;
+}
 
 type SkyBase = {
   field_stars: FieldStar[];
@@ -179,7 +211,13 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 36;
 const WHEEL_IN = 0.82;
 const WHEEL_OUT = 1.22;
-const AOI_PAD = 0.42;
+/**
+ * Extra camera padding so the outer AOI spans ~80% of the viewport
+ * (content / padded = 1 / (1 + pad) ≈ 0.80).
+ */
+const AOI_PAD = 0.25;
+/** Target fraction of the viewport occupied by the outer AOI extent. */
+export const AOI_VIEWPORT_FRACTION = 1 / (1 + AOI_PAD);
 const DRAG_THRESH_PX = 4;
 
 async function fetchRegion(alertId: string): Promise<RegionPayload | null> {
@@ -342,6 +380,10 @@ function camForBounds(
   return { x, y, w: bw, h: bh };
 }
 
+/**
+ * Camera covering the **outer AOI** extent (ellipse outline ∪ peak-ring /
+ * ranking aperture), padded so the AOI fills ~80% of the viewport.
+ */
 function outlineCam(
   reg: RegionPayload,
   contentW: number,
@@ -380,9 +422,30 @@ function outlineCam(
     maxY = Math.max(maxY, peak.y);
     n += 1;
   }
+
+  // Expand to the outer ranking aperture (peak-ring floor for IceCube-scale).
+  // Zoom must use this larger extent — not the tiny credible ellipse alone.
+  const outerR = outerAoiRadiusDeg(reg);
+  if (peak && outerR > 0) {
+    const rPx = peakRingRadiusPx(
+      reg.peak.ra_deg,
+      reg.peak.dec_deg,
+      contentW,
+      contentH,
+      outerR,
+    );
+    if (rPx != null) {
+      minX = Math.min(minX, peak.x - rPx);
+      minY = Math.min(minY, peak.y - rPx);
+      maxX = Math.max(maxX, peak.x + rPx);
+      maxY = Math.max(maxY, peak.y + rPx);
+      n += 1;
+    }
+  }
+
   if (n < 2 || !Number.isFinite(minX)) {
     if (!peak) return null;
-    const fov = Math.max(reg.fov_deg || 20, 10);
+    const fov = Math.max(reg.fov_deg || 20, outerR * 2 || 10);
     const half = (fov / 360) * contentW * 0.55;
     return camForBounds(
       {
@@ -757,10 +820,10 @@ export function mountSky(host: HTMLElement): () => void {
     root.appendChild(fieldG);
 
     if (reg) {
-      // Two intentional red AOI marks only — no HEALPix fills or nested light
-      // ellipses (those were the green/white clutter). Opacity is assigned by
-      // projected size (larger/outer = translucent; smaller/inner = opaque),
-      // never by CSS class name — IceCube's peak ring is visually outer.
+      // Two intentional mint AOI marks only — no HEALPix fills or nested light
+      // ellipses. Opacity is assigned by projected size (larger/outer = more
+      // transparent; smaller/inner = less), never by CSS class name —
+      // IceCube's peak ring is visually outer.
       const ring = outlineRing(reg);
       const ovalPts = projectRing(ring, w, h);
       const aoiMarks: Array<{ el: Element; sizePx: number }> = [];
